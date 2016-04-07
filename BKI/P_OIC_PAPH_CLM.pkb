@@ -183,7 +183,11 @@ BEGIN
             v_runclmseq := v_runclmseq+1;
             V_CLAIMSEQ := V_CLAIMSEQ+1 ;
             v_premcode := p1.prem_code;    
-            V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2('PA',m1.CLM_TYPE ,v_premcode);
+            V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
+            V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
+            
             V_CLAIMAMT := p1.amount;
             
             INSERT INTO OIC_PAPH_CLAIM
@@ -402,7 +406,13 @@ BEGIN
             v_runclmseq := v_runclmseq+1;
             V_CLAIMSEQ := V_CLAIMSEQ+1 ;
             v_premcode := p1.prem_code;  
-            V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('PA',m1.CLM_TYPE ,v_premcode);
+            
+            V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
+            V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);     
+                   
+            --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('PA',m1.CLM_TYPE ,v_premcode);
             V_CLAIMAMT := p1.amount;  
             
             -- == set EC
@@ -690,7 +700,12 @@ BEGIN
             v_runclmseq := v_runclmseq+1;
             V_CLAIMSEQ := V_CLAIMSEQ+1 ;
             v_premcode := p1.prem_code;  
-            V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('PA',m1.CLM_TYPE ,v_premcode);
+            
+            V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
+            V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);            
+            --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('PA',m1.CLM_TYPE ,v_premcode);
             V_CLAIMAMT := p1.amount;  
                        
             --=== P
@@ -945,7 +960,11 @@ BEGIN
             v_runclmseq := v_runclmseq+1;
             V_CLAIMSEQ := V_CLAIMSEQ+1 ;
             v_premcode := p1.prem_code;  
-            V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('PA',m1.CLM_TYPE ,v_premcode);
+            V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
+            V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);            
+            --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('PA',m1.CLM_TYPE ,v_premcode);
             V_CLAIMAMT := p1.amount;  
             
             -- == set EC
@@ -1193,7 +1212,11 @@ BEGIN
             v_runclmseq := v_runclmseq+1;
             V_CLAIMSEQ := V_CLAIMSEQ+1 ;
             v_premcode := p1.prem_code;  
-            V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('PA',m1.CLM_TYPE ,v_premcode);
+            V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
+            V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);            
+            --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('PA',m1.CLM_TYPE ,v_premcode);
             V_CLAIMAMT :=0;  
             
             -- == set EC
@@ -1796,8 +1819,13 @@ BEGIN
             V_TRANSACTIONSTATUS  :='N';
             V_REFERENCENUMBER    :=null;     
             V_DEDUCTIBLEAMT :=0;       
-            V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5
-                        
+            --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5
+
+            V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+            V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                                    
             V_ACCOUNTINGDATE := c_paid.state_date ;
                     
             get_citizen('GM' ,m1.pol_no ,m1.pol_run ,c_paid.fleet_seq ,m1.recpt_seq ,c_paid.loss_date  ,M1.CLM_NO ,M1.PAY_NO ,V_INSUREDNAME ,V_INSUREDCITIZENID);
@@ -2023,11 +2051,15 @@ BEGIN
             V_TRANSACTIONSTATUS  :='N';
             V_REFERENCENUMBER    :=null;     
             V_DEDUCTIBLEAMT :=0;       
-            V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5            
+            --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5            
             V_ACCOUNTINGDATE := M1.clm_date ;
 --            V_ACCOUNTINGDATE2 := c_paid.pay_date ;
             V_ACCOUNTINGDATE2 := M1.close_date ;
-                    
+            V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+            V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                                
             get_citizen('GM' ,m1.pol_no ,m1.pol_run ,c_paid.fleet_seq ,m1.recpt_seq ,c_paid.loss_date ,M1.CLM_NO ,M1.PAY_NO ,V_INSUREDNAME ,V_INSUREDCITIZENID);
             
             if c_paid.clm_type = 'OPD' then
@@ -2307,11 +2339,15 @@ BEGIN
             V_TRANSACTIONSTATUS  :='N';
             V_REFERENCENUMBER    :=null;     
             V_DEDUCTIBLEAMT :=0;       
-            V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5            
+            --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5            
             V_ACCOUNTINGDATE := M1.clm_date ;
 --            V_ACCOUNTINGDATE2 := c_paid.pay_date ;
             V_ACCOUNTINGDATE2 := M1.close_date ;
-                    
+            V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+            V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                                
             get_citizen('GM' ,m1.pol_no ,m1.pol_run ,c_paid.fleet_seq ,m1.recpt_seq ,c_paid.loss_date  ,M1.CLM_NO ,M1.PAY_NO,V_INSUREDNAME ,V_INSUREDCITIZENID);
             
             if c_paid.clm_type = 'OPD' then
@@ -2562,10 +2598,14 @@ BEGIN
             V_TRANSACTIONSTATUS  :='N';
             V_REFERENCENUMBER    :=null;     
             V_DEDUCTIBLEAMT :=0;       
-            V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5            
+            --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5            
             V_ACCOUNTINGDATE := M1.clm_date ;
             V_ACCOUNTINGDATE2 := c_paid.pay_date ;
-                    
+            V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+            V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                                
             get_citizen('GM' ,m1.pol_no ,m1.pol_run ,c_paid.fleet_seq ,m1.recpt_seq ,c_paid.loss_date  ,M1.CLM_NO ,M1.PAY_NO,V_INSUREDNAME ,V_INSUREDCITIZENID);
             
             if c_paid.clm_type = 'OPD' then
@@ -2780,10 +2820,14 @@ BEGIN
             V_TRANSACTIONSTATUS  :='N';
             V_REFERENCENUMBER    :=null;     
             V_DEDUCTIBLEAMT :=0;       
-            V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5            
+            --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5            
             V_ACCOUNTINGDATE := M1.clm_date ;
             V_ACCOUNTINGDATE2 := c_paid.pay_date ;
-                    
+            V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+            V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+            ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                                
             get_citizen('GM' ,m1.pol_no ,m1.pol_run ,c_paid.fleet_seq ,m1.recpt_seq ,c_paid.loss_date ,M1.CLM_NO ,M1.PAY_NO ,V_INSUREDNAME ,V_INSUREDCITIZENID);
             
             if c_paid.clm_type = 'OPD' then
@@ -3930,11 +3974,93 @@ EXCEPTION
         return false;
 END hasINS_DATA;
 
-FUNCTION get_Coverage1(i_grp IN VARCHAR2 ,i_opd IN VARCHAR2 ,i_premcode IN VARCHAR2) RETURN VARCHAR2 IS
+FUNCTION get_Coverage1(i_polno  IN VARCHAR2 ,i_polrun  IN VARCHAR2 ,i_fleet IN NUMBER ,i_clmno  IN VARCHAR2 ,i_payno  IN VARCHAR2, i_grp IN VARCHAR2 ,i_opd IN VARCHAR2 ,i_premcode IN VARCHAR2 ,i_risk  IN VARCHAR2) RETURN VARCHAR2 IS
     v_return varchar2(10);
     v_premdesc  varchar2(500);
+    V_MAINCLASS varchar2(5);
+    v_prod_type varchar2(5);
+    v_orbor  varchar(2);
+    v_cover varchar2(10);
+    v_chkpertime    varchar(2);
+    v_chkmotor    varchar(2);
+    v_clmpdflag varchar2(2);
 BEGIN
+    begin
+        select prod_type into v_prod_type
+        from mis_clm_mas
+        where clm_no = i_clmno;
+    exception
+        when no_data_found then
+            v_prod_type :=null;
+        when others then
+            v_prod_type :=null;
+    end;
     
+    V_MAINCLASS := CENTER.OIC_CORE_UTIL.GET_MAIN_CLASS(v_prod_type);
+    
+    IF V_MAINCLASS is not null THEN
+        if V_MAINCLASS = '06' then -- Accident
+            begin
+                select decode(orbo2,20,'2','1') into v_orbor
+                from   mis_pa_prem
+                where  pol_no    = i_polno
+                and    pol_run   =  i_polrun
+                and    recpt_seq = 1
+                and    fleet_seq = i_fleet;
+            exception when others then v_orbor := '1';
+            end;     
+            if v_orbor = '2' then 
+                v_return := 'PA002';
+            else
+                v_return := 'PA001';
+            end if;      
+        elsif V_MAINCLASS = '07' then -- Health
+            begin
+                select oic_bene_code ,clm_pd_flag into v_cover ,v_clmpdflag
+                from medical_ben_std
+                where bene_code = i_premcode
+                and th_eng = 'T'  ;
+            exception 
+                when no_data_found then v_cover := '';    v_clmpdflag := '';          
+                when others then v_cover := '';  v_clmpdflag := '';          
+            end;       
+            if v_clmpdflag = 'I' then
+                v_return :=  'H007';
+            elsif v_clmpdflag = 'O' then 
+                v_return := 'H006';
+            else  
+                v_return := null; -- ยังไม่มี column mapping          
+            end if;
+        elsif V_MAINCLASS = '11' then -- Travel
+            begin
+                select oic_group_coverage ,chk_pertime ,chk_motorcycle_cover into v_cover ,v_chkpertime ,v_chkmotor
+                from nc_h_premcode
+                where premcode = i_premcode;
+            exception 
+                when no_data_found then v_cover := '1.4'; v_chkpertime := null; v_chkmotor :=null;               
+                when others then v_cover := '1.4'; v_chkpertime := null; v_chkmotor :=null; 
+            end;     
+            if v_cover ='1.4' then  -- บาดเจ็บ
+                v_return := 'TA002';
+            elsif v_cover in ('1.2','1.3') then -- ทุพลภาพ
+                v_return := 'TA001';
+            elsif v_cover in ('1.1.1','1.1.2','1.1.3') then -- เสียชีวิต
+                v_return := 'TA003';
+            else
+                v_return := 'TA005';
+            end if;
+            if v_chkpertime = 'Y' then  -- ชดเชย
+                v_return := 'TA004';
+            end if;
+        end if;
+    ELSE
+        IF i_grp ='PA' THEN 
+            v_return := 'PA003';    -- อื่นๆ
+        ELSE
+            v_return := 'HA006';   -- OPD
+        END IF;     
+    END IF;
+    /*
     IF i_grp ='PA' THEN
         IF NC_HEALTH_PACKAGE.IS_CHECK_ACCUM(i_premcode) THEN -- ผลประโยชน์แบบต่อครั้ง
             if i_opd = 'O' then
@@ -3953,59 +4079,156 @@ BEGIN
         END IF;
     ELSE
         v_return := '04';   -- ค่ารักษาพยาบาล
-    END IF;
+    END IF; 
+    */
+    
     
     return v_return;
 END get_Coverage1;
 
-FUNCTION get_Coverage2(i_grp IN VARCHAR2 ,i_opd IN VARCHAR2 ,i_premcode IN VARCHAR2) RETURN VARCHAR2 IS
+FUNCTION get_Coverage2(i_polno  IN VARCHAR2 ,i_polrun  IN VARCHAR2 ,i_fleet IN NUMBER ,i_clmno  IN VARCHAR2 ,i_payno  IN VARCHAR2, i_grp IN VARCHAR2 ,i_opd IN VARCHAR2 ,i_premcode IN VARCHAR2 ,i_risk  IN VARCHAR2) RETURN VARCHAR2 IS
     v_return varchar2(10);
     v_premdesc  varchar2(500);
+    V_MAINCLASS varchar2(10);
+    v_prod_type varchar2(10);
+    v_orbor  varchar(2);
+    v_cover varchar2(10);
+    v_chkpertime    varchar(2);
+    v_chkmotor    varchar(2);
+    v_clmpdflag varchar2(2);    
 BEGIN
 
-    IF i_grp ='PA' THEN
-        IF NC_HEALTH_PACKAGE.IS_CHECK_ACCUM(i_premcode) THEN -- ผลประโยชน์แบบต่อครั้ง
---            if i_opd = 'O' then
-            if 'O' = 'O' then
-                   -- ค่ารักษาผู้ป่วยนอกจาก อบห.
-                IF NC_HEALTH_PACKAGE.IS_CHECK_MOTORCYCLE(i_premcode)    THEN    -- เช็ค motorcycle
-                    v_return := 'P00039';            
-                ELSE
-                    v_return := 'P00038';            
-                END IF;                
-                v_premdesc := nc_health_package.GET_PREMCODE_DESCR(i_premcode,'T');
-                if INSTR(v_premdesc ,'กระดูก') > 0 then
-                    v_return := 'P00042'; -- ค่ารักษาจากอาการกระดูก
-                end if;                
-            else
-                v_return := 'v_return'; -- ค่ารักษาพยาบาล
-                v_premdesc := nc_health_package.GET_PREMCODE_DESCR(i_premcode,'T');
-                if INSTR(v_premdesc ,'กระดูก') > 0 then
-                    v_return := 'P00042'; -- ค่ารักษาจากอาการกระดูก
+    begin
+        select prod_type into v_prod_type
+        from mis_clm_mas
+        where clm_no = i_clmno;
+    exception
+        when no_data_found then
+            v_prod_type :=null;
+        when others then
+            v_prod_type :=null;
+    end;
+    
+    V_MAINCLASS := CENTER.OIC_CORE_UTIL.GET_MAIN_CLASS(v_prod_type);
+    
+    IF V_MAINCLASS is not null THEN
+        if V_MAINCLASS = '06' then -- Accident
+            begin
+                select oic_group_coverage ,chk_pertime ,chk_motorcycle_cover into v_cover ,v_chkpertime ,v_chkmotor
+                from nc_h_premcode
+                where premcode = i_premcode;
+            exception 
+                when no_data_found then v_cover := '1.4'; v_chkpertime := null; v_chkmotor :=null;               
+                when others then v_cover := '1.4'; v_chkpertime := null; v_chkmotor :=null; 
+            end;          
+            IF NC_HEALTH_PACKAGE.IS_CHECK_ACCUM(i_premcode) THEN -- ผลประโยชน์แบบต่อครั้ง
+    --            if i_opd = 'O' then
+                if 'O' = 'O' then
+                       -- ค่ารักษาผู้ป่วยนอกจาก อบห.
+                    IF NC_HEALTH_PACKAGE.IS_CHECK_MOTORCYCLE(i_premcode)    THEN    -- เช็ค motorcycle
+                        v_return := 'P00039';            
+                    ELSE
+                        v_return := 'P00038';            
+                    END IF;                
+                    v_premdesc := nc_health_package.GET_PREMCODE_DESCR(i_premcode,'T');
+                    if INSTR(v_premdesc ,'กระดูก') > 0 then
+                        v_return := 'P00042'; -- ค่ารักษาจากอาการกระดูก
+                    end if;                
                 end if;
-            end if;
-        ELSIF NC_HEALTH_PACKAGE.IS_CHECK_PERTIME(i_premcode) THEN -- ผลประโยชน์แบบชดเชย
-            v_return := 'P00054'; -- เงินชดเชยระหว่างรักษาตัว
-        ELSIF NC_HEALTH_PACKAGE.IS_CHECK_TOTLOSS(i_premcode) THEN -- ผลประโยชน์ทุนหลัก
-            IF NC_HEALTH_PACKAGE.IS_CHECK_MOTORCYCLE(i_premcode)    THEN    -- เช็ค motorcycle
-                v_return := 'P00002';            
+            ELSIF NC_HEALTH_PACKAGE.IS_CHECK_PERTIME(i_premcode) THEN -- ผลประโยชน์แบบชดเชย
+                v_return := 'P00054'; -- เงินชดเชยระหว่างรักษาตัว
+            ELSIF NC_HEALTH_PACKAGE.IS_CHECK_TOTLOSS(i_premcode) THEN -- ผลประโยชน์ทุนหลัก
+                IF NC_HEALTH_PACKAGE.IS_CHECK_MOTORCYCLE(i_premcode)    THEN    -- เช็ค motorcycle
+                    v_return := 'P00002';            
+                ELSE
+                    v_return := 'P00001';            
+                END IF;
             ELSE
-                v_return := 'P00001';            
+                v_return := 'P99999';       
+            END IF;
+        elsif V_MAINCLASS = '07' then -- Health
+            begin
+                select oic_bene_code ,clm_pd_flag into v_cover ,v_clmpdflag
+                from medical_ben_std
+                where bene_code = i_premcode
+                and th_eng = 'T'  ;
+            exception 
+                when no_data_found then v_cover := '';    v_clmpdflag := '';          
+                when others then v_cover := '';  v_clmpdflag := '';          
+            end;       
+            if v_cover is not null then
+                v_return :=  v_cover;
+            else  
+                v_return := 'H99999'; -- ยังไม่มี column mapping          
+            end if;
+        elsif V_MAINCLASS = '11' then -- Travel
+            begin
+                select oic_group_coverage ,chk_pertime ,chk_motorcycle_cover into v_cover ,v_chkpertime ,v_chkmotor
+                from nc_h_premcode
+                where premcode = i_premcode;
+            exception 
+                when no_data_found then v_cover := '1.4'; v_chkpertime := null; v_chkmotor :=null;               
+                when others then v_cover := '1.4'; v_chkpertime := null; v_chkmotor :=null; 
+            end;     
+            if v_cover ='1.4' then  -- บาดเจ็บ
+                v_return := 'TA002';
+            elsif v_cover in ('1.2','1.3') then -- ทุพลภาพ
+                v_return := 'TA001';
+            elsif v_cover in ('1.1.1','1.1.2','1.1.3') then -- เสียชีวิต
+                v_return := 'TA003';
+            else
+                v_return := 'TA005';
+            end if;
+            if v_chkpertime = 'Y' then  -- ชดเชย
+                v_return := 'TA004';
+            end if;
+        end if;    
+    ELSE
+        IF i_grp ='PA' THEN
+            IF NC_HEALTH_PACKAGE.IS_CHECK_ACCUM(i_premcode) THEN -- ผลประโยชน์แบบต่อครั้ง
+    --            if i_opd = 'O' then
+                if 'O' = 'O' then
+                       -- ค่ารักษาผู้ป่วยนอกจาก อบห.
+                    IF NC_HEALTH_PACKAGE.IS_CHECK_MOTORCYCLE(i_premcode)    THEN    -- เช็ค motorcycle
+                        v_return := 'P00039';            
+                    ELSE
+                        v_return := 'P00038';            
+                    END IF;                
+                    v_premdesc := nc_health_package.GET_PREMCODE_DESCR(i_premcode,'T');
+                    if INSTR(v_premdesc ,'กระดูก') > 0 then
+                        v_return := 'P00042'; -- ค่ารักษาจากอาการกระดูก
+                    end if;                
+                else
+                    v_return := 'v_return'; -- ค่ารักษาพยาบาล
+                    v_premdesc := nc_health_package.GET_PREMCODE_DESCR(i_premcode,'T');
+                    if INSTR(v_premdesc ,'กระดูก') > 0 then
+                        v_return := 'P00042'; -- ค่ารักษาจากอาการกระดูก
+                    end if;
+                end if;
+            ELSIF NC_HEALTH_PACKAGE.IS_CHECK_PERTIME(i_premcode) THEN -- ผลประโยชน์แบบชดเชย
+                v_return := 'P00054'; -- เงินชดเชยระหว่างรักษาตัว
+            ELSIF NC_HEALTH_PACKAGE.IS_CHECK_TOTLOSS(i_premcode) THEN -- ผลประโยชน์ทุนหลัก
+                IF NC_HEALTH_PACKAGE.IS_CHECK_MOTORCYCLE(i_premcode)    THEN    -- เช็ค motorcycle
+                    v_return := 'P00002';            
+                ELSE
+                    v_return := 'P00001';            
+                END IF;
+            ELSE
+                v_return := 'P99999';       
             END IF;
         ELSE
-            v_return := 'P99999';       
+            if i_opd = 'O' then
+                v_return := 'H00019';   -- ค่ารักษาพยาบาลและค่าบริการทั่วไป                    
+            elsif i_opd = 'I' then
+                v_return := 'H00032';   -- ค่ารักษาพยาบาลและค่าบริการทั่วไป            
+            else
+                v_return := 'H99999';   -- อื่นๆ
+            end if;
+            
         END IF;
-    ELSE
-        if i_opd = 'O' then
-            v_return := 'H00019';   -- ค่ารักษาพยาบาลและค่าบริการทั่วไป                    
-        elsif i_opd = 'I' then
-            v_return := 'H00032';   -- ค่ารักษาพยาบาลและค่าบริการทั่วไป            
-        else
-            v_return := 'H99999';   -- อื่นๆ
-        end if;
         
     END IF;
-    
+
     return v_return;
 END get_Coverage2;
 

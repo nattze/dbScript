@@ -54,9 +54,9 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_OIC_PAPH_CLM AS
     
     FUNCTION hasINS_DATA(P_CLMNO IN VARCHAR2) RETURN BOOLEAN;
     
-    FUNCTION get_Coverage1(i_grp IN VARCHAR2 ,i_opd IN VARCHAR2 ,i_premcode IN VARCHAR2) RETURN VARCHAR2;
+    FUNCTION get_Coverage1(i_polno  IN VARCHAR2 ,i_polrun  IN VARCHAR2 ,i_fleet IN NUMBER ,i_clmno  IN VARCHAR2 ,i_payno  IN VARCHAR2, i_grp IN VARCHAR2 ,i_opd IN VARCHAR2 ,i_premcode IN VARCHAR2 ,i_risk  IN VARCHAR2) RETURN VARCHAR2;
     
-    FUNCTION get_Coverage2(i_grp IN VARCHAR2 ,i_opd IN VARCHAR2 ,i_premcode IN VARCHAR2) RETURN VARCHAR2;
+    FUNCTION get_Coverage2(i_polno  IN VARCHAR2 ,i_polrun  IN VARCHAR2 ,i_fleet IN NUMBER ,i_clmno  IN VARCHAR2 ,i_payno  IN VARCHAR2, i_grp IN VARCHAR2 ,i_opd IN VARCHAR2 ,i_premcode IN VARCHAR2 ,i_risk  IN VARCHAR2) RETURN VARCHAR2;
     
     PROCEDURE EMAIL_LOG(i_subject IN VARCHAR2 ,i_message IN VARCHAR2 ) ;
     
