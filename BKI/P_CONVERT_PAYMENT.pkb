@@ -2148,40 +2148,42 @@ Begin
       )              
       Loop              
                     
-        if     x4.sub_type in ('NCNATSUBTYPECLM001')  then                 
-             if      x4.prem_code = '1010' then                 
-                     v_type := '01';                 
-             elsif  x4.prem_code in  ('1020','1030','1040','1560')  then                 
-                     v_type := '02';                 
-             elsif  x4.prem_code in  ('1050')  then                 
-                     v_type := '03';                 
-             else                 
-                     v_type := '04';                 
-             end if;                 
-        elsif x4.sub_type in ('NCNATSUBTYPECLM002')  then                 
-             v_type := '05';                 
-        elsif x4.sub_type in ('NCNATSUBTYPECLM003')  then                 
-             v_type := '06';                 
-        elsif x4.sub_type in ('NCNATSUBTYPECLM004')  then                 
-             v_type := '25';                 
-        elsif x4.sub_type in ('NCNATSUBTYPECLM005','NCNATSUBTYPECLM006')  then                 
-             v_type := '04';                 
-        elsif x4.sub_type in ('NCNATSUBTYPECLM010','NCNATSUBTYPECLM011','NCNATSUBTYPECLM012')  then                 
-             v_type := '07';                 
-        elsif x4.sub_type in ('NCNATSUBTYPECLM018')  then         
-             v_type := '08';         
-        elsif x4.sub_type in ('NCNATSUBTYPECLM019')  then         
-             v_type := '36';                    
-        elsif x4.sub_type in ('NCNATSUBTYPECLM013','NCNATSUBTYPECLM014','NCNATSUBTYPECLM015','NCNATSUBTYPECLM016','NCNATSUBTYPECLM017')  then                 
-             v_type := '09';                 
-        elsif x4.sub_type like 'NCNATSUBTYPEDED%' then              
-            v_type := '26';                 
-        elsif x4.sub_type like 'NCNATSUBTYPESAL%' then              
-            v_type := '27';                 
-        else                 
-             v_type := '00';                 
-        end if;                 
-              
+--        if     x4.sub_type in ('NCNATSUBTYPECLM001')  then                 
+--             if      x4.prem_code = '1010' then                 
+--                     v_type := '01';                 
+--             elsif  x4.prem_code in  ('1020','1030','1040','1560')  then                 
+--                     v_type := '02';                 
+--             elsif  x4.prem_code in  ('1050')  then                 
+--                     v_type := '03';                 
+--             else                 
+--                     v_type := '04';                 
+--             end if;                 
+--        elsif x4.sub_type in ('NCNATSUBTYPECLM002')  then                 
+--             v_type := '05';                 
+--        elsif x4.sub_type in ('NCNATSUBTYPECLM003')  then                 
+--             v_type := '06';                 
+--        elsif x4.sub_type in ('NCNATSUBTYPECLM004')  then                 
+--             v_type := '25';                 
+--        elsif x4.sub_type in ('NCNATSUBTYPECLM005','NCNATSUBTYPECLM006')  then                 
+--             v_type := '04';                 
+--        elsif x4.sub_type in ('NCNATSUBTYPECLM010','NCNATSUBTYPECLM011','NCNATSUBTYPECLM012')  then                 
+--             v_type := '07';                 
+--        elsif x4.sub_type in ('NCNATSUBTYPECLM018')  then         
+--             v_type := '08';         
+--        elsif x4.sub_type in ('NCNATSUBTYPECLM019')  then         
+--             v_type := '36';                    
+--        elsif x4.sub_type in ('NCNATSUBTYPECLM013','NCNATSUBTYPECLM014','NCNATSUBTYPECLM015','NCNATSUBTYPECLM016','NCNATSUBTYPECLM017')  then                 
+--             v_type := '09';                 
+--        elsif x4.sub_type like 'NCNATSUBTYPEDED%' then              
+--            v_type := '26';                 
+--        elsif x4.sub_type like 'NCNATSUBTYPESAL%' then              
+--            v_type := '27';                 
+--        else                 
+--             v_type := '00';                 
+--        end if;                 
+--              
+        v_type := p_convert_payment.get_cms_type(x4.sub_type ,x4.prem_code );
+        
         cms_pay_amt := 0;              
         cms_tot_pay_amt := 0;              
         cms_deduct_amt := 0;              
@@ -2536,7 +2538,68 @@ BEGIN
     x_tmp := replace(x_tmp ,  chr(35) , chr(10) );                
     return x_tmp;                
 END FIX_LINEFEED;                
-                
+
+FUNCTION GET_CMS_TYPE(In_subtype in varchar2 ,In_prem_code in varchar2) RETURN VARCHAR2 IS
+    v_type varchar2(5);
+BEGIN
+
+    if     In_subtype in ('NCNATSUBTYPECLM001')  then      
+        if      In_prem_code = '1010' then      
+        v_type := '01';      
+        elsif  In_prem_code in  ('1020')  then      
+        v_type := '02';      
+        elsif  In_prem_code in  ('1030')  then      
+        v_type := '37';      
+        elsif  In_prem_code in  ('1040')  then      
+        v_type := '38';      
+        elsif  In_prem_code in  ('1560')  then      
+        v_type := '39';      
+        elsif  In_prem_code in  ('1050')  then      
+        v_type := '03';      
+        else      
+        v_type := '04';      
+        end if;      
+    elsif In_subtype in ('NCNATSUBTYPECLM002')  then      
+        v_type := '05';      
+    elsif In_subtype in ('NCNATSUBTYPECLM003')  then      
+        v_type := '06';      
+    elsif In_subtype in ('NCNATSUBTYPECLM004')  then      
+        v_type := '25';      
+    elsif In_subtype in ('NCNATSUBTYPECLM005')  then      
+        v_type := '40';      
+    elsif In_subtype in ('NCNATSUBTYPECLM006')  then      
+        v_type := '41';      
+    elsif In_subtype in ('NCNATSUBTYPECLM010') then      
+        v_type := '07';      
+    elsif In_subtype in ('NCNATSUBTYPECLM011')  then      
+        v_type := '30';      
+    elsif In_subtype in ('NCNATSUBTYPECLM012')  then      
+        v_type := '31';      
+    elsif In_subtype in ('NCNATSUBTYPECLM018')  then      
+        v_type := '08';      
+    elsif In_subtype in ('NCNATSUBTYPECLM019')  then      
+        v_type := '36';      
+    elsif In_subtype in ('NCNATSUBTYPECLM017')  then      
+        v_type := '09';      
+    elsif In_subtype in ('NCNATSUBTYPECLM013')  then      
+        v_type := '32';      
+    elsif In_subtype in ('NCNATSUBTYPECLM014')  then      
+        v_type := '33';      
+    elsif In_subtype in ('NCNATSUBTYPECLM015')  then      
+        v_type := '34';      
+    elsif In_subtype in ('NCNATSUBTYPECLM016')  then      
+        v_type := '35';      
+    elsif In_subtype in ('NCNATSUBTYPEDED002') then      
+        v_type := '28';      
+    elsif In_subtype in ('NCNATSUBTYPESAL003') then      
+        v_type := '29';      
+    else      
+        v_type := '00';      
+    end if;     
+
+    return v_type;
+END GET_CMS_TYPE;
+                 
 END P_CONVERT_PAYMENT;
 /
 
