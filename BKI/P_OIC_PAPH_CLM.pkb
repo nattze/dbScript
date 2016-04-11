@@ -104,6 +104,7 @@ BEGIN
         and (b.clm_no ,b.revise_seq) in (select bb.clm_no ,max(bb.revise_seq) from mis_cpa_res bb where bb.clm_no =b.clm_no 
         and bb.corr_date <= i_asdate group by bb.clm_no)
         and corr_date <= i_asdate
+        and channel <> '9'
         --and a.clm_no ='201301002015766'
 --        and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'EC')
 --        and rownum < 50
@@ -322,6 +323,7 @@ BEGIN
         and bb.corr_date <= i_asdate group by bb.pay_no)
         and b.cancel is null
         and corr_date <= i_asdate
+        and channel <> '9'
         --and a.clm_no ='201301002015766'
 --        and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'P')
 --        and rownum<50
@@ -617,6 +619,7 @@ BEGIN
         and bb.corr_date <= i_asdate group by bb.pay_no)
         and b.cancel is null
         and corr_date <= i_asdate
+        and channel <> '9'
 --        and a.clm_no ='201401002062213'
 --        and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'P')
 --        and rownum<50
@@ -882,6 +885,7 @@ BEGIN
         and bb.corr_date <= i_asdate group by bb.clm_no)
         and corr_date <= i_asdate
         and nvl(a.tot_res ,0) > 0 
+        and channel <> '9'
         --and a.clm_no ='201301002015766'
         --and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'EC')   
         order by a.clm_no
@@ -1145,6 +1149,7 @@ BEGIN
         and bb.corr_date <= i_asdate group by bb.clm_no)
         and corr_date <= i_asdate
         and nvl(a.tot_res ,0) > 0 
+        and channel <> '9'
         --and a.clm_no ='201301002015766'
         --and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'EC')        
         order by a.clm_no
@@ -1767,6 +1772,7 @@ BEGIN
         and (b.clm_no ,b.state_seq) in (select bb.clm_no ,max(bb.state_seq) from clm_medical_res bb where bb.clm_no =b.clm_no 
         and bb.corr_date <= i_asdate group by bb.clm_no)
         and b.corr_date <= i_asdate
+        and channel <> '9'
 --        and rownum<31
 --        and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'EC')
     )LOOP
@@ -2001,6 +2007,7 @@ BEGIN
         and (b.pay_no ,b.corr_seq) in (select bb.pay_no ,max(bb.corr_seq) from clm_gm_paid bb where bb.pay_no = b.pay_no 
         and bb.corr_date <= i_asdate group by bb.pay_no) 
         and corr_date <= i_asdate     
+        and channel <> '9'
 --        and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'P')
     )LOOP
         v_cnt := v_cnt+1;
@@ -2373,7 +2380,8 @@ BEGIN
         and to_char(clm_date,'yyyymm') < to_char(close_date,'yyyymm')  
         and (b.pay_no ,b.corr_seq) in (select bb.pay_no ,max(bb.corr_seq) from clm_gm_paid bb where bb.pay_no = b.pay_no 
         and bb.corr_date <= i_asdate group by bb.pay_no) 
-        and corr_date <= i_asdate       
+        and corr_date <= i_asdate     
+        and channel <> '9'  
 --        and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'P')
     )LOOP
         v_cnt := v_cnt+1;
@@ -2716,6 +2724,7 @@ BEGIN
         and bb.corr_date <= i_asdate group by bb.clm_no)
         and b.corr_date <= i_asdate    
         and nvl(a.tot_res ,0) > 0 
+        and channel <> '9'
 --        and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'P')
     )LOOP
         v_cnt := v_cnt+1;
@@ -2938,6 +2947,7 @@ BEGIN
         and bb.corr_date <= i_asdate group by bb.clm_no)
         and b.corr_date <= i_asdate     
         and nvl(a.tot_res ,0) > 0 
+        and channel <> '9'
 --        and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'P')
     )LOOP
         v_cnt := v_cnt+1;
