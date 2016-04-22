@@ -18,21 +18,19 @@ IS
   o_msg VARCHAR2(250);
 BEGIN
     if i_type = 'PA' then
-        get_pa_claim_out( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
-        get_pa_claim_outpaid( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
-        get_pa_claim_paid( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
-        get_pa_claim_outcwp( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
-        get_pa_claim_cwp( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
---        get_pa_claim_reserve( i_datefr ,i_dateto ,o_msg);
---        get_pa_claim_close(i_datefr,i_dateto ,o_msg);
+        get_PA_Claim_v2( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);        
+--        get_pa_claim_out( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
+--        get_pa_claim_outpaid( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
+--        get_pa_claim_paid( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
+--        get_pa_claim_outcwp( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
+--        get_pa_claim_cwp( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
     elsif i_type = 'GM' then
-        get_gm_claim_out( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
-        get_gm_claim_outpaid( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
-        get_gm_claim_paid( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
-        get_gm_claim_outcwp( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
-        get_gm_claim_cwp( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
---        get_gm_claim_reserve(i_datefr,i_dateto ,o_msg);
---        get_gm_claim_close(i_datefr ,i_dateto ,o_msg);
+        get_GM_Claim_v2( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);      
+--        get_gm_claim_out( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
+--        get_gm_claim_outpaid( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
+--        get_gm_claim_paid( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
+--        get_gm_claim_outcwp( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
+--        get_gm_claim_cwp( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
     end if;
     o_rst := o_msg ;
 END getMain_PAPH_Claim;
@@ -4501,6 +4499,1072 @@ EXCEPTION
  dbms_output.put_line('Error: '||sqlerrm );
 END EMAIL_LOG; --email_notice bancas 
 
+PROCEDURE get_PA_Claim_v2(i_datefr IN DATE ,i_dateto IN DATE  ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2) IS
+--    i_datefr    DATE:='1-JAN-14';
+--    i_dateto    DATE:= '1-JAN-15' ;
+    V_COMPANY   varchar2(4):='2025';
+    V_MAINCLASS          VARCHAR2(2);
+    V_SUBCLASS           VARCHAR2(2);
+    V_CLAIMNUMBER        VARCHAR2(30);
+    V_CLAIMGROUP         VARCHAR2(2);
+    V_ACCOUNTINGDATE     DATE;
+    V_CLAIMSEQ           NUMBER(3);
+    V_CLAIMTYPE          VARCHAR2(2);
+    V_INSUREDSEQ          VARCHAR2(15);
+    V_POLICYNUMBER       VARCHAR2(30);
+    V_NOTIFYDATE         DATE;
+    V_LOSSDATE           DATE;
+    V_CLAIMSTATUS        VARCHAR2(1);
+    V_CLAIMCAUSE         VARCHAR2(10);
+    V_ICD10CODE1          VARCHAR2(10);
+    V_ICD10CODE2          VARCHAR2(10);
+    V_ICD10CODE3          VARCHAR2(10);
+    V_ICD10CODE4          VARCHAR2(10);
+    V_ICD10CODE5          VARCHAR2(10);
+    V_PROCODURECODE1          VARCHAR2(10);
+    V_PROCODURECODE2          VARCHAR2(10);
+    V_COVERAGECODE1          VARCHAR2(10);
+    V_COVERAGECODE2          VARCHAR2(10);
+    
+    V_CLAIMAMT           NUMBER(15,2);
+    V_TRANSACTIONSTATUS  VARCHAR2(1);
+    V_TRANSACTIONSTATUS2  VARCHAR2(1);
+    V_REFERENCENUMBER    VARCHAR2(35);    
+    V_RECORD_DATE   DATE:=sysdate;
 
+    V_INSUREDNAME        VARCHAR2(200);
+    V_INSUREDCITIZENID   VARCHAR2(20);
+    V_TREATMENTTYPE      VARCHAR2(1);  
+    V_DEDUCTIBLEAMT     NUMBER(15,2);
+    
+    V_CLAIMPAIDSEQ           NUMBER(3);
+    V_CHEQUEDATE    DATE;
+    V_PAIDBY    VARCHAR2(1);
+    V_CHEQUENO     VARCHAR2(20);
+    V_PAYEEAMT  NUMBER(15,2);
+    
+    ACR_PAID_TYPE    VARCHAR2(1);
+    ACR_PAID_DATE   DATE;
+    ACR_BANK_CODE   VARCHAR2(20);
+    ACR_BRANCH_CODE VARCHAR2(20);
+    ACR_CHEQUE_NO   VARCHAR2(20);
+    
+    v_cnt number(10):=0;
+    v_runclmseq number(5);    
+    v_poltype   VARCHAR2(3);
+    v_sid number;
+    p1_rst  VARCHAR2(200);
+    v_premcode  varchar2(10);
+    x_subject   varchar2(1000);
+    x_message   varchar2(1000);
+    
+    m_payno varchar2(20);
+    m_corr_date date;
+    v_skip  boolean:=false;
+BEGIN
+    x_subject := 'run get_pa_claim_v2 @'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
+    x_message := 'PA Claim v2 === fr_date: '||i_datefr||' to_date: '||i_dateto||' as at: '||i_asdate||'<br/>';
+    x_message := x_message||' start@'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
+    
+    FOR M1 in (
+        select a.clm_no ,'' pay_no ,fleet_seq ,recpt_seq ,a.pol_no ,a.pol_run ,reg_date ,trunc(c.corr_date) corr_date ,a.loss_date ,c.clm_sts , dis_code ,risk_code ,c.tot_res
+        ,decode(ipd_flag,'O','OPD','I','IPD','OPD') CLM_TYPE ,a.clm_date ,a.prod_type ,a.close_date ,c.tot_paid
+        from mis_clm_mas a ,mis_cpa_res b ,mis_clm_mas_seq c
+        where a.clm_no = b.clm_no and a.clm_no = c.clm_no and a.prod_grp = '0' 
+        and a.prod_type in (select prod_type from clm_grp_prod where sysid='PA') 
+        and c.corr_date between i_datefr and  i_dateto
+        and (b.clm_no ,b.revise_seq) in (select bb.clm_no ,max(bb.revise_seq) from mis_cpa_res bb where bb.clm_no =b.clm_no 
+            and bb.corr_date <= i_asdate group by bb.clm_no)
+        and c.corr_seq in (select max(cc.corr_seq) from mis_clm_mas_seq cc where cc.clm_no = c.clm_no 
+            and cc.corr_date  <= i_asdate)            
+--        and b.corr_date <= i_asdate
+        and a.channel <> '9'
+        --and a.clm_no ='201301002015766'
+--        and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'EC')
+--        and rownum < 50
+        order by a.clm_no
+    )LOOP
+        v_cnt := v_cnt+1;
+
+        V_CLAIMNUMBER := m1.clm_no;
+        V_CLAIMSEQ := 0;
+--        V_CLAIMGROUP := 'EC'; 
+
+        misc.healthutil.get_pa_health_type(m1.pol_no ,m1.pol_run , v_poltype); 
+
+        --==== get Main Class ,Sub Class from CORE
+        V_MAINCLASS := CENTER.OIC_CORE_UTIL.GET_MAIN_CLASS(M1.prod_type);
+        V_SUBCLASS := CENTER.OIC_CORE_UTIL.GET_SUBMAIN_CLASS(M1.prod_type);
+        
+        if V_MAINCLASS is null then
+            V_MAINCLASS := '06';    
+            IF v_poltype = 'PI' THEN
+                V_SUBCLASS := '01';
+                IF nc_health_package.is_unname_policy(m1.pol_no ,m1.pol_run) THEN
+                    V_SUBCLASS := '03';
+                END IF;
+            ELSIF  v_poltype = 'PG' THEN
+                V_SUBCLASS := '02';
+            ELSE
+                V_SUBCLASS := '99';
+            END IF;
+        end if;
+                
+--        V_CLAIMSEQ := 1;
+        V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('PA',m1.CLM_TYPE ,v_premcode);
+        V_INSUREDSEQ := nvl(M1.fleet_seq,0);
+        V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
+        V_NOTIFYDATE := m1.reg_date; --to_date(m1.reg_date,'yyyymmdd');
+        V_LOSSDATE :=  m1.loss_date; --to_date(m1.loss_date,'yyyymmdd');
+--        V_CLAIMSTATUS := '1';  --  open claim
+        V_CLAIMCAUSE := m1.dis_code ; -- Accident
+        V_ICD10CODE1 := m1.dis_code;
+--        V_CLAIMAMT := m1.tot_res;
+        V_TRANSACTIONSTATUS  :='N';
+        V_REFERENCENUMBER    :=null;     
+        V_DEDUCTIBLEAMT :=0;       
+        V_ACCOUNTINGDATE := M1.corr_date ;
+                
+        get_citizen('PA' ,m1.pol_no ,m1.pol_run ,m1.fleet_seq ,nvl(m1.recpt_seq,1)  ,'' ,M1.CLM_NO ,M1.PAY_NO ,V_INSUREDNAME ,V_INSUREDCITIZENID);
+        
+        if m1.clm_type = 'OPD' then
+            V_TREATMENTTYPE := '1';
+        elsif m1.clm_type = 'IPD' then
+            V_TREATMENTTYPE := '2';
+        else
+            V_TREATMENTTYPE := '3';
+        end if;
+        
+        IF M1.CLM_STS <> '2' THEN
+            v_skip := P_OIC_PAPH_CLM.check_have_paid(V_CLAIMNUMBER ,'1');
+            IF M1.CLM_STS = '3' THEN
+                V_CLAIMGROUP := 'P';
+                V_CLAIMAMT := 0;
+                V_CLAIMSTATUS := '2';  --  close claim
+            ELSE
+                V_CLAIMGROUP := 'EC';
+                V_CLAIMAMT := -1;
+                V_CLAIMSTATUS := '1';  --  open claim
+            END IF;
+            
+        ELSIF M1.CLM_STS = '2' THEN
+            v_skip := P_OIC_PAPH_CLM.check_have_paid(V_CLAIMNUMBER ,'2');
+            V_CLAIMGROUP := 'P';
+            V_CLAIMSTATUS := '2';  --  close claim
+            V_CLAIMAMT := M1.TOT_PAID;
+        END IF;
+        
+         
+        IF NOT v_skip THEN  -- validate flag for insert or do nothing
+            IF V_CLAIMGROUP = 'EC' and V_CLAIMAMT = -1 THEN -- case Out.
+                -- ===== Path get prem code ====
+                P_OIC_PAPH_CLM.GET_PA_RESERVE(M1.CLM_NO,
+                                                v_sid,
+                                                p1_rst);          
+                        
+                if p1_rst is null then
+                    FOR p1 IN (select CLM_NO PAY_NO ,PREM_CODE ,AMOUNT
+                    from NC_H_HISTORY_TMP
+                    where sid = v_sid )
+                    LOOP    
+                        v_runclmseq := v_runclmseq+1;
+                        V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                        v_premcode := p1.prem_code;    
+                        V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+                        ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
+                        V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+                        ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
+                        
+                        V_CLAIMAMT := p1.amount;
+                        
+                        INSERT INTO OIC_PAPH_CLAIM
+                        ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                        COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                        PROCODURECODE1 ,
+                        CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                        VALUES 
+                        (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMGROUP , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                        V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                        V_PROCODURECODE1 ,
+                        V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+
+                        INSERT INTO OIC_PAPH_CLAIM_HIST
+                        ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                        COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                        PROCODURECODE1 ,
+                        CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,CONV_DATE  ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                        VALUES 
+                        (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMGROUP , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                        V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                        V_PROCODURECODE1 ,
+                        V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE  , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+
+                    END LOOP;      -- loop get Reserved
+                end if;        
+                NC_HEALTH_PACKAGE.remove_history_clm(v_sid); 
+                -- ===== End Path get prem code ====    
+
+                IF hasINS_data(V_CLAIMNUMBER) THEN
+                    V_TRANSACTIONSTATUS2 := 'U';        
+                ELSE    
+                    V_TRANSACTIONSTATUS2 := 'N';  
+                    
+                    INSERT INTO OIC_PAPH_INS_CLAIM
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
+                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
+                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);
+
+                    INSERT INTO OIC_PAPH_INS_CLAIM_HIST
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
+                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
+                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);                        
+                              
+                END IF;
+                                                            
+            ELSIF V_CLAIMGROUP = 'P' and V_CLAIMAMT = 0 THEN -- case CWP.
+                -- ===== Path get prem code ====
+                P_OIC_PAPH_CLM.GET_PA_RESERVE(M1.CLM_NO,
+                                                v_sid,
+                                                p1_rst);          
+                        
+                if p1_rst is null then
+                    FOR p1 IN (select CLM_NO PAY_NO ,PREM_CODE ,AMOUNT
+                    from NC_H_HISTORY_TMP
+                    where sid = v_sid )
+                    LOOP    
+                        v_runclmseq := v_runclmseq+1;
+                        V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                        v_premcode := p1.prem_code;    
+                        V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+                        ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
+                        V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+                        ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
+                        
+                        V_CLAIMAMT := 0;
+                        
+                        INSERT INTO OIC_PAPH_CLAIM
+                        ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                        COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                        PROCODURECODE1 ,
+                        CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                        VALUES 
+                        (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMGROUP , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                        V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                        V_PROCODURECODE1 ,
+                        V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+
+                        INSERT INTO OIC_PAPH_CLAIM_HIST
+                        ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                        COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                        PROCODURECODE1 ,
+                        CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,CONV_DATE  ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                        VALUES 
+                        (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMGROUP , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                        V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                        V_PROCODURECODE1 ,
+                        V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE  , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+
+                    END LOOP;      -- loop get Reserved
+                end if;        
+                NC_HEALTH_PACKAGE.remove_history_clm(v_sid); 
+                -- ===== End Path get prem code ====    
+
+                IF hasINS_data(V_CLAIMNUMBER) THEN
+                    V_TRANSACTIONSTATUS2 := 'U';        
+                ELSE    
+                    V_TRANSACTIONSTATUS2 := 'N';   
+                    
+                    INSERT INTO OIC_PAPH_INS_CLAIM
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
+                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
+                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);
+
+                    INSERT INTO OIC_PAPH_INS_CLAIM_HIST
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
+                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
+                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);                        
+                                              
+                END IF;
+             
+            ELSIF V_CLAIMGROUP = 'P' THEN -- case Close Paid.
+                begin 
+                    select pay_no ,trunc(corr_date) into m_payno ,m_corr_date
+                    from mis_clm_paid b
+                    where clm_no = M1.CLM_NO
+                    and (b.pay_no ,b.corr_seq) in (select bb.pay_no ,max(bb.corr_seq) from mis_clm_paid bb where bb.pay_no =b.pay_no 
+                    and bb.corr_date <= i_asdate group by bb.pay_no)
+                    and pay_total <> 0 and rownum=1;
+                exception
+                    when no_data_found then
+                        m_payno := '';
+                        m_corr_date := null;
+                    when others then
+                        m_payno := '';
+                        m_corr_date := null;
+                end;
+
+                begin
+                    select trunc(pay_date) into V_CHEQUEDATE
+                    from mis_clm_paid a
+                    where pay_no = M_PAYNO and
+                    a.corr_seq in (select max(aa.corr_seq) from mis_clm_paid aa where aa.pay_no = a.pay_no group by aa.pay_no);
+                    
+                    if V_CHEQUEDATE is null then
+                        V_CHEQUEDATE := M1.close_date;
+                    end if; 
+                exception
+                    when no_data_found then
+                        V_CHEQUEDATE := M1.close_date;
+                    when others then
+                        V_CHEQUEDATE := M1.close_date;
+                end;    
+        
+                -- ===== Path get prem code ====
+                nc_health_paid.get_pa_reserve(M_PAYNO,
+                                                v_sid,
+                                                p1_rst);          
+                        
+                if p1_rst is null then
+                FOR p1 IN (select CLM_NO PAY_NO ,PREM_CODE ,AMOUNT
+                from NC_H_HISTORY_TMP
+                where sid = v_sid -- and rownum=1
+                )
+                LOOP    
+                    v_runclmseq := v_runclmseq+1;
+                    V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                    v_premcode := p1.prem_code;  
+                    
+                    V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M_PAYNO 
+                    ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
+                    V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M_PAYNO 
+                    ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);            
+                    --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('PA',m1.CLM_TYPE ,v_premcode);
+                    V_CLAIMAMT := p1.amount;  
+                               
+                    --=== P
+                    V_ACCOUNTINGDATE := m_corr_date;
+                    INSERT INTO OIC_PAPH_CLAIM
+                    ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                    COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                    PROCODURECODE1 ,
+                    CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,'P' , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                    V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                    V_PROCODURECODE1 ,
+                    V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+
+                    INSERT INTO OIC_PAPH_CLAIM_HIST
+                    ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                    COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                    PROCODURECODE1 ,
+                    CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,'P' , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                    V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                    V_PROCODURECODE1 ,
+                    V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user )          ;
+                                        
+                END LOOP;      
+                end if;
+                NC_HEALTH_PACKAGE.remove_history_clm(v_sid); 
+                -- ===== End Path get prem code ====
+                
+                IF p_oic_paph_clm.hasINS_data(V_CLAIMNUMBER) THEN
+                    V_TRANSACTIONSTATUS2 := 'U';        
+                ELSE    
+                    V_TRANSACTIONSTATUS2 := 'N';   
+                    
+                    INSERT INTO OIC_PAPH_INS_CLAIM
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
+                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
+                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);
+
+                    INSERT INTO OIC_PAPH_INS_CLAIM_HIST
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
+                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
+                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);                        
+                                              
+                END IF;                
+                
+                FOR c_payee in (  -- Get Payee
+                    select pay_no ,pay_seq ,payee_code ,payee_amt ,settle
+                    from mis_clm_payee a
+                    where pay_no = M_PAYNO and payee_code is not null 
+                ) LOOP
+                    V_PAYEEAMT := c_payee.payee_amt;
+                    V_PAIDBY := p_oic_paph_clm.get_paidby('PA',c_payee.settle);
+                    V_CLAIMPAIDSEQ :=c_payee.pay_seq ;
+                    V_CHEQUENO := null;
+                    
+                    if V_PAIDBY = 'K' then
+                        account.p_acc_acr.get_paid_info(M_PAYNO,'0',M1.prod_type,c_payee.payee_code,c_payee.settle,
+                                                      ACR_PAID_TYPE, ACR_PAID_DATE, ACR_BANK_CODE, ACR_BRANCH_CODE, ACR_CHEQUE_NO);
+                        V_CHEQUENO := ACR_CHEQUE_NO;                              
+                        IF V_CHEQUENO is null THEN
+                            V_PAIDBY := 'O' ;
+                        END IF;               
+                    elsif V_PAIDBY = 'T' then
+                        V_CHEQUENO := null;
+                    end if;               
+
+                    if V_PAYEEAMT = 0 then
+                        V_PAYEEAMT := M1.tot_paid;    
+                    end if;
+                                
+                    INSERT INTO OIC_PAPH_PAYMENT
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  CLAIMPAIDSEQ ,CHEQUEDATE  ,  POLICYNUMBER   ,  
+                    PAIDBY ,  CHEQUENO ,  CLAIMAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMPAIDSEQ ,V_CHEQUEDATE ,V_POLICYNUMBER  ,
+                    V_PAIDBY ,V_CHEQUENO ,V_PAYEEAMT ,V_TRANSACTIONSTATUS ,V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);
+
+                    INSERT INTO OIC_PAPH_PAYMENT_HIST
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  CLAIMPAIDSEQ ,CHEQUEDATE  ,  POLICYNUMBER   ,  
+                    PAIDBY ,  CHEQUENO ,  CLAIMAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER ) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMPAIDSEQ ,V_CHEQUEDATE ,V_POLICYNUMBER  ,
+                    V_PAIDBY ,V_CHEQUENO ,V_PAYEEAMT ,V_TRANSACTIONSTATUS ,V_REFERENCENUMBER  ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);              
+                END LOOP;
+        
+            END IF;    -- check ClaimGroup    
+        END IF; -- v_skip
+        
+    END LOOP;
+    COMMIT;
+    x_message := x_message||' finish@'||to_char(sysdate ,'DD-MON-YYYY HH24:MI:SS') ;
+    email_log(x_subject ,x_message);
+END get_PA_Claim_v2;
+
+PROCEDURE get_GM_Claim_V2(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2) IS
+--    i_datefr    DATE:='1-JAN-14';
+--    i_dateto    DATE:= '1-JAN-15' ;
+    V_COMPANY   varchar2(4):='2025';
+    V_MAINCLASS          VARCHAR2(2);
+    V_SUBCLASS           VARCHAR2(2);
+    V_CLAIMNUMBER        VARCHAR2(30);
+    V_CLAIMGROUP         VARCHAR2(2);
+    V_ACCOUNTINGDATE     DATE;
+    V_ACCOUNTINGDATE2     DATE;
+    V_CLAIMSEQ           NUMBER(3);
+    V_CLAIMTYPE          VARCHAR2(10);
+    V_INSUREDSEQ          VARCHAR2(15);
+    V_POLICYNUMBER       VARCHAR2(30);
+    V_NOTIFYDATE         DATE;
+    V_LOSSDATE           DATE;
+    V_CLAIMSTATUS        VARCHAR2(1);
+    V_CLAIMCAUSE         VARCHAR2(10);
+    V_ICD10CODE1          VARCHAR2(10);
+    V_ICD10CODE2          VARCHAR2(10);
+    V_ICD10CODE3          VARCHAR2(10);
+    V_ICD10CODE4          VARCHAR2(10);
+    V_ICD10CODE5          VARCHAR2(10);
+    V_PROCODURECODE1          VARCHAR2(10);
+    V_PROCODURECODE2          VARCHAR2(10);
+    V_COVERAGECODE1          VARCHAR2(10);
+    V_COVERAGECODE2          VARCHAR2(10);
+    
+    V_CLAIMAMT           NUMBER(15,2);
+    V_TRANSACTIONSTATUS  VARCHAR2(1);
+    V_TRANSACTIONSTATUS2  VARCHAR2(1);
+    V_REFERENCENUMBER    VARCHAR2(35);    
+    V_RECORD_DATE   DATE:=sysdate;
+
+    V_INSUREDNAME        VARCHAR2(200);
+    V_INSUREDCITIZENID   VARCHAR2(20);
+    V_TREATMENTTYPE      VARCHAR2(1);  
+    V_DEDUCTIBLEAMT     NUMBER(15,2);
+    
+    V_CLAIMPAIDSEQ           NUMBER(3);
+    V_CHEQUEDATE    DATE;
+    V_PAIDBY    VARCHAR2(1);
+    V_CHEQUENO     VARCHAR2(20);
+    V_PAYEEAMT  NUMBER(15,2);
+    
+    ACR_PAID_TYPE    VARCHAR2(1);
+    ACR_PAID_DATE   DATE;
+    ACR_BANK_CODE   VARCHAR2(20);
+    ACR_BRANCH_CODE VARCHAR2(20);
+    ACR_CHEQUE_NO   VARCHAR2(20);
+    
+    v_cnt number(10):=0;
+    v_runclmseq number(5);
+    v_poltype   VARCHAR2(3);
+    v_sid number;
+    p1_rst  VARCHAR2(200);
+    v_premcode  varchar2(10);
+    x_subject   varchar2(1000);
+    x_message   varchar2(1000);
+    
+    m_payno varchar2(20);
+    v_TMPPAYNO varchar2(20);
+    m_settle    varchar2(2);
+    m_corr_date date;
+    v_skip  boolean:=false;    
+    v_chkrec    boolean;
+BEGIN
+    x_subject := 'run get_gm_claim v2 @'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
+    x_message := 'PA Claim v2 === fr_date: '||i_datefr||' to_date: '||i_dateto||' as at: '||i_asdate||'<br/>';
+    x_message := x_message||' start@'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
+    
+    FOR M1 in (
+        select distinct  trunc(a.clm_date) clm_date ,trunc(a.close_date) close_date ,state_seq ,trunc(c.corr_date) corr_date ,a.clm_sts sts_mas ,c.clm_sts sts_seq 
+        ,a.prod_type ,'' pay_no 
+        ,a.clm_no ,a.pol_no ,a.pol_run ,a.recpt_seq ,reg_date ,c.clm_sts ,'' risk_code ,c.tot_paid ,c.tot_res
+        from mis_clm_mas a ,clm_medical_res b ,mis_clm_mas_seq c
+        where a.clm_no = b.clm_no and a.clm_no = c.clm_no and a.prod_grp = '0' 
+        and c.corr_seq in (select max(cc.corr_seq) from mis_clm_mas_seq cc where cc.clm_no = c.clm_no 
+            and cc.corr_date  <= i_asdate) 
+        and a.prod_type in (select prod_type from clm_grp_prod where sysid='GM') 
+        and c.corr_date between i_datefr and  i_dateto
+        and (b.clm_no ,b.state_seq) in (select bb.clm_no ,max(bb.state_seq) from clm_medical_res bb where bb.clm_no =b.clm_no 
+        and bb.corr_date <=  i_asdate group by bb.clm_no)
+        and b.corr_date <=  i_asdate
+--        and a.clm_no ='201201008013126' 
+        and a.channel <> '9'        
+        order by a.clm_no
+    )LOOP
+        v_cnt := v_cnt+1;
+
+        V_CLAIMNUMBER := m1.clm_no;
+--        V_CLAIMSEQ :=1;
+        V_CLAIMSEQ := 0;
+--        V_CLAIMGROUP := 'EC';
+
+        misc.healthutil.get_pa_health_type(m1.pol_no ,m1.pol_run , v_poltype);
+
+        --==== get Main Class ,Sub Class from CORE
+        V_MAINCLASS := CENTER.OIC_CORE_UTIL.GET_MAIN_CLASS(M1.prod_type);
+        V_SUBCLASS := CENTER.OIC_CORE_UTIL.GET_SUBMAIN_CLASS(M1.prod_type);
+        
+        if  V_MAINCLASS is null then  
+            V_MAINCLASS := '07'; 
+            IF v_poltype = 'HI' THEN
+                V_SUBCLASS := '01';
+            ELSIF  v_poltype = 'HG' THEN
+                V_SUBCLASS := '02';
+            ELSE
+                V_SUBCLASS := '99';
+            END IF;        
+        end if;
+        
+        IF M1.CLM_STS <> '2' THEN
+            v_skip := P_OIC_PAPH_CLM.check_have_paid(V_CLAIMNUMBER ,'1');
+            IF M1.CLM_STS = '3' THEN
+                V_CLAIMGROUP := 'P';
+                V_CLAIMAMT := 0;
+                V_CLAIMSTATUS := '2';  --  close claim
+            ELSE
+                V_CLAIMGROUP := 'EC';
+                V_CLAIMAMT := -1;
+                V_CLAIMSTATUS := '1';  --  open claim
+            END IF;
+            
+        ELSIF M1.CLM_STS = '2' THEN
+            v_skip := P_OIC_PAPH_CLM.check_have_paid(V_CLAIMNUMBER ,'2');
+            V_CLAIMGROUP := 'P';
+            V_CLAIMSTATUS := '2';  --  close claim
+            V_CLAIMAMT := M1.TOT_PAID;
+        END IF;
+        
+         
+        IF NOT v_skip THEN  -- validate flag for insert or do nothing
+            IF V_CLAIMGROUP = 'EC' and V_CLAIMAMT = -1 THEN -- case Out.
+                FOR c_paid IN ( 
+                    select '' pay_no , fleet_seq ,dis_code ,bene_code ,clm_pd_flag CLM_TYPE ,loss_date ,state_date ,nvl(res_amt,0) res_amt
+                    from clm_medical_res a
+                    where  clm_no =M1.CLM_NO
+                    and (clm_no ,state_seq) in (select clm_no ,max(aa.state_seq) from clm_medical_res aa where aa.clm_no =a.clm_no 
+                    and aa.corr_date <=  i_asdate group by aa.clm_no)
+                    order by res_amt               
+                )  LOOP
+                    -- ===== Path get prem code ====
+                    v_premcode := c_paid.bene_code;
+                    -- ===== End Path get prem code ====
+                    v_runclmseq := v_runclmseq+1;         
+                    V_CLAIMSEQ := V_CLAIMSEQ+1;
+                    V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('GM',c_paid.CLM_TYPE ,v_premcode);
+                    V_INSUREDSEQ := c_paid.fleet_seq;
+                    V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
+                    V_NOTIFYDATE := m1.reg_date; --to_date(m1.reg_date,'yyyymmdd');
+--                    V_CLAIMSTATUS := '1';  -- Reserve claim        
+                    V_LOSSDATE :=  c_paid.loss_date; --to_date(m1.loss_date,'yyyymmdd');
+                    V_CLAIMCAUSE := c_paid.dis_code ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
+                    V_ICD10CODE1 := c_paid.dis_code;
+                    V_CLAIMAMT := c_paid.res_amt;
+                    V_TRANSACTIONSTATUS  :='N';
+                    V_REFERENCENUMBER    :=null;     
+                    V_DEDUCTIBLEAMT :=0;       
+                    --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5
+
+                    V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+                    ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                    V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+                    ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                                            
+                    V_ACCOUNTINGDATE := c_paid.state_date ;
+                            
+                    get_citizen('GM' ,m1.pol_no ,m1.pol_run ,c_paid.fleet_seq ,m1.recpt_seq ,c_paid.loss_date  ,M1.CLM_NO ,M1.PAY_NO ,V_INSUREDNAME ,V_INSUREDCITIZENID);
+                    
+                    if c_paid.clm_type = 'OPD' then
+                        V_TREATMENTTYPE := '1';
+                    elsif c_paid.clm_type = 'IPD' then
+                        V_TREATMENTTYPE := '2';
+                    else
+                        V_TREATMENTTYPE := '3';
+                    end if;
+
+                    INSERT INTO OIC_PAPH_CLAIM
+                    ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                    COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                    PROCODURECODE1 ,
+                    CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMGROUP , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                    V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                    V_PROCODURECODE1 ,
+                    V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+
+                    INSERT INTO OIC_PAPH_CLAIM_HIST
+                    ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                    COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                    PROCODURECODE1 ,
+                    CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMGROUP , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                    V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                    V_PROCODURECODE1 ,
+                    V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user )          ;
+                                                                  
+--                    V_CLAIMPAIDSEQ :=1;
+                END LOOP; -- C_paid
+--                    
+--                dbms_output.put_line(v_cnt||' clm_no: '||M1.clm_no||' poltype: '||v_poltype||' subclass:'||V_SUBCLASS
+--                ||' clmtype:'||V_CLAIMTYPE||' prem:'||v_premcode||' lossdate:'||V_LOSSDATE);   
+
+                IF hasINS_data(V_CLAIMNUMBER) THEN
+                    V_TRANSACTIONSTATUS2 := 'U';        
+                ELSE    
+                    V_TRANSACTIONSTATUS2 := 'N';  
+                    
+                    INSERT INTO OIC_PAPH_INS_CLAIM
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
+                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
+                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);
+
+                    INSERT INTO OIC_PAPH_INS_CLAIM_HIST
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
+                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
+                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);                        
+                              
+                END IF;
+            ELSIF V_CLAIMGROUP = 'P' and V_CLAIMAMT = 0 THEN -- case CWP.
+                FOR c_paid IN ( 
+                    select '' pay_no , fleet_seq ,dis_code ,bene_code ,clm_pd_flag CLM_TYPE ,loss_date ,state_date ,nvl(res_amt,0) res_amt
+                    from clm_medical_res a
+                    where  clm_no =M1.CLM_NO
+                    and (clm_no ,state_seq) in (select clm_no ,max(aa.state_seq) from clm_medical_res aa where aa.clm_no =a.clm_no 
+                    and aa.corr_date <=  i_asdate group by aa.clm_no)
+                    order by res_amt               
+                )  LOOP
+                    -- ===== Path get prem code ====
+                    v_premcode := c_paid.bene_code;
+                    -- ===== End Path get prem code ====
+                    v_runclmseq := v_runclmseq+1;         
+                    V_CLAIMSEQ := V_CLAIMSEQ+1;
+                    V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('GM',c_paid.CLM_TYPE ,v_premcode);
+                    V_INSUREDSEQ := c_paid.fleet_seq;
+                    V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
+                    V_NOTIFYDATE := m1.reg_date; --to_date(m1.reg_date,'yyyymmdd');
+--                    V_CLAIMSTATUS := '2';  -- Reserve claim        
+                    V_LOSSDATE :=  c_paid.loss_date; --to_date(m1.loss_date,'yyyymmdd');
+                    V_CLAIMCAUSE := c_paid.dis_code ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
+                    V_ICD10CODE1 := c_paid.dis_code;
+                    V_CLAIMAMT := 0;    --CWP 
+                    V_TRANSACTIONSTATUS  :='N';  
+                    V_REFERENCENUMBER    :=null;     
+                    V_DEDUCTIBLEAMT :=0;       
+                    --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5
+
+                    V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+                    ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                    V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
+                    ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                                            
+                    V_ACCOUNTINGDATE := c_paid.state_date ;
+                            
+                    get_citizen('GM' ,m1.pol_no ,m1.pol_run ,c_paid.fleet_seq ,m1.recpt_seq ,c_paid.loss_date  ,M1.CLM_NO ,M1.PAY_NO ,V_INSUREDNAME ,V_INSUREDCITIZENID);
+                    
+                    if c_paid.clm_type = 'OPD' then
+                        V_TREATMENTTYPE := '1';
+                    elsif c_paid.clm_type = 'IPD' then
+                        V_TREATMENTTYPE := '2';
+                    else
+                        V_TREATMENTTYPE := '3';
+                    end if;
+
+                    INSERT INTO OIC_PAPH_CLAIM
+                    ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                    COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                    PROCODURECODE1 ,
+                    CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMGROUP , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                    V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                    V_PROCODURECODE1 ,
+                    V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+
+                    INSERT INTO OIC_PAPH_CLAIM_HIST
+                    ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                    COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                    PROCODURECODE1 ,
+                    CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMGROUP , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                    V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                    V_PROCODURECODE1 ,
+                    V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user )          ;
+                                                                  
+--                    V_CLAIMPAIDSEQ :=1;
+                END LOOP; -- C_paid
+                    
+--                dbms_output.put_line(v_cnt||' clm_no: '||M1.clm_no||' poltype: '||v_poltype||' subclass:'||V_SUBCLASS
+--                ||' clmtype:'||V_CLAIMTYPE||' prem:'||v_premcode||' lossdate:'||V_LOSSDATE);   
+
+                IF hasINS_data(V_CLAIMNUMBER) THEN
+                    V_TRANSACTIONSTATUS2 := 'U';        
+                ELSE    
+                    V_TRANSACTIONSTATUS2 := 'N';  
+                    
+                    INSERT INTO OIC_PAPH_INS_CLAIM
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
+                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
+                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);
+
+                    INSERT INTO OIC_PAPH_INS_CLAIM_HIST
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
+                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
+                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);                        
+                              
+                END IF;                                                            
+            ELSIF V_CLAIMGROUP = 'P' THEN -- case Close Paid.
+                begin 
+                    select pay_no ,trunc(corr_date) into m_payno ,m_corr_date
+                    from clm_gm_paid b
+                    where clm_no = M1.CLM_NO
+                    and (b.pay_no ,b.corr_seq) in (select bb.pay_no ,max(bb.corr_seq) from clm_gm_paid bb where bb.pay_no =b.pay_no 
+                    and bb.corr_date <= i_asdate group by bb.pay_no)
+                    and pay_amt <> 0 and rownum=1;
+                exception
+                    when no_data_found then
+                        m_payno := '';
+                        m_corr_date := null;
+                    when others then
+                        m_payno := '';
+                        m_corr_date := null;
+                end;
+                            
+                v_chkrec := false;        
+                FOR c_paid IN (
+                    select  pay_no, fleet_seq ,dis_code ,bene_code ,clm_pd_flag CLM_TYPE ,loss_date ,date_paid pay_date ,nvl(pay_amt,0) pay_amt
+                    ,nvl(rec_amt,0) rec_amt 
+                    from clm_gm_paid a
+                    where pay_no = M_PAYNO
+                    and corr_seq in (select max(aa.corr_seq) from clm_gm_paid aa where aa.pay_no =a.pay_no 
+                    and aa.corr_date <= i_asdate group by aa.pay_no)
+                    order by pay_no 
+                )  LOOP 
+                    if c_paid.rec_amt >0 then
+                        v_chkrec := true;   -- mark  when found Rec_Amt for insert ClaimGroup = S  
+                    end if;
+                    
+                    -- ===== Path get prem code ====
+                    v_premcode := c_paid.bene_code;
+                    -- ===== End Path get prem code ====
+                            
+                    v_runclmseq := v_runclmseq+1;
+                    v_tmppayno := c_paid.pay_no;
+                    V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                    V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('GM',c_paid.CLM_TYPE ,v_premcode);
+                    V_INSUREDSEQ := c_paid.fleet_seq;
+                    V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
+                    V_NOTIFYDATE := m1.reg_date; --to_date(m1.reg_date,'yyyymmdd');
+--                    V_CLAIMSTATUS := '2';  -- close claim        
+                    V_LOSSDATE :=  c_paid.loss_date; --to_date(m1.loss_date,'yyyymmdd');
+        --            V_CLAIMCAUSE :='0000' ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
+                    V_CLAIMCAUSE := c_paid.dis_code ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
+                    V_ICD10CODE1 := c_paid.dis_code;
+        --            V_CLAIMAMT := m1.tot_paid;
+                    V_CLAIMAMT := c_paid.pay_amt;
+                    V_TRANSACTIONSTATUS  :='N';
+                    V_REFERENCENUMBER    :=null;     
+                    V_DEDUCTIBLEAMT :=0;       
+                    --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5            
+                    V_ACCOUNTINGDATE := M1.clm_date ;
+        --            V_ACCOUNTINGDATE2 := c_paid.pay_date ;
+                    V_ACCOUNTINGDATE2 := M1.close_date ;
+                    V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M_PAYNO 
+                    ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                    V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M_PAYNO 
+                    ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                                        
+                    get_citizen('GM' ,m1.pol_no ,m1.pol_run ,c_paid.fleet_seq ,m1.recpt_seq ,c_paid.loss_date  ,M1.CLM_NO ,M_PAYNO,V_INSUREDNAME ,V_INSUREDCITIZENID);
+                    
+                    if c_paid.clm_type = 'OPD' then
+                        V_TREATMENTTYPE := '1';
+                    elsif c_paid.clm_type = 'IPD' then
+                        V_TREATMENTTYPE := '2';
+                    else
+                        V_TREATMENTTYPE := '3';
+                    end if;  
+                                    
+                    INSERT INTO OIC_PAPH_CLAIM
+                    ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                    COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                    PROCODURECODE1 ,
+                    CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,'P' , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                    V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                    V_PROCODURECODE1 ,
+                    V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+
+                    INSERT INTO OIC_PAPH_CLAIM_HIST
+                    ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                    COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                    PROCODURECODE1 ,
+                    CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                    VALUES 
+                    (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,'P' , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                    V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                    V_PROCODURECODE1 ,
+                    V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+                END LOOP; -- C_paid
+                
+                IF v_chkrec THEN -- insert Master table for ClaimGroup = S
+                    FOR c_paid IN (
+                        select  pay_no, fleet_seq ,dis_code ,bene_code ,clm_pd_flag CLM_TYPE ,loss_date ,date_paid pay_date ,nvl(pay_amt,0) pay_amt
+                        ,nvl(rec_amt,0) rec_amt 
+                        from clm_gm_paid a
+                        where pay_no = M_PAYNO
+                        and corr_seq in (select max(aa.corr_seq) from clm_gm_paid aa where aa.pay_no =a.pay_no 
+                        and aa.corr_date <= i_asdate group by aa.pay_no)
+                        and nvl(rec_amt,0) > 0
+                        order by pay_no 
+                    )  LOOP 
+                        
+                        -- ===== Path get prem code ====
+                        v_premcode := c_paid.bene_code;
+                        -- ===== End Path get prem code ====
+                                
+                        v_runclmseq := v_runclmseq+1;
+                        v_tmppayno := c_paid.pay_no;
+                        V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                        V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('GM',c_paid.CLM_TYPE ,v_premcode);
+                        V_INSUREDSEQ := c_paid.fleet_seq;
+                        V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
+                        V_NOTIFYDATE := m1.reg_date; --to_date(m1.reg_date,'yyyymmdd');
+--                        V_CLAIMSTATUS := '2';  -- close claim        
+                        V_LOSSDATE :=  c_paid.loss_date; --to_date(m1.loss_date,'yyyymmdd');
+            --            V_CLAIMCAUSE :='0000' ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
+                        V_CLAIMCAUSE := c_paid.dis_code ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
+                        V_ICD10CODE1 := c_paid.dis_code;
+            --            V_CLAIMAMT := m1.tot_paid;
+                        V_CLAIMAMT := c_paid.rec_amt;
+                        V_TRANSACTIONSTATUS  :='N';
+                        V_REFERENCENUMBER    :=null;     
+                        V_DEDUCTIBLEAMT :=0;       
+                        --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5            
+                        V_ACCOUNTINGDATE := M1.clm_date ;
+            --            V_ACCOUNTINGDATE2 := c_paid.pay_date ;
+                        V_ACCOUNTINGDATE2 := M1.close_date ;
+                        V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M_PAYNO 
+                        ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                        V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M_PAYNO 
+                        ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                                            
+                        get_citizen('GM' ,m1.pol_no ,m1.pol_run ,c_paid.fleet_seq ,m1.recpt_seq ,c_paid.loss_date  ,M1.CLM_NO ,M_PAYNO ,V_INSUREDNAME ,V_INSUREDCITIZENID);
+                        
+                        if c_paid.clm_type = 'OPD' then
+                            V_TREATMENTTYPE := '1';
+                        elsif c_paid.clm_type = 'IPD' then
+                            V_TREATMENTTYPE := '2';
+                        else
+                            V_TREATMENTTYPE := '3';
+                        end if;  
+                                        
+                        INSERT INTO OIC_PAPH_CLAIM
+                        ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                        COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                        PROCODURECODE1 ,
+                        CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                        VALUES 
+                        (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,'S' , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                        V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                        V_PROCODURECODE1 ,
+                        V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+
+                        INSERT INTO OIC_PAPH_CLAIM_HIST
+                        ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                        COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                        PROCODURECODE1 ,
+                        CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                        VALUES 
+                        (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,'S' , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                        V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                        V_PROCODURECODE1 ,
+                        V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+                                            
+                    END LOOP; -- C_paid        
+                END IF;
+                    
+        --        dbms_output.put_line(v_cnt||' clm_no: '||M1.clm_no||' poltype: '||v_poltype||' subclass:'||V_SUBCLASS
+        --        ||' clmtype:'||V_CLAIMTYPE||' prem:'||v_premcode||' lossdate:'||V_LOSSDATE);   
+                
+                IF hasINS_data(V_CLAIMNUMBER) THEN
+                    V_TRANSACTIONSTATUS2 := 'U';        
+                ELSE    
+                    V_TRANSACTIONSTATUS2 := 'N';  
+                    INSERT INTO OIC_PAPH_INS_CLAIM
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
+                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER ) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
+                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);
+
+                    INSERT INTO OIC_PAPH_INS_CLAIM_HIST
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
+                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER ) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
+                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);                        
+                              
+                END IF;
+                
+                begin
+                    select trunc(pay_date) into V_CHEQUEDATE
+                    from mis_clmgm_paid a
+                    where pay_no = M_PAYNO
+                    and (a.pay_no,a.corr_seq) in (select aa.pay_no ,max(aa.corr_seq) from mis_clmgm_paid aa where aa.pay_no = a.pay_no group by aa.pay_no );
+
+                    if V_CHEQUEDATE is null then
+                        V_CHEQUEDATE := M1.close_date;
+                    end if; 
+                exception
+                    when no_data_found then
+                        V_CHEQUEDATE := M1.close_date;
+                    when others then
+                        V_CHEQUEDATE := M1.close_date;
+                end;    
+                
+                FOR c_payee in (
+                    select pay_no ,pay_seq ,payee_code ,payee_amt ,settle
+                    from clm_gm_payee a
+                    where pay_no = M_PAYNO and payee_code is not null 
+                ) LOOP
+                    if c_payee.settle is null then
+                        begin
+                            select settle into m_settle
+                            from mis_clmgm_paid      
+                            where pay_no = M_PAYNO and pay_total >0 and rownum=1;                  
+                        exception
+                            when no_data_found then
+                                m_settle:= null;
+                            when others then
+                                m_settle:= null;
+                        end;
+                    else
+                        m_settle := c_payee.settle ;
+                    end if;
+                        
+                    V_PAYEEAMT := c_payee.payee_amt;
+                    V_PAIDBY := get_paidby('GM',m_settle);       
+                    V_CLAIMPAIDSEQ :=c_payee.pay_seq;
+                    V_CHEQUENO := null;
+                    
+                    if V_PAIDBY = 'K' then
+                        account.p_acc_acr.get_paid_info(M1.pay_no,'0',M1.prod_type,c_payee.payee_code,c_payee.settle,
+                                                      ACR_PAID_TYPE, ACR_PAID_DATE, ACR_BANK_CODE, ACR_BRANCH_CODE, ACR_CHEQUE_NO);
+                        V_CHEQUENO := ACR_CHEQUE_NO;                              
+                        IF V_CHEQUENO is null THEN
+                            V_PAIDBY := 'O' ;
+                        END IF;               
+                    elsif V_PAIDBY = 'T' then
+                        V_CHEQUENO := null;
+                    end if;          
+
+                    if V_PAYEEAMT = 0 then
+                        V_PAYEEAMT := M1.tot_paid;    
+                    end if;
+                                                 
+                    INSERT INTO OIC_PAPH_PAYMENT
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  CLAIMPAIDSEQ ,CHEQUEDATE  ,  POLICYNUMBER   ,  
+                    PAIDBY ,  CHEQUENO ,  CLAIMAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER ) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMPAIDSEQ ,V_CHEQUEDATE ,V_POLICYNUMBER  ,
+                    V_PAIDBY ,V_CHEQUENO ,V_PAYEEAMT ,V_TRANSACTIONSTATUS ,V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);
+
+                    INSERT INTO OIC_PAPH_PAYMENT_HIST
+                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  CLAIMPAIDSEQ ,CHEQUEDATE  ,  POLICYNUMBER   ,  
+                    PAIDBY ,  CHEQUENO ,  CLAIMAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER ) 
+                    VALUES 
+                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMPAIDSEQ ,V_CHEQUEDATE ,V_POLICYNUMBER  ,
+                    V_PAIDBY ,V_CHEQUENO ,V_PAYEEAMT ,V_TRANSACTIONSTATUS ,V_REFERENCENUMBER  ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);   
+                            
+                END LOOP;  -- payee 
+
+            END IF; --- check case out ,paid ,cwp
+        END IF; -- v_skip
+                         
+    END LOOP;
+    COMMIT;
+    x_message := x_message||' finish@'||to_char(sysdate ,'DD-MON-YYYY HH24:MI:SS') ;
+    email_log(x_subject ,x_message);    
+END get_GM_Claim_V2;
+
+FUNCTION check_have_paid(P_CLMNO IN VARCHAR2 ,P_MODE IN VARCHAR2) RETURN BOOLEAN IS
+ --P_MODE 1 check has paid ,2 check double paid
+    dummyClaim  varchar2(20);
+BEGIN
+    IF P_MODE = '1' THEN
+        select claimnumber into dummyClaim
+        from OIC_PAPH_CLAIM
+        where claimnumber =P_CLMNO 
+        and ClaimGroup  = 'P' and ClaimAmt = 0;
+     ELSE
+        select claimnumber into dummyClaim
+        from OIC_PAPH_CLAIM
+        where claimnumber =P_CLMNO 
+        and ClaimGroup  = 'P' ;     
+     END IF;   
+    
+    return true;
+EXCEPTION
+    WHEN no_data_found THEN
+        return false;
+    WHEN others THEN
+        return false;
+END check_have_paid;
+     
 END P_OIC_PAPH_CLM;
 /
