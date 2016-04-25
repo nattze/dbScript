@@ -4437,6 +4437,7 @@ PROCEDURE GET_PA_RESERVE(P_PAYNO IN VARCHAR2 ,V_KEY OUT NUMBER , V_RST OUT VARCH
                 where a.pay_no = P_PAYNO
                 and (pay_no ,corr_seq ) in (
                     select aa.pay_no ,max(aa.corr_seq) from mis_cpa_paid aa where aa.pay_no = a.pay_no
+                    and cancel is null
                     group by aa.pay_no
                 )
                 --and b.loss_date =P_LOSSDATE           
@@ -4902,6 +4903,7 @@ PROCEDURE GET_PA_RESERVE(P_PAYNO IN VARCHAR2 ,P_QUERY OUT LONG , V_RST OUT VARCH
                 where a.pay_no = P_PAYNO
                 and (pay_no ,corr_seq ) in (
                     select aa.pay_no ,max(aa.corr_seq) from mis_cpa_paid aa where aa.pay_no = a.pay_no
+                    and cancel is null
                     group by aa.pay_no
                 )
                 --and b.loss_date =P_LOSSDATE           
