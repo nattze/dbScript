@@ -7806,7 +7806,8 @@ BEGIN
         begin
             select id into rst
             from mis_pa_prem
-            where pol_no||pol_run = v_polno||v_polrun
+            where pol_no= v_polno
+            and pol_run = v_polrun
             and fleet_seq = v_fleet
             and recpt_seq = nvl(v_recpt ,1) ;
         exception 
@@ -7821,7 +7822,8 @@ BEGIN
             select decode(id_card,null,id_no,id_card) newid
             into rst
             from pa_medical_det 
-            where pol_no||pol_run = v_polno||v_polrun
+            where pol_no= v_polno
+            and pol_run = v_polrun
             and fleet_seq = v_fleet and end_seq = 0 ; 
         exception 
             when no_data_found then
@@ -7840,12 +7842,15 @@ END GET_CARDNO;
 
 FUNCTION GET_PRODUCT(v_clmno in varchar2)    RETURN VARCHAR2 IS
     rst varchar2(20);
-
+    v_prodtype  varchar2(10);
 BEGIN
-
+    SELECT PROD_TYPE into v_prodtype
+    FROM MIS_CLM_MAS
+    WHERE CLM_NO = v_clmno;
+    
     SELECT SYSID    INTO rst
     FROM CLM_GRP_PROD
-    WHERE prod_type = substr(v_clmno,7,3) ;   
+    WHERE prod_type =v_prodtype ;   
     
     return rst;
     
