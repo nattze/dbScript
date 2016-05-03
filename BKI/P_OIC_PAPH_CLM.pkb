@@ -4734,7 +4734,7 @@ BEGIN
                 if p1_rst is null then
                     FOR p1 IN (select CLM_NO PAY_NO ,PREM_CODE ,AMOUNT
                     from NC_H_HISTORY_TMP
-                    where sid = v_sid )
+                    where sid = v_sid and amount > 0 )
                     LOOP    
                         v_runclmseq := v_runclmseq+1;
                         V_CLAIMSEQ := V_CLAIMSEQ+1 ;
@@ -4835,7 +4835,7 @@ BEGIN
                 if p1_rst is null then
                 FOR p1 IN (select CLM_NO PAY_NO ,PREM_CODE ,AMOUNT
                 from NC_H_HISTORY_TMP
-                where sid = v_sid -- and rownum=1
+                where sid = v_sid  and AMOUNT > 0
                 )
                 LOOP    
                     v_runclmseq := v_runclmseq+1;
@@ -5181,6 +5181,7 @@ BEGIN
                     where  clm_no =M1.CLM_NO
                     and (clm_no ,state_seq) in (select clm_no ,max(aa.state_seq) from clm_medical_res aa where aa.clm_no =a.clm_no 
                     and aa.corr_date <=  i_asdate group by aa.clm_no)
+                    and nvl(res_amt,0) > 0 
                     order by res_amt               
                 )  LOOP
                     -- ===== Path get prem code ====
@@ -5477,10 +5478,12 @@ BEGIN
                         V_CHEQUEDATE := M1.close_date;
                 end;    
                 
+                V_CLAIMPAIDSEQ := 0;
                 FOR c_payee in (
                     select pay_no ,pay_seq ,payee_code ,payee_amt ,settle
                     from clm_gm_payee a
                     where pay_no = M_PAYNO and payee_code is not null 
+                    and nvl(payee_amt,0) >0 
                 ) LOOP
                     if c_payee.settle is null then
                         begin
@@ -5498,8 +5501,9 @@ BEGIN
                     end if;
                         
                     V_PAYEEAMT := c_payee.payee_amt;
-                    V_PAIDBY := get_paidby('GM',m_settle);       
-                    V_CLAIMPAIDSEQ :=c_payee.pay_seq;
+                    V_PAIDBY := get_paidby('GM',m_settle);     
+                    V_CLAIMPAIDSEQ := V_CLAIMPAIDSEQ+1;  
+--                    V_CLAIMPAIDSEQ :=c_payee.pay_seq;
                     V_CHEQUENO := null;
                     
                     if V_PAIDBY = 'K' then
@@ -5547,12 +5551,12 @@ FUNCTION check_have_paid(P_CLMNO IN VARCHAR2 ,P_MODE IN VARCHAR2) RETURN BOOLEAN
     dummyClaim  varchar2(20);
 BEGIN
     IF P_MODE = '1' THEN
-        select claimnumber into dummyClaim
+        select distinct claimnumber into dummyClaim
         from OIC_PAPH_CLAIM
         where claimnumber =P_CLMNO 
         and ClaimGroup  = 'P' and ClaimAmt = 0;
      ELSE
-        select claimnumber into dummyClaim
+        select distinct claimnumber into dummyClaim
         from OIC_PAPH_CLAIM
         where claimnumber =P_CLMNO 
         and ClaimGroup  = 'P' ;     
