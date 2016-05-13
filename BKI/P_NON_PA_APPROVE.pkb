@@ -3768,18 +3768,37 @@ FUNCTION AFTER_POST(vClmNo in varchar2 ,vPayNo in varchar2 ,vClmUser in varchar2
     v_part varchar2(5000);
     v_pay_total_paid  number:=0;
     v_rst   varchar2(250);
+    v_dummyPayno  varchar2(20);
+    is_clmtype  boolean;
+    v_newclm_sts    varchar2(2);
+    v_close_date    date;
 BEGIN 
 
     for c_rec in ( 
     select a.clm_no ,a.pol_no ,a.pol_run ,a.pol_no||a.pol_run policy_number ,a.prod_grp ,a.prod_type 
     ,t_e th_eng ,mas_cus_code cus_code ,'' agent_code ,'' agent_seq ,'01' br_code 
     ,a.channel ,clm_user clm_men ,P_NON_PA_APPROVE.GET_CLMSTS(a.clm_no) clm_sts  ,close_date first_close
+    ,a.clm_sts RAW_STS
     from nc_mas a
     where a.clm_no = vClmNo
     and P_NON_PA_APPROVE.GET_CLMSTS(a.clm_no) in ('6','7','2')
     ) 
     loop 
 
+        begin
+            select distinct pay_no into v_dummyPayno
+            from nc_payment
+            where type like 'NCNATTYPECLM%'
+            and pay_no = vPayNo ; 
+            is_clmtype := true;
+        exception
+        when no_data_found then
+            is_clmtype := false;
+        when others then
+            is_clmtype := false;
+        end;
+        v_close_date := trunc(c_rec.first_close) ;
+             
         v_prod_grp := c_rec.prod_grp ;
         v_prod_type := c_rec.prod_type ;
         
@@ -3792,39 +3811,54 @@ BEGIN
                     where clm_no = c_rec.clm_no
                     and a.corr_seq in (select max(aa.corr_seq) from mis_clm_mas_seq aa where aa.clm_no = a.clm_no)
                 ) loop
-                    v_cnt := v_cnt+1;        
-                    if (trunc(c_rec.first_close) = trunc(sysdate) or c_rec.first_close is null ) then --case approve+print same date
+                    v_cnt := v_cnt+1;    
+                    
+                    if c_rec.RAW_STS in ('NCCLMSTS02' ,'NCCLMSTS03') and v_close_date = trunc(sysdate) then   -- check update Close to Reserved
+                        -- script update Reserved
+                        if c_rec.RAW_STS = 'NCCLMSTS02' then
+                            v_newclm_sts := '2';
+                        elsif c_rec.RAW_STS = 'NCCLMSTS03' then
+                            v_newclm_sts := '3';
+                        end if;
+                        
                         update mis_clm_mas
-                        set    clm_sts = '2',
-                        close_date = trunc(sysdate) ,first_close = trunc(sysdate)
+                        set    clm_sts = v_newclm_sts
+                        , close_date = v_close_date
                         where  clm_no = c_rec.clm_no;             
-                                             
-                        Insert into MIS_CLM_MAS_SEQ
-                           (CLM_NO, POL_NO, POL_RUN, CORR_SEQ, CORR_DATE, CHANNEL, PROD_GRP, PROD_TYPE, CLM_DATE ,REOPEN_DATE
-                           , TOT_RES, TOT_PAID, CLOSE_DATE, CLM_STS)
-                         Values
-                           (v1.CLM_NO, v1.POL_NO, v1.POL_RUN, v1.CORR_SEQ+1, sysdate, v1.CHANNEL, v1.PROD_GRP, v1.PROD_TYPE, v1.CLM_DATE ,null
-                           , v1.TOT_RES, v1.TOT_PAID, trunc(sysdate),'2');                           
-                    else -- case print another day
-                        update mis_clm_mas
-                        set    clm_sts = '2' --, reopen_date = trunc(sysdate),
-                        , close_date = trunc(sysdate)
-                        where  clm_no = c_rec.clm_no;             
-                                             
---                        Insert into MIS_CLM_MAS_SEQ
---                           (CLM_NO, POL_NO, POL_RUN, CORR_SEQ, CORR_DATE, CHANNEL, PROD_GRP, PROD_TYPE, CLM_DATE ,REOPEN_DATE
---                           , TOT_RES, TOT_PAID, CLOSE_DATE, CLM_STS)
---                         Values
---                           (v1.CLM_NO, v1.POL_NO, v1.POL_RUN, v1.CORR_SEQ+1, sysdate, v1.CHANNEL, v1.PROD_GRP, v1.PROD_TYPE, v1.CLM_DATE ,trunc(sysdate)
---                           , v1.TOT_RES, v1.TOT_PAID,null ,'4');               
 
                         Insert into MIS_CLM_MAS_SEQ
                            (CLM_NO, POL_NO, POL_RUN, CORR_SEQ, CORR_DATE, CHANNEL, PROD_GRP, PROD_TYPE, CLM_DATE ,REOPEN_DATE
                            , TOT_RES, TOT_PAID, CLOSE_DATE, CLM_STS)
                          Values
                            (v1.CLM_NO, v1.POL_NO, v1.POL_RUN, v1.CORR_SEQ+1, sysdate, v1.CHANNEL, v1.PROD_GRP, v1.PROD_TYPE, v1.CLM_DATE ,null
-                           , v1.TOT_RES, v1.TOT_PAID, trunc(sysdate),'2');                                                  
-                    end if;
+                           , v1.TOT_RES, v1.TOT_PAID, v_close_date ,v_newclm_sts );        
+                    end if; -- check update Close to Reserved
+                                                                       
+--                    if (trunc(c_rec.first_close) = trunc(sysdate) or c_rec.first_close is null ) then --case approve+print same date
+--                        update mis_clm_mas
+--                        set    clm_sts = '2',
+--                        close_date = trunc(sysdate) ,first_close = trunc(sysdate)
+--                        where  clm_no = c_rec.clm_no;             
+--                                             
+--                        Insert into MIS_CLM_MAS_SEQ
+--                           (CLM_NO, POL_NO, POL_RUN, CORR_SEQ, CORR_DATE, CHANNEL, PROD_GRP, PROD_TYPE, CLM_DATE ,REOPEN_DATE
+--                           , TOT_RES, TOT_PAID, CLOSE_DATE, CLM_STS)
+--                         Values
+--                           (v1.CLM_NO, v1.POL_NO, v1.POL_RUN, v1.CORR_SEQ+1, sysdate, v1.CHANNEL, v1.PROD_GRP, v1.PROD_TYPE, v1.CLM_DATE ,null
+--                           , v1.TOT_RES, v1.TOT_PAID, trunc(sysdate),'2');                           
+--                    else -- case print another day
+--                        update mis_clm_mas
+--                        set    clm_sts = '2' --, reopen_date = trunc(sysdate),
+--                        , close_date = trunc(sysdate)
+--                        where  clm_no = c_rec.clm_no;             
+--
+--                        Insert into MIS_CLM_MAS_SEQ
+--                           (CLM_NO, POL_NO, POL_RUN, CORR_SEQ, CORR_DATE, CHANNEL, PROD_GRP, PROD_TYPE, CLM_DATE ,REOPEN_DATE
+--                           , TOT_RES, TOT_PAID, CLOSE_DATE, CLM_STS)
+--                         Values
+--                           (v1.CLM_NO, v1.POL_NO, v1.POL_RUN, v1.CORR_SEQ+1, sysdate, v1.CHANNEL, v1.PROD_GRP, v1.PROD_TYPE, v1.CLM_DATE ,null
+--                           , v1.TOT_RES, v1.TOT_PAID, trunc(sysdate),'2');                                                  
+--                    end if;
                                           
                 end loop; 
                                            
@@ -3967,16 +4001,48 @@ BEGIN
         ELSIF v_prod_grp  in ('1' ) THEN -- Fire Product
             --- === Update FIRE ===   
             v_cnt := v_cnt+1;        
+            
+            if c_rec.RAW_STS in ('NCCLMSTS02' ,'NCCLMSTS03') and v_close_date = trunc(sysdate) then   -- check update Close to Reserved
+                -- script update Reserved
+                if c_rec.RAW_STS = 'NCCLMSTS02' then
+                    v_newclm_sts := '4';
+                elsif c_rec.RAW_STS = 'NCCLMSTS03' then
+                    v_newclm_sts := '5';
+                end if;
 
---            Update fir_paid_stat a 
---            set a.print_type = '1' ,
---            a.pay_date = TRUNC(sysdate) ,a.state_flag='1' ,
---            a.batch_no = ''
---            where a.clm_no = vClmNo
---            and a.state_no =  vPayNo    
---            and  (a.state_no,a.state_seq) = (select b.state_no,max(b.state_seq) from fir_paid_stat b
---            where b.state_no = a.state_no
---            group by b.state_no);   
+                update fir_clm_mas
+                set close_date = v_close_date ,clm_sts = v_newclm_sts
+                where clm_no = c_rec.clm_no    ;
+                            
+                 Insert into FIR_OUT_STAT
+                (CLM_NO, STATE_NO, STATE_SEQ, TYPE, STATE_DATE, STATE_STS, CORR_DATE, BUILD_TOT_SUM, BUILD_OUR_SUM, BUILD_TOT_LOSS, BUILD_OUR_LOSS, MACH_TOT_SUM, MACH_OUR_SUM, MACH_TOT_LOSS, MACH_OUR_LOSS, STOCK_TOT_SUM, STOCK_OUR_SUM, STOCK_TOT_LOSS, STOCK_OUR_LOSS, FURN_TOT_SUM, FURN_OUR_SUM, FURN_TOT_LOSS, FURN_OUR_LOSS, OTHER_TOT_SUM, OTHER_OUR_SUM, OTHER_TOT_LOSS, OTHER_OUR_LOSS, SUR_TOT_LOSS, SUR_OUR_LOSS, REC_TOT_LOSS, REC_OUR_LOSS, SET_TOT_LOSS, SET_OUR_LOSS, TOT_TOT_SUM, TOT_OUR_SUM, TOT_TOT_LOSS, TOT_OUR_LOSS
+                ,REOPEN_DATE ,CLOSE_DATE ,REOPEN_CODE ,CLOSE_CODE ,DESCR_CLOSE)
+                (select CLM_NO, STATE_NO, STATE_SEQ+1, TYPE, STATE_DATE, '2' STATE_STS,sysdate CORR_DATE, BUILD_TOT_SUM, BUILD_OUR_SUM, BUILD_TOT_LOSS, BUILD_OUR_LOSS, MACH_TOT_SUM, MACH_OUR_SUM, MACH_TOT_LOSS, MACH_OUR_LOSS, STOCK_TOT_SUM, STOCK_OUR_SUM, STOCK_TOT_LOSS, STOCK_OUR_LOSS, FURN_TOT_SUM, FURN_OUR_SUM, FURN_TOT_LOSS, FURN_OUR_LOSS, OTHER_TOT_SUM, OTHER_OUR_SUM, OTHER_TOT_LOSS, OTHER_OUR_LOSS, SUR_TOT_LOSS, SUR_OUR_LOSS, REC_TOT_LOSS, REC_OUR_LOSS, SET_TOT_LOSS, SET_OUR_LOSS, TOT_TOT_SUM, TOT_OUR_SUM, TOT_TOT_LOSS, TOT_OUR_LOSS
+                ,REOPEN_DATE ,v_close_date ,REOPEN_CODE ,CLOSE_CODE ,DESCR_CLOSE
+                from fir_out_stat a  
+                where clm_no = c_rec.clm_no and type='01'
+                and a.state_seq in (select max(aa.state_seq) from fir_out_stat aa where aa.clm_no =a.clm_no and aa.type='01' )
+                );
+
+                Insert into FIR_CLM_OUT
+                (CLM_NO, OUT_TYPE, STATE_NO, STATE_SEQ, TYPE, OUT_DATE, OUT_SIGN, OUT_FOR_AMT, OUT_RTE, OUT_AMT)
+                (select CLM_NO, OUT_TYPE, STATE_NO, STATE_SEQ+1, TYPE, OUT_DATE, OUT_SIGN, OUT_FOR_AMT, OUT_RTE, OUT_AMT
+                from FIR_CLM_OUT a
+                where clm_no = c_rec.clm_no and type='01'
+                and a.state_seq in (select max(aa.state_seq) from FIR_CLM_OUT aa where aa.clm_no =a.clm_no and aa.type='01' )
+                );
+
+                Insert into FIR_RI_OUT
+                (CLM_NO, STATE_NO, STATE_SEQ, TYPE, RI_CODE, RI_BR_CODE, RI_LF_FLAG, RI_TYPE, RI_SUB_TYPE, RI_SHARE, RI_RES_AMT
+                ,RI_APP_NO ,LETT_NO ,LETT_PRT ,CASH_CALL)
+                (select CLM_NO, STATE_NO, STATE_SEQ+1, TYPE, RI_CODE, RI_BR_CODE, RI_LF_FLAG, RI_TYPE, RI_SUB_TYPE, RI_SHARE, RI_RES_AMT
+                ,RI_APP_NO ,LETT_NO ,LETT_PRT ,CASH_CALL
+                from FIR_RI_OUT a
+                where clm_no = c_rec.clm_no and type='01'
+                and a.state_seq in (select max(aa.state_seq) from FIR_RI_OUT aa where aa.clm_no =a.clm_no and aa.type='01' )
+                );               
+                -- end script update Reserved
+            end if; -- check update Close to Reserved
             
             Insert into FIR_PAID_STAT
                 (CLM_NO, STATE_NO, STATE_SEQ, TYPE, STATE_DATE, CORR_DATE, BUILD_TOT_LOSS, BUILD_OUR_LOSS, MACH_TOT_LOSS, MACH_OUR_LOSS, STOCK_TOT_LOSS, STOCK_OUR_LOSS, FURN_TOT_LOSS, FURN_OUR_LOSS, OTHER_TOT_LOSS, OTHER_OUR_LOSS, SUR_TOT_LOSS, SUR_OUR_LOSS, REC_TOT_LOSS, REC_OUR_LOSS, SET_TOT_LOSS, SET_OUR_LOSS, TOT_TOT_LOSS, TOT_OUR_LOSS, DESCR_PAID, TYPE_FLAG, VAT_AMT
@@ -4031,6 +4097,46 @@ BEGIN
                 --- === Update Hull ===   
                 v_cnt := v_cnt+1;        
 
+                if c_rec.RAW_STS in ('NCCLMSTS02' ,'NCCLMSTS03') and v_close_date = trunc(sysdate) then   -- check update Close to Reserved
+                    -- script update Reserved
+                    if c_rec.RAW_STS = 'NCCLMSTS02' then
+                        v_newclm_sts := '3';
+                    elsif c_rec.RAW_STS = 'NCCLMSTS03' then
+                        v_newclm_sts := '4';
+                    end if;
+
+                    update hull_clm_mas
+                    set close_date = v_close_date ,clm_sts = v_newclm_sts
+                    where clm_no = vClmNo;
+
+                    Insert into HULL_OUT_STAT
+                    (CLM_NO, STATE_NO, STATE_DATE ,STATE_SEQ, TYPE, CORR_DATE, RES_AMT, RES_FOR_AMT, USER_ID
+                    ,REOPEN_DATE ,REOPEN_CODE ,CLOSE_DATE ,CLOSE_CODE ,CLOSE_MARK ,DESCR_REOPEN ,DESCR_CLOSE ,TYP_FLAG  )
+                    (select CLM_NO, STATE_NO, STATE_DATE ,STATE_SEQ +1, TYPE, sysdate  CORR_DATE, RES_AMT, RES_FOR_AMT, USER_ID
+                    ,REOPEN_DATE ,REOPEN_CODE ,v_close_date ,CLOSE_CODE ,'Y' CLOSE_MARK ,DESCR_REOPEN ,DESCR_CLOSE ,TYP_FLAG
+                    from HULL_OUT_STAT a  
+                    where clm_no = vClmNo and type='01'
+                    and a.state_seq in (select max(aa.state_seq) from HULL_OUT_STAT aa where aa.clm_no =a.clm_no and aa.type='01' )
+                    );
+
+                    Insert into HULL_CLM_OUT
+                    (CLM_NO, PAY_TYPE, STATE_NO, STATE_SEQ, TYPE, OUT_DATE, OUT_AGT, OUT_SIGN, OUT_FOR_AMT, OUT_RTE, OUT_AGT_STS, OUT_AMT)
+                    (select CLM_NO, PAY_TYPE, STATE_NO, STATE_SEQ+1, TYPE, OUT_DATE, OUT_AGT, OUT_SIGN, OUT_FOR_AMT, OUT_RTE, OUT_AGT_STS, OUT_AMT
+                    from HULL_CLM_OUT a
+                    where clm_no = vClmNo and type='01'
+                    and a.state_seq in (select max(aa.state_seq) from HULL_CLM_OUT aa where aa.clm_no =a.clm_no and aa.type='01' )
+                    );
+
+                    Insert into HULL_RI_OUT
+                    (CLM_NO, STATE_NO, STATE_SEQ, TYPE, RI_CODE, RI_BR_CODE, LF_FLAG, RI_TYPE1, RI_TYPE2, RI_OUT_AMT, RI_SHR ,CESS_NO)
+                    (select CLM_NO, STATE_NO, STATE_SEQ+1, TYPE, RI_CODE, RI_BR_CODE, LF_FLAG, RI_TYPE1, RI_TYPE2, RI_OUT_AMT, RI_SHR ,CESS_NO
+                    from HULL_RI_OUT a
+                    where clm_no = vClmNo and type='01'
+                    and a.state_seq in (select max(aa.state_seq) from HULL_RI_OUT aa where aa.clm_no =a.clm_no and aa.type='01' )
+                    );
+                    -- end script update Reserved
+                end if; -- check update Close to Reserved
+            
                 Insert into ALLCLM.HULL_CLM_PAID
                    (CLM_NO, PAY_TYPE, PAY_NO, PAY_SEQ, PAY_AGT,TYPE, PAID_DATE, PAY_SIGN, BAL_FOR_AMT, PAY_FOR_AMT, PAY_RTE, VAT_AMT, PAY_AGT_STS, PAY_AMT ,CLM_SEQ)
                 (
@@ -4074,6 +4180,46 @@ BEGIN
             --- === Update Mrn ===   
                 v_cnt := v_cnt+1;           
 
+                if c_rec.RAW_STS in ('NCCLMSTS02' ,'NCCLMSTS03') and v_close_date = trunc(sysdate) then   -- check update Close to Reserved
+                    -- script update Reserved
+                    if c_rec.RAW_STS = 'NCCLMSTS02' then
+                        v_newclm_sts := '2';
+                    elsif c_rec.RAW_STS = 'NCCLMSTS03' then
+                        v_newclm_sts := '3';
+                    end if;
+
+                    update mrn_clm_mas
+                    set close_date = v_close_date ,clm_sts = v_newclm_sts
+                    where clm_no = vClmNo;
+
+                    Insert into MRN_OUT_STAT
+                    (CLM_NO, STATE_NO, STATE_SEQ, TYPE, STATE_DATE, PA_AMT, GA_AMT, SUR_AMT, SET_AMT, REC_AMT, EXP_AMT, TOT_AMT
+                    ,REOPEN_DATE, CLOSE_DATE, REOPEN_CODE , CLOSE_CODE, DESCR_CLOSE ,TYP_FLAG, CORR_DATE)
+                    (select CLM_NO, STATE_NO, STATE_SEQ+1, TYPE, STATE_DATE, PA_AMT, GA_AMT, SUR_AMT, SET_AMT, REC_AMT, EXP_AMT, TOT_AMT
+                    ,REOPEN_DATE,v_close_date, REOPEN_CODE , CLOSE_CODE, DESCR_CLOSE ,'3' TYP_FLAG,sysdate CORR_DATE
+                    from MRN_OUT_STAT a  
+                    where clm_no = vClmNo and type='01'
+                    and a.state_seq in (select max(aa.state_seq) from MRN_OUT_STAT aa where aa.clm_no =a.clm_no and aa.type='01' )
+                    );
+                    
+                    Insert into MRN_CLM_OUT
+                    (CLM_NO, OUT_TYPE, STATE_NO, STATE_SEQ, TYPE, OUT_DATE, OUT_AGT, OUT_SIGN, OUT_FOR_AMT, OUT_RTE, OUT_AMT, OUT_AGT_STS)
+                    (select CLM_NO, OUT_TYPE, STATE_NO, STATE_SEQ+1, TYPE, OUT_DATE, OUT_AGT, OUT_SIGN, OUT_FOR_AMT, OUT_RTE, OUT_AMT, OUT_AGT_STS
+                    from MRN_CLM_OUT a
+                    where clm_no = vClmNo and type='01'
+                    and a.state_seq in (select max(aa.state_seq) from MRN_CLM_OUT aa where aa.clm_no =a.clm_no and aa.type='01' )
+                    );
+
+                    Insert into MRN_RI_OUT
+                    (CLM_NO, STATE_NO, STATE_SEQ, TYPE, RI_CODE, RI_BR_CODE, LF_FLAG, RI_TYPE1, RI_TYPE2, CESS_OUT_NO, RI_OUT_AMT)
+                    (select CLM_NO, STATE_NO, STATE_SEQ+1, TYPE, RI_CODE, RI_BR_CODE, LF_FLAG, RI_TYPE1, RI_TYPE2, CESS_OUT_NO, RI_OUT_AMT
+                    from MRN_RI_OUT a
+                    where clm_no =  vClmNo and type='01'
+                    and a.state_seq in (select max(aa.state_seq) from MRN_RI_OUT aa where aa.clm_no =a.clm_no and aa.type='01' )
+                    );
+                    -- end script update Reserved
+                end if; -- check update Close to Reserved
+                
                 Insert into ALLCLM.MRN_PAID_STAT
                 (CLM_NO, STATE_NO, STATE_SEQ, TYPE, STATE_DATE, PA_AMT, SUR_AMT, SET_AMT, REC_AMT, EXP_AMT, TOT_AMT, DESCR_PAID, BEN_AMT, CORR_DATE, REMARK, PRINT_TYPE
                 ,GA_AMT ,TYP_FLAG ,VAT_AMT ,BATCH_NO ,REPRINT_NO ,PRINT_STS)
