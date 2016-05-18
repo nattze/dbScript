@@ -2974,13 +2974,13 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
             Return v_SID;
     END;    --End GEN_SID
     
-    FUNCTION GEN_CLMNO(PROD_TYPE IN VARCHAR2 ,CHANNEL IN VARCHAR2) RETURN VARCHAR2 IS
+    FUNCTION GEN_CLMNO(v_PROD_TYPE IN VARCHAR2 ,v_CHANNEL IN VARCHAR2) RETURN VARCHAR2 IS
         v_clmno  VARCHAR2(20);
     BEGIN    
             BEGIN
                 select TO_CHAR(TO_NUMBER(RUN_NO) + 1) into v_clmno
                 from clm_control_std a
-                where key = 'CMSC'||TO_CHAR(SYSDATE  ,'YYYY')||'01'||PROD_TYPE||CHANNEL
+                where key = 'CMSC'||TO_CHAR(SYSDATE  ,'YYYY')||'01'||v_PROD_TYPE||v_CHANNEL
                 FOR UPDATE OF KEY ,RUN_NO;
             EXCEPTION
                 WHEN  NO_DATA_FOUND THEN
@@ -2993,7 +2993,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
             BEGIN
                 update clm_control_std a
                 set run_no = v_clmno
-                where key = 'CMSC'||TO_CHAR(SYSDATE  ,'YYYY')||'01'||PROD_TYPE||CHANNEL ;
+                where key = 'CMSC'||TO_CHAR(SYSDATE  ,'YYYY')||'01'||v_PROD_TYPE||v_CHANNEL ;
             EXCEPTION
                 WHEN  OTHERS THEN
                     ROLLBACK;
@@ -3004,13 +3004,13 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
             Return v_clmno;
     END;    --End GEN_CLMNO
 
-    FUNCTION GEN_PAYNO(PROD_TYPE IN VARCHAR2 ) RETURN VARCHAR2 IS
+    FUNCTION GEN_PAYNO(v_PROD_TYPE IN VARCHAR2 ) RETURN VARCHAR2 IS
         v_payno  VARCHAR2(20);
     BEGIN    
             BEGIN
                 select TO_CHAR(TO_NUMBER(RUN_NO) + 1) into v_payno
                 from clm_control_std a
-                where key ='CMSP'||TO_CHAR(SYSDATE,'YYYY')||PROD_TYPE
+                where key ='CMSP'||TO_CHAR(SYSDATE,'YYYY')||v_PROD_TYPE
                 FOR UPDATE OF KEY ,RUN_NO;
             EXCEPTION
                 WHEN  NO_DATA_FOUND THEN
@@ -3023,7 +3023,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
             BEGIN
                 update clm_control_std a
                 set run_no = v_payno
-                where key = 'CMSP'||TO_CHAR(SYSDATE,'YYYY')||PROD_TYPE ;
+                where key = 'CMSP'||TO_CHAR(SYSDATE,'YYYY')||v_PROD_TYPE ;
             EXCEPTION
                 WHEN  OTHERS THEN
                     ROLLBACK;
@@ -3036,7 +3036,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
             Return v_payno;
     END;    --End GEN_PAYNO
     
-    FUNCTION GEN_LETTNO(PROD_TYPE IN VARCHAR2 ) RETURN VARCHAR2 IS
+    FUNCTION GEN_LETTNO(v_PROD_TYPE IN VARCHAR2 ) RETURN VARCHAR2 IS
         v_lettno  VARCHAR2(20); 
         v_prod_key  VARCHAR2(10); 
     BEGIN
@@ -3044,7 +3044,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
             BEGIN
                   select prod_key into v_prod_key
               from   clm_grp_prod
-              where  prod_type = PROD_TYPE;
+              where  prod_type = v_PROD_TYPE;
             EXCEPTION
                 WHEN  NO_DATA_FOUND THEN
                     v_lettno := null;            
@@ -3079,7 +3079,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
             Return v_lettno;    
     END;    --End GEN_LETTNO
 
-    FUNCTION GEN_LETTNO(PROD_TYPE IN VARCHAR2  ,V_KEY IN VARCHAR2) RETURN VARCHAR2 IS
+    FUNCTION GEN_LETTNO(v_PROD_TYPE IN VARCHAR2  ,V_KEY IN VARCHAR2) RETURN VARCHAR2 IS
         v_lettno  VARCHAR2(20); 
         v_prod_key  VARCHAR2(10); 
     BEGIN
@@ -3087,14 +3087,15 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
             BEGIN
                   select prod_key into v_prod_key
               from   clm_grp_prod
-              where  prod_type = PROD_TYPE;
+              where  prod_type = v_PROD_TYPE;
             EXCEPTION
                 WHEN  NO_DATA_FOUND THEN
                     v_lettno := null;            
                 WHEN  OTHERS THEN
                     v_lettno := null;
             END;     
-              
+            
+            dbms_output.put_line('prod_key='||v_prod_key);   
             BEGIN
                 select TO_CHAR(TO_NUMBER(RUN_NO) + 1) into v_lettno
                 from clm_control_std a
@@ -3106,7 +3107,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                 WHEN  OTHERS THEN
                     v_lettno := null;
             END;       
-                    
+           dbms_output.put_line('v_lettno='||v_lettno);            
            if v_lettno is not null  then  
             BEGIN
                 update clm_control_std a
@@ -3121,6 +3122,39 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
             end if;    
             Return v_lettno;    
     END;    --End GEN_LETTNO2
+
+    FUNCTION GEN_xRUNNO(v_PROD IN VARCHAR2  ,V_KEY IN VARCHAR2) RETURN VARCHAR2 IS
+        v_lettno  VARCHAR2(20); 
+        v_prod_key  VARCHAR2(10); 
+    BEGIN
+            
+            --dbms_output.put_line('prod_key='||v_prod_key);   
+            BEGIN
+                select TO_CHAR(TO_NUMBER(RUN_NO) + 1) into v_lettno
+                from clm_control_std a
+                where key = V_KEY||TO_CHAR(SYSDATE,'YYYY')||v_PROD
+                FOR UPDATE OF KEY ,RUN_NO;
+            EXCEPTION
+                WHEN  NO_DATA_FOUND THEN
+                    v_lettno := null;            
+                WHEN  OTHERS THEN
+                    v_lettno := null;
+            END;       
+           dbms_output.put_line('v_lettno='||v_lettno);            
+           if v_lettno is not null  then  
+            BEGIN
+                update clm_control_std a
+                set run_no = v_lettno
+                where key = V_KEY||TO_CHAR(SYSDATE,'YYYY')||v_PROD ;
+            EXCEPTION
+                WHEN  OTHERS THEN
+                    ROLLBACK;
+                    v_lettno := null;
+            END;  
+            COMMIT;
+            end if;    
+            Return v_lettno;    
+    END;    --End GEN_xRUNNO
         
     FUNCTION GEN_MEDREFNO(V_GROUP IN VARCHAR2 /* 000 Ã.¾. 001 broker*/ ) RETURN VARCHAR2 IS     
         v_refno  VARCHAR2(20):=null;
