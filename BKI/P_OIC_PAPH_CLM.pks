@@ -65,5 +65,8 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_OIC_PAPH_CLM AS
     PROCEDURE get_GM_Claim_v2(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2);
     
     FUNCTION check_have_paid(P_CLMNO IN VARCHAR2 ,P_MODE IN VARCHAR2) RETURN BOOLEAN; --P_MODE 1 check has paid ,2 check double paid
+
+    FUNCTION check_have_EC(P_CLMNO IN VARCHAR2) RETURN BOOLEAN; 
+
 END P_OIC_PAPH_CLM;
 /
