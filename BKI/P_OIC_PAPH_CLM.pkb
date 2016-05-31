@@ -5182,6 +5182,7 @@ BEGIN
                     where  clm_no =M1.CLM_NO
                     and (clm_no ,state_seq) in (select clm_no ,max(aa.state_seq) from clm_medical_res aa where aa.clm_no =a.clm_no 
                     and aa.corr_date <=  i_asdate group by aa.clm_no)
+                    and nvl(res_amt,0) > 0
                     order by res_amt               
                 )  LOOP
                     -- ===== Path get prem code ====
@@ -5373,6 +5374,7 @@ BEGIN
                         where  clm_no =M1.CLM_NO
                         and (clm_no ,state_seq) in (select clm_no ,max(aa.state_seq) from clm_medical_res aa where aa.clm_no =a.clm_no 
                         and aa.corr_date <=  i_asdate group by aa.clm_no)
+                        and nvl(res_amt,0) > 0
                         order by res_amt               
                     )  LOOP
                         -- ===== Path get prem code ====
