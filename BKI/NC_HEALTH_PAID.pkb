@@ -2085,6 +2085,8 @@ END UPDATE_STATUS_AFTER_POST;
 
 FUNCTION UPDATE_CLM_AFTER_POST(v_payno in varchar2 ,v_sys in varchar2 /* PA ,GM */ ,v_vouno in varchar2 ,v_voudate in date) RETURN VARCHAR2 IS -- null = success  
     p_clmno varchar2(20);
+    MY_SYSDATE  date:=sysdate;
+    v_part varchar2(5000);
 BEGIN
     IF v_sys = 'PA' THEN
         begin
@@ -2097,12 +2099,71 @@ BEGIN
             when others then
                 p_clmno := null;
         end;
+
+        begin
+            select longtochar('MIS_CLM_PAID','PART',rowid,1,5000)
+                into v_part
+            from mis_clm_paid a
+            where clm_no = p_clmno and pay_no = v_payno    
+            and  (a.pay_no,a.corr_seq) = (select b.pay_no,max(b.corr_seq) from mis_clm_paid b
+                    where b.pay_no = a.pay_no
+                    group by b.pay_no)        
+            ;
+        exception
+           when no_data_found then
+           v_part := null;                           
+           when others then
+           v_part := null;
+        end;
         
+        for v1 in (
+            select CLM_NO, POL_NO, POL_RUN, CORR_SEQ, CORR_DATE, CHANNEL, PROD_GRP, PROD_TYPE, CLM_DATE ,REOPEN_DATE , TOT_RES, TOT_PAID, CLOSE_DATE, CLM_STS
+            from mis_clm_mas_seq a
+            where clm_no = p_clmno
+            and a.corr_seq in (select max(aa.corr_seq) from mis_clm_mas_seq aa where aa.clm_no = a.clm_no)
+        ) loop         
+
+            Insert into MIS_CLM_MAS_SEQ
+               (CLM_NO, POL_NO, POL_RUN, CORR_SEQ, CORR_DATE, CHANNEL, PROD_GRP, PROD_TYPE, CLM_DATE ,REOPEN_DATE
+               , TOT_RES, TOT_PAID, CLOSE_DATE, CLM_STS)
+             Values
+               (v1.CLM_NO, v1.POL_NO, v1.POL_RUN, v1.CORR_SEQ+1, MY_SYSDATE, v1.CHANNEL, v1.PROD_GRP, v1.PROD_TYPE, v1.CLM_DATE ,null
+               , v1.TOT_RES, v1.TOT_PAID, TRUNC(MY_SYSDATE) ,'2' );        
+
+            insert into mis_clm_paid (clm_no, pay_no, pay_sts, pay_date, pay_total, part, settle, pay_type, prt_flag, attached, acc_no, acc_name, bank_code, br_name, remark, pay_curr_code, pay_curr_rate, trn_date, app_sts, total_pay_total, vat_amt, rem_close, corr_seq, corr_date, tot_deduct_amt, state_flag, vat_percent, deduct_amt, rec_pay_date, sendchq_addr, send_title, send_addr1, send_addr2, bank_br_code, polyj_flag, co_pay_tatal, co_deduct_total, branch_code, acc_type, batch_no, print_type, reprint_no, print_batch, invoice_no, job_no, print_sts, deposit_type, paid_type, special_flag, special_remark, agent_mail, agent_mail_flag, agent_mobile_number, agent_sms_flag, cust_mail, cust_mail_flag, mobile_number, sms_flag, urgent_flag )
+            (select a.clm_no, a.pay_no, a.pay_sts, a.pay_date, a.pay_total, '' , a.settle, a.pay_type, a.prt_flag, a.attached, a.acc_no, a.acc_name, a.bank_code, a.br_name, a.remark, a.pay_curr_code, a.pay_curr_rate, MY_SYSDATE, a.app_sts, a.total_pay_total, a.vat_amt, a.rem_close, a.corr_seq+1, MY_SYSDATE , a.tot_deduct_amt, a.state_flag, a.vat_percent, a.deduct_amt, a.rec_pay_date, a.sendchq_addr, a.send_title, a.send_addr1, a.send_addr2, a.bank_br_code, a.polyj_flag, a.co_pay_tatal, a.co_deduct_total, a.branch_code, a.acc_type, a.batch_no, a.print_type, a.reprint_no, a.print_batch, a.invoice_no, a.job_no, a.print_sts, a.deposit_type, a.paid_type, a.special_flag, a.special_remark, a.agent_mail, a.agent_mail_flag, a.agent_mobile_number, a.agent_sms_flag, a.cust_mail, a.cust_mail_flag, a.mobile_number, a.sms_flag, a.urgent_flag   
+            from misc.mis_clm_paid a
+                        where clm_no = p_clmno and pay_no = v_payno     
+                        and  (a.pay_no,a.corr_seq) = (select b.pay_no,max(b.corr_seq) from mis_clm_paid b
+                                where b.pay_no = a.pay_no
+                                group by b.pay_no)    
+            );
+
+            Insert into MIS_CRI_PAID
+            (CLM_NO, PAY_NO, PAY_STS, RI_CODE, RI_BR_CODE, RI_TYPE, PAY_AMT, LETT_NO, LETT_PRT, LETT_TYPE, CORR_SEQ, LF_FLAG, RI_SUB_TYPE ,RI_CONT ,LETT_REMARK)                                                    
+            (
+            select CLM_NO, PAY_NO, PAY_STS, RI_CODE, RI_BR_CODE, RI_TYPE, PAY_AMT, LETT_NO, LETT_PRT, LETT_TYPE, CORR_SEQ+1, LF_FLAG, RI_SUB_TYPE ,RI_CONT ,LETT_REMARK
+            from mis_cri_paid a
+            where clm_no = p_clmno and pay_no = v_payno    
+            and  (a.pay_no,a.corr_seq) = (select b.pay_no,max(b.corr_seq) from mis_cri_paid b
+            where b.pay_no = a.pay_no
+            group by b.pay_no)                                     
+            );
+
+            insert into MIS_CPA_PAID (clm_no, pay_no, pay_sts, fleet_seq, loss_name, loss_date, loss_detail, paid_remark, prem_code1, prem_code2, prem_code3, prem_code4, prem_code5, prem_code6, prem_code7, prem_code8, prem_code9, prem_code10, prem_pay1, prem_pay2, prem_pay3, prem_pay4, prem_pay5, prem_pay6, prem_pay7, prem_pay8, prem_pay9, prem_pay10, cancel, risk_code, run_seq, corr_seq, dis_code, hpt_code, loss_of_day, loss_date_fr, loss_date_to, add_day, prem_code11, prem_code12, prem_code13, prem_code14, prem_code15, prem_code16, prem_code17, prem_code18, prem_code19, prem_code20, prem_code21, prem_code22, prem_code23, prem_code24, prem_code25, prem_pay11, prem_pay12, prem_pay13, prem_pay14, prem_pay15, prem_pay16, prem_pay17, prem_pay18, prem_pay19, prem_pay20, prem_pay21, prem_pay22, prem_pay23, prem_pay24, prem_pay25, res_remark, hpt_seq)
+            (
+            select a.clm_no, a.pay_no, a.pay_sts, a.fleet_seq, a.loss_name, a.loss_date, a.loss_detail, a.paid_remark, a.prem_code1, a.prem_code2, a.prem_code3, a.prem_code4, a.prem_code5, a.prem_code6, a.prem_code7, a.prem_code8, a.prem_code9, a.prem_code10, a.prem_pay1, a.prem_pay2, a.prem_pay3, a.prem_pay4, a.prem_pay5, a.prem_pay6, a.prem_pay7, a.prem_pay8, a.prem_pay9, a.prem_pay10, a.cancel, a.risk_code, a.run_seq, a.corr_seq+1, a.dis_code, a.hpt_code, a.loss_of_day, a.loss_date_fr, a.loss_date_to, a.add_day, a.prem_code11, a.prem_code12, a.prem_code13, a.prem_code14, a.prem_code15, a.prem_code16, a.prem_code17, a.prem_code18, a.prem_code19, a.prem_code20, a.prem_code21, a.prem_code22, a.prem_code23, a.prem_code24, a.prem_code25, a.prem_pay11, a.prem_pay12, a.prem_pay13, a.prem_pay14, a.prem_pay15, a.prem_pay16, a.prem_pay17, a.prem_pay18, a.prem_pay19, a.prem_pay20, a.prem_pay21, a.prem_pay22, a.prem_pay23, a.prem_pay24, a.prem_pay25, a.res_remark, a.hpt_seq   from misc.mis_cpa_paid a
+            where  clm_no = p_clmno and pay_no = v_payno    
+            and a.corr_seq in (select max(aa.corr_seq) from mis_cpa_paid aa where aa.pay_no = a.pay_no)
+            );
+                                    
+        end loop; -- mis_clm_mas_seq
+                                        
         begin
             Update mis_clm_paid a 
             set a.print_type = '1' ,
             a.pay_date = V_VOUDATE ,a.state_flag='1' ,
-            a.corr_date = V_VOUDATE 
+            a.corr_date = V_VOUDATE ,part = v_part 
             where a.clm_no = p_clmno
             and a.pay_no = v_payno 
             and  (a.pay_no,a.corr_seq) in (select b.pay_no,max(b.corr_seq) from mis_clm_paid b
@@ -2111,16 +2172,9 @@ BEGIN
                                     
             update mis_clm_mas
             set    clm_sts = '2',
-            close_date = trunc(sysdate)
+            close_date = trunc(MY_SYSDATE)
             where  clm_no = p_clmno;
-                                      
-            update mis_clm_mas_seq a
-            set    clm_sts = '2',
-            close_date = trunc(sysdate)
-            where  (a.clm_no = p_clmno) and
-            (a.clm_no,corr_seq) in (select b.clm_no,max(corr_seq) from mis_clm_mas_seq b
-            where  a.clm_no = b.clm_no
-            group by b.clm_no);                   
+                                                   
                                 
         exception
         when others then
@@ -2138,7 +2192,53 @@ BEGIN
             when others then
                 p_clmno := null;
         end;
-        
+
+        for v1 in (
+            select CLM_NO, POL_NO, POL_RUN, CORR_SEQ, CORR_DATE, CHANNEL, PROD_GRP, PROD_TYPE, CLM_DATE ,REOPEN_DATE , TOT_RES, TOT_PAID, CLOSE_DATE, CLM_STS
+            from mis_clm_mas_seq a
+            where clm_no = p_clmno
+            and a.corr_seq in (select max(aa.corr_seq) from mis_clm_mas_seq aa where aa.clm_no = a.clm_no)
+        ) loop         
+
+            Insert into MIS_CLM_MAS_SEQ
+               (CLM_NO, POL_NO, POL_RUN, CORR_SEQ, CORR_DATE, CHANNEL, PROD_GRP, PROD_TYPE, CLM_DATE ,REOPEN_DATE
+               , TOT_RES, TOT_PAID, CLOSE_DATE, CLM_STS)
+             Values
+               (v1.CLM_NO, v1.POL_NO, v1.POL_RUN, v1.CORR_SEQ+1, MY_SYSDATE, v1.CHANNEL, v1.PROD_GRP, v1.PROD_TYPE, v1.CLM_DATE ,null
+               , v1.TOT_RES, v1.TOT_PAID, TRUNC(MY_SYSDATE) ,'2' );        
+
+
+            Insert into MIS_CRI_PAID
+            (CLM_NO, PAY_NO, PAY_STS, RI_CODE, RI_BR_CODE, RI_TYPE, PAY_AMT, LETT_NO, LETT_PRT, LETT_TYPE, CORR_SEQ, LF_FLAG, RI_SUB_TYPE ,RI_CONT ,LETT_REMARK)                                                    
+            (
+            select CLM_NO, PAY_NO, PAY_STS, RI_CODE, RI_BR_CODE, RI_TYPE, PAY_AMT, LETT_NO, LETT_PRT, LETT_TYPE, CORR_SEQ+1, LF_FLAG, RI_SUB_TYPE ,RI_CONT ,LETT_REMARK
+            from mis_cri_paid a
+            where clm_no = p_clmno and pay_no = v_payno    
+            and  (a.pay_no,a.corr_seq) = (select b.pay_no,max(b.corr_seq) from mis_cri_paid b
+            where b.pay_no = a.pay_no
+            group by b.pay_no)                                     
+            );
+
+            insert into mis_clmgm_paid (clm_no, pay_no, corr_seq, pay_date, pay_total, rec_total, disc_total, settle, part, remark, lett_recno, permit, permit_date, acc_no, acc_name, acc_type, bank_code, branch_code, rec_pay_date, batch_no, print_type, reprint_no, print_sts, deposit_type, paid_type, special_flag, special_remark, agent_mail, agent_mail_flag, agent_mobile_number, agent_sms_flag, cust_mail, cust_mail_flag, mobile_number, sms_flag, urgent_flag)
+            (
+            select a.clm_no, a.pay_no, a.corr_seq+1, a.pay_date, a.pay_total, a.rec_total, a.disc_total, a.settle, a.part, a.remark, a.lett_recno, a.permit, a.permit_date, a.acc_no, a.acc_name, a.acc_type, a.bank_code, a.branch_code, a.rec_pay_date, a.batch_no, a.print_type, a.reprint_no, a.print_sts, a.deposit_type, a.paid_type, a.special_flag, a.special_remark, a.agent_mail, a.agent_mail_flag, a.agent_mobile_number, a.agent_sms_flag, a.cust_mail, a.cust_mail_flag, a.mobile_number, a.sms_flag, a.urgent_flag from misc.mis_clmgm_paid a
+            where a.clm_no = p_clmno and pay_no = v_payno
+            and  (a.pay_no,a.corr_seq) = (select b.pay_no,max(b.corr_seq) from mis_clmgm_paid b
+            where b.pay_no = a.pay_no
+            group by b.pay_no)
+            );                                    
+
+            insert into clm_gm_paid(clm_no, pay_no, corr_seq, fleet_seq, sub_seq, plan, pd_flag, dis_code, bene_code, loss_date, date_paid, corr_date, disc_rate, disc_amt, pay_amt, hpt_code, rec_amt, clm_pd_flag, remark, sur_percent, ipd_day, seq, rec_pay_date, deduct_amt, fam_seq, dept_bki, id_no )
+            (
+            select a.clm_no, a.pay_no, a.corr_seq+1, a.fleet_seq, a.sub_seq, a.plan, a.pd_flag, a.dis_code, a.bene_code, a.loss_date, a.date_paid, MY_SYSDATE, a.disc_rate, a.disc_amt, a.pay_amt, a.hpt_code, a.rec_amt, a.clm_pd_flag, a.remark, a.sur_percent, a.ipd_day, a.seq, a.rec_pay_date, a.deduct_amt, a.fam_seq, a.dept_bki, a.id_no   from misc.clm_gm_paid a
+            where a.clm_no = p_clmno and pay_no = v_payno
+                        and  (a.pay_no,a.corr_seq) = (select b.pay_no,max(b.corr_seq) from clm_gm_paid b
+                        where b.pay_no = a.pay_no
+                        group by b.pay_no)
+            );
+            
+        end loop; -- mis_clm_mas_seq
+                
         begin
             Update mis_clmgm_paid a 
             set a.print_type = '1' ,
@@ -2166,20 +2266,12 @@ BEGIN
                 
             update mis_clm_mas
             set    clm_sts = '2',
-                 close_date = trunc(sysdate)
+                 close_date = trunc(MY_SYSDATE)
                  ,out_open_sts = 'Y'
                  ,out_paid_sts = 'Y'
                  ,out_print_sts ='Y'
             where  clm_no = p_clmno;
-                              
-            update mis_clm_mas_seq a
-            set    clm_sts = '2',
-                 close_date = trunc(sysdate)
-            where  (a.clm_no = p_clmno) and
-                 (a.clm_no,corr_seq) in (select b.clm_no,max(corr_seq) from mis_clm_mas_seq b
-                                         where  a.clm_no = b.clm_no
-                                         group by b.clm_no);                     
-                                
+                                                                         
         exception
         when others then
             rollback; return 'error update claim: '||sqlerrm ;
