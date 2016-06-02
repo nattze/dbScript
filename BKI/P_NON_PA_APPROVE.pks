@@ -126,6 +126,9 @@ FUNCTION GET_PAID_INFO(i_pay IN VARCHAR2 ,i_mode IN VARCHAR2) RETURN VARCHAR2;
 FUNCTION IS_ACTIVATE_AUTOPOST RETURN BOOLEAN; -- TRUE = ON ,FALSE= OFF 
  
 FUNCTION SET_SETTLEDATE(vClmNo in varchar2 ,vPayNo in varchar2 ,vClmUser in varchar2 ,P_RST OUT VARCHAR2) RETURN BOOLEAN ; 
+
+FUNCTION SET_SETTLEDATE(vClmNo in varchar2 ,vPayNo in varchar2 ,vClmUser in varchar2 ,vApproveDate in DATE ,P_RST OUT VARCHAR2) RETURN BOOLEAN ; 
+/*  vApproveDate สำหรับกรณีเรียกซ่อมงานที่ไม่ได้ stamp nc_payment.settle_date*/
  
 FUNCTION IS_APPROVED(vClmNo in varchar2 ,vPayNo in varchar2 ) RETURN VARCHAR2 ; 
  

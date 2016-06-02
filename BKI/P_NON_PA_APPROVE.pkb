@@ -5807,6 +5807,67 @@ EXCEPTION
     rollback; P_RST := 'error update payno: '||vPayNo||' ->'||sqlerrm ; return false;          
 END SET_SETTLEDATE;  
 
+
+FUNCTION SET_SETTLEDATE(vClmNo in varchar2 ,vPayNo in varchar2 ,vClmUser in varchar2 ,vApproveDate in DATE ,P_RST OUT VARCHAR2) RETURN BOOLEAN IS 
+    v_sysdate   date:=sysdate;
+    /*  vApproveDate สำหรับกรณีเรียกซ่อมงานที่ไม่ได้ stamp nc_payment.settle_date*/
+BEGIN 
+    v_sysdate := nvl(vApproveDate,sysdate);
+    Insert into ALLCLM.NC_PAYMENT
+       (CLM_NO, PAY_NO, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, PROD_GRP, PROD_TYPE, STS_KEY, TYPE, SUB_TYPE, PREM_CODE, PREM_SEQ, STATUS, TOT_PAY_AMT
+       ,CLM_SEQ ,SETTLE_DATE,OFFSET_FLAG)
+       (
+        select clm_no, pay_no, trn_seq+1, pay_sts, pay_amt, trn_amt, curr_code, curr_rate, sts_date,v_sysdate, clm_men, amd_user, prod_grp, prod_type, sts_key, type, sub_type, prem_code, prem_seq, status, tot_pay_amt
+        ,clm_seq ,v_sysdate ,offset_flag
+        from nc_payment a
+        where  a.trn_seq in (select max(aa.trn_seq) from nc_payment aa where  aa.clm_no =a.clm_no and aa.pay_no = a.pay_no) 
+        and a.pay_no = vPayNo
+        );
+        
+        
+    Insert into ALLCLM.NC_PAYMENT_INFO
+       (CLM_NO, PAY_NO, TYPE, PROD_GRP, PROD_TYPE, TRN_SEQ, STS_DATE, AMD_DATE, CLM_USER, STS_KEY
+        ,PART ,REMARK ,INVOICE_NO,REF_NO ,AMD_USER ,PRINT_BATCH)
+       (
+        select clm_no, pay_no, type, prod_grp, prod_type, trn_seq +1, sts_date,v_sysdate, clm_user, sts_key
+        ,part ,remark ,invoice_no,ref_no ,amd_user ,print_batch
+        from nc_payment_info a
+        where  a.trn_seq in (select max(aa.trn_seq) from nc_payment_info aa where  aa.clm_no =a.clm_no and aa.pay_no = a.pay_no) 
+        and a.pay_no = vPayNo
+       ) ;
+       
+
+    Insert into ALLCLM.NC_PAYEE
+       (CLM_NO, PAY_NO, PROD_GRP, PROD_TYPE, TRN_SEQ, STS_DATE, AMD_DATE, PAYEE_CODE, PAYEE_NAME, PAYEE_TYPE, PAYEE_SEQ, PAYEE_AMT, SETTLE, ACC_NO, ACC_NAME, BANK_CODE, BANK_BR_CODE, BR_NAME, SEND_TITLE, PAID_STS, DEDUCT_FLAG, TYPE, SENT_TYPE, SALVAGE_AMT, DEDUCT_AMT, CURR_CODE
+        ,SEND_ADDR1 ,SEND_ADDR2 ,SALVAGE_FLAG ,EMAIL ,SMS ,APPOINT_DATE ,CURR_RATE ,AGENT_SMS ,AGENT_EMAIL ,SPECIAL_FLAG ,SPECIAL_REMARK ,GRP_PAYEE_FLAG ,URGENT_FLAG)
+       (
+        select clm_no, pay_no, prod_grp, prod_type, trn_seq +1, sts_date, v_sysdate, payee_code, payee_name, payee_type, payee_seq, payee_amt, settle, acc_no, acc_name, bank_code, bank_br_code, br_name, send_title, paid_sts, deduct_flag, type, sent_type, salvage_amt, deduct_amt, curr_code
+        ,send_addr1 ,send_addr2 ,salvage_flag ,email ,sms ,appoint_date ,curr_rate ,agent_sms ,agent_email ,special_flag ,special_remark ,grp_payee_flag ,urgent_flag 
+        from nc_payee a
+        where  a.trn_seq in (select max(aa.trn_seq) from nc_payee aa where  aa.clm_no =a.clm_no and aa.pay_no = a.pay_no) 
+        and a.pay_no = vPayNo
+       ) ;
+       
+
+    Insert into ALLCLM.NC_RI_PAID
+       (STS_KEY, CLM_NO, PAY_NO, PROD_GRP, PROD_TYPE, TYPE, RI_CODE, RI_BR_CODE, RI_TYPE, RI_LF_FLAG, RI_SUB_TYPE, RI_SHARE, TRN_SEQ, RI_STS_DATE, RI_AMD_DATE, RI_PAY_AMT, RI_TRN_AMT, STATUS, SUB_TYPE
+       ,LETT_NO ,LETT_PRT ,LETT_TYPE ,CASHCALL ,CANCEL ,PRINT_TYPE ,PRINT_USER ,PRINT_DATE
+       )
+       (
+       select sts_key, clm_no, pay_no, prod_grp, prod_type, type, ri_code, ri_br_code, ri_type, ri_lf_flag, ri_sub_type, ri_share, trn_seq +1, ri_sts_date,v_sysdate, ri_pay_amt, ri_trn_amt, status, sub_type
+       ,lett_no ,lett_prt ,lett_type ,cashcall ,cancel ,print_type ,print_user ,print_date
+        from nc_ri_paid a
+        where  a.trn_seq in (select max(aa.trn_seq) from nc_ri_paid aa where  aa.clm_no =a.clm_no and aa.pay_no = a.pay_no) 
+        and a.pay_no = vPayNo
+       );
+       
+    commit;
+    return true;  
+EXCEPTION  
+    WHEN OTHERS THEN  
+    rollback; P_RST := 'error update payno: '||vPayNo||' ->'||sqlerrm ; return false;          
+END SET_SETTLEDATE;  
+
 FUNCTION IS_APPROVED(vClmNo in varchar2 ,vPayNo in varchar2 )  RETURN VARCHAR2 IS
  v_f1 varchar2(20):=null;
  v_return boolean;
