@@ -85,6 +85,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
             EXCEPTION
                 WHEN OTHERS THEN
                     O_RST := 'get all modified have error: '||sqlerrm;
+                    RETURN;
             END;            
             END LOOP; --select HR_EMP
        
@@ -133,9 +134,11 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
             EXCEPTION
                 WHEN OTHERS THEN
                     O_RST := 'get by user have error: '||sqlerrm;
+                    RETURN;
             END;            
             END LOOP; --select HR_EMP        
-        END IF;            
+        END IF;          
+        COMMIT;  
     EXCEPTION
         WHEN OTHERS THEN
             ROLLBACK;
