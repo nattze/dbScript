@@ -10,6 +10,8 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_OIC_PAPH_CLM AS
 ******************************************************************************/
     PROCEDURE get_PAPH_Claim(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2);
 
+    PROCEDURE get_PAPH_Claim(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_cnt_clm OUT NUMBER ,o_cnt_payment OUT NUMBER);
+
     PROCEDURE getMain_PAPH_Claim(i_type IN VARCHAR2 ,i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2);
 
     PROCEDURE Clear_PAPH_Claim(i_type IN VARCHAR2 ,i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2);

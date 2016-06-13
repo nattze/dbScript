@@ -17,9 +17,45 @@ BEGIN
     Clear_PAPH_Claim(null ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
     getMain_PAPH_Claim('PA' ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
     getMain_PAPH_Claim('GM' ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
-
+    
     o_rst := o_msg ;
 END get_PAPH_Claim;
+
+
+PROCEDURE get_PAPH_Claim( i_datefr IN DATE ,i_dateto IN DATE  ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_cnt_clm OUT NUMBER ,o_cnt_payment OUT NUMBER)
+IS
+  o_msg VARCHAR2(250);
+BEGIN
+    Clear_PAPH_Claim(null ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
+    getMain_PAPH_Claim('PA' ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
+    getMain_PAPH_Claim('GM' ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
+    
+    begin
+        select  count(*) into o_cnt_clm
+        from OIC_PAPH_CLAIM
+        where fr_date = i_datefr
+        and to_date = i_dateto ;  
+    exception
+        when no_data_found then
+            o_cnt_clm := 0;
+        when others then
+            o_cnt_clm := 0;
+    end ;
+    
+    begin
+        select  count(*) into o_cnt_payment
+        from OIC_PAPH_PAYMENT
+        where fr_date = i_datefr
+        and to_date = i_dateto ;  
+    exception
+        when no_data_found then
+            o_cnt_payment := 0;
+        when others then
+            o_cnt_payment := 0;
+    end ;  
+     
+END get_PAPH_Claim;
+
 
 PROCEDURE getMain_PAPH_Claim(i_type IN VARCHAR2 ,i_datefr IN DATE ,i_dateto IN DATE  ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2)
 IS
