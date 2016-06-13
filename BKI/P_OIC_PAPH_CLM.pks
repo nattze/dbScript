@@ -8,9 +8,12 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_OIC_PAPH_CLM AS
    ---------  ----------  ---------------  ------------------------------------
    1.0        14/08/2015      2702       1. Created this package.
 ******************************************************************************/
+    PROCEDURE get_PAPH_Claim(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2);
 
     PROCEDURE getMain_PAPH_Claim(i_type IN VARCHAR2 ,i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2);
-    
+
+    PROCEDURE Clear_PAPH_Claim(i_type IN VARCHAR2 ,i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2);
+        
     PROCEDURE get_PA_Claim_out(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2);
     
     PROCEDURE get_PA_Claim_outpaid(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2);
