@@ -1628,12 +1628,17 @@ BEGIN
  v_cc := core_ldap.GET_EMAIL_FUNC(ALLCLM.P_NON_PA_APPROVE.Get_Special_email('CC',v_clmmen)) ;
  
  if v_position_grp >42 then -- Case Staff
- for c1 in (select core_ldap.GET_EMAIL_FUNC(P_NON_PA_APPROVE.Get_Special_email('TO',user_id)) tl_email
- from bkiuser
- where dept_id = v_deptid
- and div_id = v_divid
- and team_id = v_team
- and position_grp_id in ('41','42')) loop
+ for c1 in (
+     select core_ldap.GET_EMAIL_FUNC(P_NON_PA_APPROVE.Get_Special_email('TO',user_id)) tl_email
+     from bkiuser
+     where dept_id = v_deptid
+     and div_id = v_divid
+     and team_id = v_team
+     and position_grp_id in ('41','42')
+     union
+     select core_ldap.GET_EMAIL_FUNC(P_NON_PA_APPROVE.Get_Special_email('TO',v_clmmen)) tl_email
+     from dual       
+ ) loop
  v_to := v_to || c1.tl_email ||';' ; 
  end loop;
  else -- Case TL up
@@ -3788,7 +3793,7 @@ BEGIN
         begin
             select distinct pay_no into v_dummyPayno
             from nc_payment
-            where type like 'NCNATTYPECLM%'
+            where type like 'NCNATTYPECLM%' 
             and pay_no = vPayNo ; 
             is_clmtype := true;
         exception
