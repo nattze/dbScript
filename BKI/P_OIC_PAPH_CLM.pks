@@ -64,7 +64,9 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_OIC_PAPH_CLM AS
     FUNCTION get_Coverage2(i_polno  IN VARCHAR2 ,i_polrun  IN VARCHAR2 ,i_fleet IN NUMBER ,i_clmno  IN VARCHAR2 ,i_payno  IN VARCHAR2, i_grp IN VARCHAR2 ,i_opd IN VARCHAR2 ,i_premcode IN VARCHAR2 ,i_risk  IN VARCHAR2) RETURN VARCHAR2;
     
     PROCEDURE EMAIL_LOG(i_subject IN VARCHAR2 ,i_message IN VARCHAR2 ) ;
-    
+
+    PROCEDURE EMAIL_LOG(i_subject IN VARCHAR2 ,i_message IN VARCHAR2 ,i_to  IN VARCHAR2) ;
+        
     PROCEDURE get_PA_Claim_v2(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2);
 
     PROCEDURE get_GM_Claim_v2(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2);

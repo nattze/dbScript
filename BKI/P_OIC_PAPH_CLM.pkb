@@ -13,6 +13,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_OIC_PAPH_CLM AS
 PROCEDURE get_PAPH_Claim( i_datefr IN DATE ,i_dateto IN DATE  ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2)
 IS
   o_msg VARCHAR2(250);
+
 BEGIN
     Clear_PAPH_Claim(null ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
     getMain_PAPH_Claim('PA' ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
@@ -24,36 +25,62 @@ END get_PAPH_Claim;
 
 PROCEDURE get_PAPH_Claim( i_datefr IN DATE ,i_dateto IN DATE  ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_cnt_clm OUT NUMBER ,o_cnt_payment OUT NUMBER)
 IS
-  o_msg VARCHAR2(250);
+    o_msg VARCHAR2(250);
+    X NUMBER;
+    myJob VARCHAR2(10);
+    myStartTime   DATE:=sysdate+ (10 / (24 * 60 * 60));    
+    v_job_txt varchar2(3000);
+
 BEGIN
-    Clear_PAPH_Claim(null ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
-    getMain_PAPH_Claim('PA' ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
-    getMain_PAPH_Claim('GM' ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
-    
+
+
+--    Clear_PAPH_Claim(null ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
+--    getMain_PAPH_Claim('PA' ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
+--    getMain_PAPH_Claim('GM' ,i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);
+    v_job_txt := '
+    declare
+        o_rst   varchar2(200);
     begin
-        select  count(*) into o_cnt_clm
-        from OIC_PAPH_CLAIM
-        where fr_date = i_datefr
-        and to_date = i_dateto ;  
-    exception
-        when no_data_found then
-            o_cnt_clm := 0;
-        when others then
-            o_cnt_clm := 0;
-    end ;
+      p_oic_paph_clm.Clear_PAPH_Claim('''',
+                                        '''||i_datefr||''',
+                                        '''||i_dateto||''',
+                                        '''||i_dateto||''',
+                                        '''||i_user||''' ,o_rst);     
+
+      p_oic_paph_clm.getMain_PAPH_Claim(''PA'',
+                                        '''||i_datefr||''',
+                                        '''||i_dateto||''',
+                                        '''||i_dateto||''',
+                                        '''||i_user||''' ,o_rst);  
+
+      p_oic_paph_clm.getMain_PAPH_Claim(''GM'',
+                                        '''||i_datefr||''',
+                                        '''||i_dateto||''',
+                                        '''||i_dateto||''',
+                                        '''||i_user||''' ,o_rst);    
+                                                                                                                  
+      p_oic_paph_clm.getMain_PAPH_Claim('''',
+                                        '''||i_datefr||''',
+                                        '''||i_dateto||''',
+                                        '''||i_dateto||''',
+                                        '''||i_user||''' ,o_rst);       
+                                        
+    end;' ;
     
-    begin
-        select  count(*) into o_cnt_payment
-        from OIC_PAPH_PAYMENT
-        where fr_date = i_datefr
-        and to_date = i_dateto ;  
-    exception
-        when no_data_found then
-            o_cnt_payment := 0;
-        when others then
-            o_cnt_payment := 0;
-    end ;  
-     
+    dbms_output.put_line(v_job_txt);
+      SYS.DBMS_JOB.SUBMIT
+        (
+          job        => X
+         ,what       => v_job_txt
+         ,next_date  => myStartTime
+         ,no_parse   => FALSE
+        );
+    myJob := to_char(X);
+    dbms_output.put_line('myJob='||myJob||' start: '||to_char(myStartTime,'mm/dd/yyyy hh24:mi:ss'));
+    commit;
+  
+--- Gen Email     
+     o_cnt_clm := 0 ; o_cnt_payment := 0;
 END get_PAPH_Claim;
 
 
@@ -62,7 +89,13 @@ IS
   -- t_type  : PA ,GM
 --  i_datefr  date:='1-JAN-14';
 --  i_dateto date:='1-JAN-15';
-  o_msg VARCHAR2(250);
+    o_msg VARCHAR2(250);
+    x_subject   varchar2(1000);
+    x_message   varchar2(1000);  
+    V_RECORD_DATE   DATE:=sysdate;  
+    o_cnt_clm   number;
+    o_cnt_ins   number;
+    o_cnt_payment number;
 BEGIN
     if i_type = 'PA' then      
         get_PA_Claim_v2( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);        
@@ -78,6 +111,50 @@ BEGIN
 --        get_gm_claim_paid( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
 --        get_gm_claim_outcwp( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
 --        get_gm_claim_cwp( i_datefr ,i_dateto ,i_asdate ,i_user ,o_msg);    
+    else
+        x_subject := 'ผลการ Get Data PAGM @'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
+        x_message := 'Criteria fr_date: '||i_datefr||' to_date: '||i_dateto||' as at: '||i_asdate||'<br/>';
+        
+        begin
+            select  count(*) into o_cnt_clm
+            from OIC_PAPH_CLAIM
+            where fr_date = i_datefr
+            and to_date = i_dateto ;  
+        exception
+            when no_data_found then
+                o_cnt_clm := 0;
+            when others then
+                o_cnt_clm := 0;
+        end ;
+
+        begin
+            select  count(*) into o_cnt_ins
+            from OIC_PAPH_INS_CLAIM
+            where fr_date = i_datefr
+            and to_date = i_dateto ;  
+        exception
+            when no_data_found then
+                o_cnt_ins := 0;
+            when others then
+                o_cnt_ins := 0;
+        end ;
+                
+        begin
+            select  count(*) into o_cnt_payment
+            from OIC_PAPH_PAYMENT
+            where fr_date = i_datefr
+            and to_date = i_dateto ;  
+        exception
+            when no_data_found then
+                o_cnt_payment := 0;
+            when others then
+                o_cnt_payment := 0;
+        end ;  
+        
+        x_message := x_message||' record OIC_PAPH_CLAIM = '||o_cnt_clm||'<br/>' ;
+        x_message := x_message||' record OIC_PAPH_PAYMENT = '||o_cnt_payment||'<br/>' ;
+        x_message := x_message||' record OIC_PAPH_INS_CLAIM = '||o_cnt_ins||'<br/>' ;
+        P_OIC_PAPH_CLM.email_log(x_subject ,x_message,i_user);          
     end if;
     o_rst := o_msg ;
 END getMain_PAPH_Claim;
@@ -4575,6 +4652,104 @@ EXCEPTION
  dbms_output.put_line('Error: '||sqlerrm );
 END EMAIL_LOG; --email_notice bancas 
 
+PROCEDURE EMAIL_LOG(i_subject IN VARCHAR2 ,i_message IN VARCHAR2 ,i_to  IN VARCHAR2) IS
+ v_to varchar2(1000);
+ v_cc varchar2(1000);
+ v_bcc varchar2(1000);
+ v_allcc varchar2(2000);
+ v_from varchar2(50):= 'AdminClm@bangkokinsurance.com' ; 
+ v_dbins varchar2(10);
+ v_whatsys varchar2(30);
+ x_body varchar2(3000);
+ x_subject varchar2(1000);
+ x_listmail varchar2(1000);
+ 
+ v_rst varchar2(1000);
+ 
+ v_cnt1 number:=0;
+ 
+ i_sts varchar2(10);
+BEGIN
+ 
+    FOR X in (
+    select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail 
+    from nc_med_email a
+    where module = 'OIC-GROUP' 
+    and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)
+    and direction = 'CC'
+    and CANCEL is null 
+    ) LOOP
+    v_cc := v_cc || x.ldap_mail ||';' ;
+    END LOOP;
+    v_to := core_ldap.GET_EMAIL_FUNC(i_to);
+    
+    if v_to is not null then
+        if instr(v_to ,'@') = 0 then
+            v_to := v_cc;
+        end if;
+    else
+        v_to := v_cc;
+    end if;
+    
+    begin 
+        select UPPER(substr(instance_name,1,8)) instance_name 
+        into v_dbins
+        from v$instance; 
+        if v_dbins='UATBKIIN' then
+        v_whatsys := '[ระบบทดสอบ]';
+--        v_link := p_claim_send_mail.get_link_bkiapp('UAT') ;
+        else 
+        v_whatsys := null;
+--        v_link := p_claim_send_mail.get_link_bkiapp('PROD') ;
+        end if; 
+    exception 
+    when no_data_found then 
+    v_dbins := null;
+    when others then 
+    v_dbins := null;
+    end; 
+
+    x_subject :=i_subject||' '||v_whatsys; 
+    X_BODY := '<!DOCTYPE html>'||
+    '<html lang="en">'||'<head><meta charset="utf-8">'||
+    '<title>'||x_subject||'</title>'||'</head>'||
+    '<body bgcolor="#FFFFCC" style="font-family:''Angsana New'' ">'||
+    '<h2 align="center">'||i_subject||'</h2>'||
+    '<div style="font-size:16pt;">'||i_message||
+    '<br/>'||
+    '</div>'|| 
+    '</body></html>' ;
+
+-- 
+-- if v_dbins='DBBKIINS' then
+-- null; 
+-- else 
+-- v_to := v_bcc; -- for test
+-- v_cc := ''; -- for test
+-- end if; 
+ 
+ dbms_output.put_line(x_body);
+ 
+ dbms_output.put_line('dummy to: '||v_to ); 
+ dbms_output.put_line('allcc: '||v_allcc ); 
+ dbms_output.put_line('dummy cc: '||v_cc ); 
+ dbms_output.put_line('bcc: '||v_bcc ); 
+ if v_to is not null then
+ nc_health_package.generate_email(v_from, v_to ,
+ x_subject, 
+ x_body 
+ ,v_cc
+ ,v_bcc); 
+-- nc_health_paid.WRITE_LOG('NC_APPROVE' ,'PACK','EMAIL_NOTICE_APPRV' ,'step: send email ' ,'v_to:'||v_to||' v_cc:'||v_cc||' I_pay:'||I_pay||' success::' ,'success' ,v_rst) ;
+ end if;
+
+EXCEPTION
+ WHEN OTHERS THEN
+ --NC_HEALTH_PACKAGE.WRITE_LOG('EMAIL' ,'DB Package mail Bancas' ,'Error: '||sqlerrm ,v_logrst);
+ nc_health_paid.WRITE_LOG('P_OIC_PAPH_CLM' ,'PACK','EMAIL_LOG' ,'step: send email ' ,'v_to:'||v_to||' v_cc:'||v_cc||' error::'||sqlerrm ,'error' ,v_rst) ;
+ dbms_output.put_line('Error: '||sqlerrm );
+END EMAIL_LOG; --email_notice bancas 
+
 PROCEDURE get_PA_Claim_v2(i_datefr IN DATE ,i_dateto IN DATE  ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2) IS
 --    i_datefr    DATE:='1-JAN-14';
 --    i_dateto    DATE:= '1-JAN-15' ;
@@ -5117,7 +5292,7 @@ BEGIN
     END LOOP;
     COMMIT;
     x_message := x_message||' finish@'||to_char(sysdate ,'DD-MON-YYYY HH24:MI:SS') ;
-    P_OIC_PAPH_CLM.email_log(x_subject ,x_message);
+--    P_OIC_PAPH_CLM.email_log(x_subject ,x_message);
 END get_PA_Claim_v2;
 
 PROCEDURE get_GM_Claim_V2(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2) IS
@@ -5820,7 +5995,7 @@ BEGIN
     END LOOP;
     COMMIT;
     x_message := x_message||' finish@'||to_char(sysdate ,'DD-MON-YYYY HH24:MI:SS') ;
-    P_OIC_PAPH_CLM.email_log(x_subject ,x_message);
+--    P_OIC_PAPH_CLM.email_log(x_subject ,x_message);
 END GET_GM_CLAIM_V2 ;
 
 FUNCTION check_have_paid(P_CLMNO IN VARCHAR2 ,P_MODE IN VARCHAR2) RETURN BOOLEAN IS
