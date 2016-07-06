@@ -4291,6 +4291,473 @@ EXCEPTION
         
 END GET_PA_RESERVE;
 
+PROCEDURE GET_PA_PAID(P_PAYNO IN VARCHAR2 ,V_CORR_SEQ IN NUMBER ,V_KEY OUT NUMBER , V_RST OUT VARCHAR2) IS
+    --q_str   CLOB;
+
+     cursor c1 is                
+                SELECT  a.pay_no ,a.prem_code1, a.prem_pay1,
+                a.prem_code2, a.prem_pay2, a.prem_code3, a.prem_pay3, a.prem_code4,
+                a.prem_pay4, a.prem_code5, a.prem_pay5, a.prem_code6, a.prem_pay6,
+                a.prem_code7, a.prem_pay7, a.prem_code8, a.prem_pay8, a.prem_code9,
+                a.prem_pay9, a.prem_code10, a.prem_pay10, a.prem_code11, a.prem_pay11,
+                a.prem_code12, a.prem_pay12, a.prem_code13, a.prem_pay13, a.prem_code14,
+                a.prem_pay14, a.prem_code15, a.prem_pay15, a.prem_code16, a.prem_pay16,
+                a.prem_code17, a.prem_pay17, a.prem_code18, a.prem_pay18, a.prem_code19,
+                a.prem_pay19, a.prem_code20, a.prem_pay20, a.prem_code21, a.prem_pay21,
+                a.prem_code22, a.prem_pay22, a.prem_code23, a.prem_pay23, a.prem_code24,
+                a.prem_pay24, a.prem_code25, a.prem_pay25
+                from mis_cpa_paid a
+                where a.pay_no = P_PAYNO
+                and a.corr_seq = V_CORR_SEQ
+--                and (pay_no ,corr_seq ) in (
+--                    select aa.pay_no ,max(aa.corr_seq) from mis_cpa_paid aa where aa.pay_no = a.pay_no
+--                    and cancel is null
+--                    group by aa.pay_no
+--                )      
+                ; 
+ 
+
+    c_rec c1%rowtype;
+
+    TYPE DEFINE_CLMNO IS VARRAY(50) OF VARCHAR2(20);
+    t_clmno   DEFINE_CLMNO ;    
+    TYPE DEFINE_PREMCODE IS VARRAY(50) OF VARCHAR2(20);
+    t_premcode   DEFINE_PREMCODE ;
+    TYPE DEFINE_AMT IS VARRAY(50) OF NUMBER;
+    t_amt   DEFINE_AMT ;    
+    TYPE DEFINE_PREMCOL IS VARRAY(50) OF NUMBER;
+    t_premcol   DEFINE_PREMCOL ;    
+        
+    v_SID number(10);
+    v_Tmp1 VARCHAR2(20);
+    cnt NUMBER:=0;                      
+    BEGIN
+        V_RST := null; 
+       --*** GET SID ***
+        BEGIN
+            --SELECT sys_context('USERENV', 'SID') + to_char(sysdate , 'SS') into v_SID
+            SELECT sys_context('USERENV', 'SID')  into v_SID
+            FROM DUAL;
+        EXCEPTION
+          WHEN  NO_DATA_FOUND THEN
+          v_SID := 0;        
+          WHEN  OTHERS THEN
+          v_SID := 0;
+        END;        
+            
+       t_clmno := DEFINE_CLMNO(); --create empty varray 
+       t_premcode := DEFINE_PREMCODE(); --create empty varray 
+       t_amt := DEFINE_AMT(); --create empty varray 
+       t_premcol := DEFINE_PREMCOL(); --create empty varray        
+       OPEN C1;
+       LOOP
+          FETCH C1 INTO C_REC;
+          EXIT WHEN C1%NOTFOUND;
+            if c_rec.prem_code1 is not null and c_rec.prem_pay1 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;            
+            
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code1 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay1 ;
+
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 1 ;                
+            end if;
+              
+            if c_rec.prem_code2 is not null and c_rec.prem_pay2 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                            
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code2 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay2 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 2;
+            end if;
+            if c_rec.prem_code3 is not null and c_rec.prem_pay3 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code3 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay3 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 3 ;
+            end if;
+        
+            if c_rec.prem_code4 is not null and c_rec.prem_pay4 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code4 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay4 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 4 ;
+            end if;        
+
+            if c_rec.prem_code5 is not null and c_rec.prem_pay5 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code5 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay5 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 5 ;
+            end if;                
+        
+            if c_rec.prem_code6 is not null and c_rec.prem_pay6 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code6 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay6 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 6 ;
+            end if;        
+        
+            if c_rec.prem_code7 is not null and c_rec.prem_pay7 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code7 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay7 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 7 ;
+            end if;        
+
+            if c_rec.prem_code8 is not null and c_rec.prem_pay8 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code8 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay8 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 8 ;
+            end if;       
+        
+            if c_rec.prem_code9 is not null and c_rec.prem_pay9 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code9 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay9 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 9 ;
+            end if;         
+        
+            if c_rec.prem_code10 is not null and c_rec.prem_pay10 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code10 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay10 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 10 ;
+            end if;        
+        
+            if c_rec.prem_code11 is not null and c_rec.prem_pay11 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code11 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay11 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 11 ;
+            end if;
+        
+            if c_rec.prem_code12 is not null and c_rec.prem_pay12 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code12 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay12 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 12 ;
+            end if;        
+        
+            if c_rec.prem_code13 is not null and c_rec.prem_pay13 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code13 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay13 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 13 ;
+            end if;        
+        
+            if c_rec.prem_code14 is not null and c_rec.prem_pay14 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code14 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay14 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 14 ;
+            end if;        
+        
+            if c_rec.prem_code15 is not null and c_rec.prem_pay15 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code15 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay15 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 15 ;
+            end if;        
+                
+            if c_rec.prem_code16 is not null and c_rec.prem_pay16 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code16 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay16 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 16 ;
+            end if;
+        
+            if c_rec.prem_code17 is not null and c_rec.prem_pay17 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code17 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay17 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 17 ;
+            end if;        
+                
+            if c_rec.prem_code18 is not null and c_rec.prem_pay18 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code18 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay18 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 18 ;
+            end if;
+                
+            if c_rec.prem_code19 is not null and c_rec.prem_pay19 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code19 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay19 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 19 ;
+            end if;        
+        
+            if c_rec.prem_code20 is not null and c_rec.prem_pay20 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code20 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay20 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 20 ;
+            end if;
+        
+            if c_rec.prem_code21 is not null and c_rec.prem_pay21 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code21 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay21 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 21 ;
+            end if;        
+        
+            if c_rec.prem_code22 is not null and c_rec.prem_pay22 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code22 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay22 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 22 ;
+            end if;        
+
+            if c_rec.prem_code23 is not null and c_rec.prem_pay23 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code23 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay23 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 23 ;
+            end if;                
+        
+            if c_rec.prem_code24 is not null and c_rec.prem_pay24 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code24 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay24 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 24 ;
+            end if;        
+        
+            if c_rec.prem_code25 is not null and c_rec.prem_pay25 is not null then
+                t_clmno.EXTEND(1);
+                t_clmno(t_clmno.LAST) := c_rec.pay_no ;      
+                  
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code25 ;
+                        
+                t_amt.EXTEND(1);
+                t_amt(t_amt.LAST) := c_rec.prem_pay25 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 25 ;
+            end if;        
+        
+       END LOOP;
+       --DBMS_OUTPUT.PUT_LINE('COUNT='||t_premcode.COUNT);
+       --q_str    := '';
+       cnt:=0;
+       FOR I in 1..t_premcode.COUNT LOOP
+            cnt := cnt+1;            
+            --DBMS_OUTPUT.PUT_LINE('C2 CLMNO='||t_clmno(cnt)||' PREMCODE'||cnt||' '||t_premcode(cnt)||' SUM_INS= '||t_amt(cnt));
+             BEGIN   --NC_H_HISTORY_TMP  
+                insert into NC_H_HISTORY_TMP(SID, CLM_NO, PREM_CODE, AMOUNT ,TYPE)
+                values (v_SID ,t_clmno(cnt) ,t_premcode(cnt) ,t_amt(cnt) ,'P');
+             EXCEPTION
+               WHEN  OTHERS THEN
+               --OPEN P_COVER_PA  FOR SELECT '' PREMCODE ,'' SUMINS ,'' PREMCOL FROM DUAL;
+               V_KEY := 0 ; 
+               rollback;
+             END;     
+       END LOOP;
+       
+        t_premcode.DELETE;
+        t_amt.DELETE;
+        t_clmno.DELETE;
+        t_premcol.DELETE;
+        
+        BEGIN  -- check found
+           
+           SELECT max(PREM_CODE) into v_Tmp1
+           FROM   NC_H_HISTORY_TMP
+           WHERE   SID = V_SID
+           AND ROWNUM=1;              
+          
+        EXCEPTION
+          WHEN  NO_DATA_FOUND THEN
+            V_KEY :=0 ;
+            V_RST := 'Error :'||sqlerrm;
+          WHEN  OTHERS THEN
+            V_KEY :=0 ;
+            V_RST := 'Error :'||sqlerrm;
+        END;   -- end check found
+        
+        IF   nvl(v_Tmp1,'N') <> 'N' THEN              
+            commit;
+            V_KEY := v_SID ;
+        ELSE
+            V_KEY :=0 ;
+            V_RST := 'N';
+        END IF;
+            
+        --gen_cursor(q_str , P_CUR);
+EXCEPTION
+    WHEN OTHERS THEN
+        V_RST := 'Error :'||sqlerrm;                
+        V_KEY :=0 ;      
+        
+END GET_PA_PAID;
+
+
 FUNCTION hasINS_DATA(P_CLMNO IN VARCHAR2) RETURN BOOLEAN IS
     dummyClaim  varchar2(20);
 BEGIN
@@ -4811,6 +5278,7 @@ PROCEDURE get_PA_Claim_v2(i_datefr IN DATE ,i_dateto IN DATE  ,i_asdate IN DATE 
     
     m_payno varchar2(20);
     m_corr_date date;
+    m_corr_seq number;
     v_skip  boolean:=false;
     v_foundpayee    boolean:=false;
     v_payeename varchar2(250);
@@ -4820,16 +5288,16 @@ BEGIN
     x_message := x_message||' start@'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
     
     FOR M1 in (
-        select a.clm_no ,'' pay_no ,fleet_seq ,recpt_seq ,a.pol_no ,a.pol_run ,reg_date ,trunc(c.corr_date) corr_date ,a.loss_date ,c.clm_sts , dis_code ,risk_code ,c.tot_res
+        select a.clm_no ,'' pay_no ,fleet_seq ,recpt_seq ,a.pol_no ,a.pol_run ,reg_date ,nvl(c.close_date ,trunc(c.corr_date)) corr_date ,a.loss_date ,c.clm_sts , dis_code ,risk_code ,c.tot_res
         ,decode(ipd_flag,'O','OPD','I','IPD','OPD') CLM_TYPE ,a.clm_date ,a.prod_type ,a.close_date ,c.tot_paid
         from mis_clm_mas a ,mis_cpa_res b ,mis_clm_mas_seq c
         where a.clm_no = b.clm_no and a.clm_no = c.clm_no and a.prod_grp = '0' 
         and a.prod_type in (select prod_type from clm_grp_prod where sysid='PA') 
-        and c.corr_date between i_datefr and  i_dateto
+        and nvl(c.close_date ,c.corr_date) between i_datefr and  i_dateto
         and (b.clm_no ,b.revise_seq) in (select bb.clm_no ,max(bb.revise_seq) from mis_cpa_res bb where bb.clm_no =b.clm_no 
             and bb.corr_date <= i_asdate group by bb.clm_no)
         and c.corr_seq in (select max(cc.corr_seq) from mis_clm_mas_seq cc where cc.clm_no = c.clm_no 
-            and cc.corr_date  <= i_asdate)            
+            and nvl(cc.close_date ,cc.corr_date)  <= i_asdate)            
 --        and b.corr_date <= i_asdate
         and a.channel <> '9'
         and pol_yr > 2010 
@@ -5159,25 +5627,31 @@ BEGIN
                 
                 if v_foundpayee then    -- filter data , have payee data
                     begin
-                        select trunc(pay_date) into V_CHEQUEDATE
+                        select trunc(pay_date) ,corr_seq into V_CHEQUEDATE ,M_CORR_SEQ
                         from mis_clm_paid a
                         where pay_no = M_PAYNO and
-                        a.corr_seq in (select max(aa.corr_seq) from mis_clm_paid aa where aa.pay_no = a.pay_no group by aa.pay_no);
+                        a.corr_seq in (select max(aa.corr_seq) from mis_clm_paid aa where aa.pay_no = a.pay_no 
+                        and aa.corr_date <=  i_asdate group by aa.pay_no);
                         
                         if V_CHEQUEDATE is null then
-                            V_CHEQUEDATE := M1.close_date;
+                            V_CHEQUEDATE := M1.close_date;                          
                         end if; 
                     exception
                         when no_data_found then
                             V_CHEQUEDATE := M1.close_date;
+                             M_CORR_SEQ := 0;
                         when others then
                             V_CHEQUEDATE := M1.close_date;
+                             M_CORR_SEQ := 0;
                     end;    
             
                     -- ===== Path get prem code ====
-                    nc_health_paid.get_pa_reserve(M_PAYNO,
+--                    nc_health_paid.get_pa_reserve(M_PAYNO,
+--                                                    v_sid,
+--                                                    p1_rst);          
+                    p_oic_paph_clm.get_pa_paid(M_PAYNO, M_CORR_SEQ ,
                                                     v_sid,
-                                                    p1_rst);          
+                                                    p1_rst);                                                           
                             
                     if p1_rst is null then
                     FOR p1 IN (select CLM_NO PAY_NO ,PREM_CODE ,AMOUNT
@@ -5367,15 +5841,15 @@ BEGIN
     x_message := x_message||' start@'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
     
     FOR M1 in (
-        select distinct  trunc(a.clm_date) clm_date ,trunc(a.close_date) close_date ,state_seq ,trunc(c.corr_date) corr_date ,a.clm_sts sts_mas ,c.clm_sts sts_seq 
+        select distinct  trunc(a.clm_date) clm_date ,trunc(a.close_date) close_date ,state_seq ,nvl(c.close_date ,trunc(c.corr_date)) corr_date ,a.clm_sts sts_mas ,c.clm_sts sts_seq 
         ,a.prod_type ,'' pay_no 
         ,a.clm_no ,a.pol_no ,a.pol_run ,a.recpt_seq ,reg_date ,c.clm_sts ,'' risk_code ,c.tot_paid ,c.tot_res
         from mis_clm_mas a ,clm_medical_res b ,mis_clm_mas_seq c
         where a.clm_no = b.clm_no and a.clm_no = c.clm_no and a.prod_grp = '0' 
         and c.corr_seq in (select max(cc.corr_seq) from mis_clm_mas_seq cc where cc.clm_no = c.clm_no 
-            and cc.corr_date  <= i_asdate) 
+            and nvl(cc.close_date ,cc.corr_date)   <= i_asdate) 
         and a.prod_type in (select prod_type from clm_grp_prod where sysid='GM') 
-        and c.corr_date between i_datefr and  i_dateto
+        and nvl(c.close_date ,c.corr_date) between i_datefr and  i_dateto
         and (b.clm_no ,b.state_seq) in (select bb.clm_no ,max(bb.state_seq) from clm_medical_res bb where bb.clm_no =b.clm_no 
         and bb.corr_date <=  i_asdate group by bb.clm_no)
         and b.corr_date <=  i_asdate
