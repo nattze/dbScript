@@ -2024,7 +2024,113 @@ BEGIN
         return 'N';
     end if;
 END IS_APPROVED; 
-           
+  
+FUNCTION CAN_MAKE_NEW_PAYMENT(i_clmno IN varchar2 ,o_rst OUT varchar2) RETURN BOOLEAN IS
+ v_return boolean:=true;
+ v_found varchar2(20);
+BEGIN
+
+ --return true ; -- bypass For Test waiting for adjust add read on acc_clm_payee_tmp
+ 
+ begin
+ select remark into v_found
+ from clm_constant a
+ where key like 'NONPAEXCEPT%'
+ and remark = i_clmno
+ and rownum=1;
+ if v_found is not null then return TRUE; end if;
+ exception
+ when no_data_found then
+ v_found := null;
+ when others then
+ v_found := null;
+ end;
+ 
+-- FOR c1 IN (
+-- select pay_no ,sum(pay_total) pay_amt
+-- from mis_clm_paid a
+-- where clm_no = I_CLMNO
+-- and pay_sts ='0' 
+-- and (a.pay_no ,a.corr_seq) in (select aa.pay_no ,max(aa.corr_seq) from mis_clm_paid aa where aa.pay_no = a.pay_no 
+-- and aa.pay_sts ='0' 
+-- group by aa.pay_no) 
+-- group by pay_no
+-- having sum(pay_total) >0 
+-- ) LOOP
+--
+-- begin
+-- select payment_no
+-- into v_found
+-- from acr_name_mas
+-- where payment_no = c1.pay_no and rownum=1;
+-- exception
+-- when no_data_found then
+-- v_found := null;
+-- when others then
+-- v_found := null;
+-- dbms_output.put_line('error'||sqlerrm);
+-- end;
+-- 
+-- if v_found is null then -- ไม่พบการจ่าย 
+-- v_return := false;
+-- o_rst := 'มีเลขที่จ่าย '||c1.pay_no || 'ค้าง draft ในระบบ ไม่สามารถสร้างเลขจ่ายใหม่ได้ !! ';
+-- end if;
+-- 
+-- END LOOP; --c1
+
+ FOR c1 IN (
+ select a.pay_no ,sum(pay_amt) pay_amt
+ from nc_payment a
+ where clm_no = I_CLMNO
+ and type like 'NCNATTYPECLM%'
+ and (a.pay_no ,a.trn_seq) = (select (aa.pay_no) , max(aa.trn_seq) from nc_payment aa where aa.pay_no = a.pay_no group by aa.pay_no)
+ group by a.pay_no having sum(a.pay_amt)>0
+ ) LOOP
+
+ begin
+ select payment_no
+ into v_found
+ from acc_clm_tmp
+ where payment_no = c1.pay_no and rownum=1;
+ exception
+ when no_data_found then
+ v_found := null;
+ when others then
+ v_found := null;
+ dbms_output.put_line('error'||sqlerrm);
+ end;
+ 
+/* if v_found is null then -- ไม่พบการจอนุมัติรอ post
+ begin
+ select payment_no
+ into v_found
+ from acr_name_mas
+ where payment_no = c1.pay_no and rownum=1;
+ exception
+ when no_data_found then
+ v_found := null;
+ when others then
+ v_found := null;
+ dbms_output.put_line('error'||sqlerrm);
+ end;
+ end if;*/
+ 
+ if v_found is null then -- ไม่พบการจ่าย ใน ACR 
+ v_return := false;
+ o_rst := 'มีเลขที่จ่าย '||c1.pay_no || 'ค้าง draft ในระบบ ไม่สามารถสร้างเลขจ่ายใหม่ได้ !! ';
+ end if;
+ 
+ END LOOP; --c1
+ 
+ -- if i_clmno = '201501551000029' then
+ -- v_return := true; o_rst := null;
+ -- end if;
+
+ return v_return;
+END CAN_MAKE_NEW_PAYMENT;
+
+
+         
 END P_NON_PA_APPROVE;
 /
 

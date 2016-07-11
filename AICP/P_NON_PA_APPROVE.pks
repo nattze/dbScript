@@ -1,6 +1,6 @@
-CREATE OR REPLACE PACKAGE P_NON_PA_APPROVE AS
+CREATE OR REPLACE PACKAGE AICP.P_NON_PA_APPROVE AS
 /******************************************************************************
- NAME: AICP.P_NON_PA_APPROVE
+ NAME: P_NON_PA_APPROVE
  PURPOSE: For Approve Non PA Claim 
 
  REVISIONS:
@@ -72,6 +72,8 @@ FUNCTION CANCEL_PAYMENT(v_clmno IN varchar2 ,v_payno IN varchar2 ,v_rst OUT VARC
 
 FUNCTION IS_APPROVED(vClmNo in varchar2 ,vPayNo in varchar2 )  RETURN VARCHAR2 ; -- Y ,N
  
+FUNCTION CAN_MAKE_NEW_PAYMENT(i_clmno IN varchar2 ,o_rst OUT varchar2) RETURN BOOLEAN;
+
 END P_NON_PA_APPROVE;
 /
 
