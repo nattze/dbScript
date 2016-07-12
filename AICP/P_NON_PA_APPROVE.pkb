@@ -2129,8 +2129,285 @@ BEGIN
  return v_return;
 END CAN_MAKE_NEW_PAYMENT;
 
+PROCEDURE EMAIL_NOTICE_APPRV(i_clm IN VARCHAR2,
+                             i_pay IN VARCHAR2,
+                             i_sts IN VARCHAR2) IS
+  v_to          varchar2(1000);
+  v_cc          varchar2(1000);
+  v_bcc         varchar2(1000);
+  v_allcc       varchar2(2000);
+  v_from        varchar2(50) := 'AdminClm@bangkokinsurance.com';
+  v_dbins       varchar2(10);
+  v_whatsys     varchar2(30);
+  x_body        varchar2(3000);
+  x_subject     varchar2(1000);
+  v_logrst      varchar2(200);
+  v_link        varchar2(200);
+  v_clmmen      varchar2(10);
+  v_apprv       varchar2(10);
+  v_remark      varchar2(500);
+  v_clmmen_name varchar2(250);
+  v_apprv_name  varchar2(250);
+  v_pay_descr   varchar2(100);
+  v_rst         varchar2(1000);
 
+  v_cnt1 number := 0;
+BEGIN
+
+  FOR X in (select decode(user_id,
+                          null,
+                          email,
+                          p_non_pa_approve.GET_USER_EMAIL(user_id)) ldap_mail
+              from nc_med_email a
+             where module = 'NONPA-APPRV'
+--               and sub_module = (select UPPER(substr(instance_name, 1, 8)) instance_name
+--                                   from v$instance)
+               and direction = 'BCC'
+               and CANCEL is null) LOOP
+    v_bcc := v_bcc || x.ldap_mail || ';';
+  END LOOP;
+
+  begin
+    select remark
+      into v_dbins
+      from clm_constant
+     where key = 'PROD_SWITCH';
+  exception
+    when no_data_found then
+      v_dbins := null;
+    when others then
+      v_dbins := null;
+  end;
+
+     
+    if v_dbins = 'ON' then
+      v_whatsys := null;
+      v_link    := p_non_pa_approve.get_link_bkiapp('PROD');
+    else
+      v_whatsys := '[ระบบทดสอบ]';
+      v_link    := p_non_pa_approve.get_link_bkiapp('UAT');      
+    end if;
+    
+  begin
+    select clm_men,
+           p_non_pa_approve.get_user_name(a.clm_men),
+           approve_id,
+           p_non_pa_approve.get_user_name(a.approve_id),
+           remark
+      into v_clmmen, v_clmmen_name, v_apprv, v_apprv_name, v_remark
+      from nc_payment_apprv a
+     where a.clm_no = I_clm
+       and a.pay_no = I_pay
+       and a.trn_seq = (select max(b.trn_seq)
+                          from nc_payment_apprv b
+                         where a.clm_no = b.clm_no
+                           and a.pay_no = b.pay_no);
+  
+  exception
+    when no_data_found then
+      null;
+    when others then
+      null;
+  end;
+
+  if i_sts = 'NONPASTSAPPRV03' then
+    -- send email to all loop staff 
+    for e1 in (select distinct p_non_pa_approve.GET_USER_EMAIL(clm_men) e_mail
+                 from nc_payment_apprv a
+                where a.clm_no = I_clm
+                  and a.pay_no = I_pay) loop
+      v_cnt1 := v_cnt1 + 1;
+      if v_cnt1 = 1 then
+        v_allcc := e1.e_mail || ';';
+      else
+        v_allcc := v_allcc || e1.e_mail || ';';
+      end if;
+    end loop;
+  else
+    v_allcc := '';
+  end if;
+
+  if i_sts in ('NONPASTSAPPRV02', 'NONPASTSAPPRV05') then
+    -- Send Apprv
+    if i_sts = 'NONPASTSAPPRV05' then
+      x_subject := 'เรื่องขออนุมัติการจ่ายค่าสินไหม ' || '(อนุมัติผ่าน)' ||
+                   v_whatsys;
+    else
+      x_subject := 'เรื่องขออนุมัติการจ่ายค่าสินไหม ' || v_whatsys;
+    end if;
+  
+    x_body := '<HTML>' || '<HEAD>' ||
+              '<TITLE>Approval Non PA Claim Payment</TITLE>' || '</HEAD>' ||
+              '<BODY bgcolor=''#FFFFCC''>' ||
+              ' <font color=#0000CC><h3>ระบบ Approval Non PA Claim Payment </h3></font>' ||
+              '<P>' || ' เรียน คุณ ' || v_apprv_name || '<br />' || '&' ||
+              'nbsp;' || '&' || 'nbsp;' || '&' || 'nbsp;' || '&' || 'nbsp;' || '&' ||
+              'nbsp;' || 'ขณะนี้ท่านมีรายการที่ต้องพิจารณาในระบบ' ||
+              '<font color=#009900> Approval Non PA Claim Payment' ||
+              '</font> ' || 'ซึ่งส่งมาจาก คุณ ' || v_clmmen_name || '&' ||
+              'nbsp;' || '&' || 'nbsp;' || '' || '</br>' || '&' || 'nbsp;' || '&' ||
+              'nbsp;' || '&' || 'nbsp;' || '&' || 'nbsp;' || '&' || 'nbsp;' ||
+              '<font color=#0033CC >' || 'Claim No. : ' || '</font>' ||
+              '<font color=#CC0000>' || I_clm || '</font>' || '&' ||
+              'nbsp;' || '&' || 'nbsp;' || '&' || 'nbsp;' || '&' || 'nbsp;' || '&' ||
+              'nbsp;' || '<font color=#0033CC>' || 'Payment No. : ' ||
+              '</font>' || '<font color=#CC0000>' || I_pay || '</font>' ||
+              '</P>' || '<hr/>' || '<P>' || '&' || 'nbsp;' || '&' ||
+              'nbsp;' || '&' || 'nbsp;' || '&' || 'nbsp;' || '&' || 'nbsp;' ||
+              'กรุณาเข้าระบบ Approval Non PA Claim Payment บน ' || '&' ||
+              'nbsp;' || '&' || 'nbsp;' ||
+              '<font color=#0033CC; font-weight=bold">' || '<A HREF="' ||
+              v_link || '">' || 'BKI App On Web' || '</A>' || '</font>' || '&' ||
+              'nbsp;' || '&' || 'nbsp;' || 'เพื่อพิจารณา' || '</P>' ||
+              '</BODY>' || '</HTML>';
+    v_to   := core_ldap.GET_EMAIL_FUNC(v_apprv);
+    v_cc   := core_ldap.GET_EMAIL_FUNC(v_clmmen);
+  elsif i_sts in ('NONPASTSAPPRV03', 'NONPASTSAPPRV06', 'NONPASTSAPPRV04') then
+    -- Apprv ,disapprv
+    if i_sts = 'NONPASTSAPPRV03' then
+      v_pay_descr := 'อนุมัติการจ่ายค่าสินไหม';
+    elsif i_sts = 'NONPASTSAPPRV06' then
+      v_pay_descr := 'อนุมัติการจ่ายค่าสินไหม (อนุมัติผ่าน)';
+    elsif i_sts = 'NONPASTSAPPRV04' then
+      v_pay_descr := 'ไม่อนุมัติการจ่ายค่าสินไหม';
+    end if;
+  
+    x_subject := 'เรื่องผลการอนุมัติการจ่ายค่าสินไหม ' || v_whatsys;
+    x_body    := '<HTML>' || '<HEAD>' ||
+                 '<TITLE>Approval Non PA Claim Payment</TITLE>' ||
+                 '</HEAD>' || '<BODY bgcolor=''#FFFFCC''>' ||
+                 ' <font color=#0000CC><h3>ระบบ Approval Non PA Claim Payment </h3></font>' ||
+                 '<P>' || ' ถึง คุณ ' || v_clmmen_name || '<br />' || '&' ||
+                 'nbsp;' || '&' || 'nbsp;' || '&' || 'nbsp;' || '&' ||
+                 'nbsp;' || '&' || 'nbsp;' ||
+                 'ตามที่ท่านได้ขออนุมัติงานผ่านทางระบบ ' ||
+                 '<font color=#009900>' ||
+                 ' Approval Non PA Claim Payment ' || '</font>' ||
+                 ' ขณะนี้ ' || '<br />' || 'ผลการขออนุมัติของท่าน คือ ' ||
+                 '<font color=#FF0000>' || v_pay_descr || '</font>' ||
+                 ' <br/>' || 'ซึ่งส่งมาจาก คุณ ' || v_apprv_name ||
+                 ' <br/>' || 'หมายเหตุ : ' || v_remark || ' <br/>' ||
+                 'ท่านสามารถตรวจสอบได้ที่ ระบบ Approval Non PA Claim Payment' || '&' ||
+                 'nbsp;' || '&' || 'nbsp;' || '&' || 'nbsp;' || '&' ||
+                 'nbsp;' || '&' || 'nbsp; <br/>' || '<font color=#0033CC >' ||
+                 'Claim No. : ' || '</font>' || '<font color=#CC0000>' ||
+                 I_clm || '</font>' || '&' || 'nbsp;' || '&' || 'nbsp;' || '&' ||
+                 'nbsp;' || '&' || 'nbsp;' || '&' || 'nbsp;' ||
+                 '<font color=#0033CC>' || 'Payment No. : ' || '</font>' ||
+                 '<font color=#CC0000>' || I_pay || '</font>' || '</P>' ||
+                 '<hr/>' || '<P>' || '&' || 'nbsp;' || '&' || 'nbsp;' || '&' ||
+                 'nbsp;' || '&' || 'nbsp;' || '&' || 'nbsp;' ||
+                 'กรุณาเข้าระบบ Approval Non PA Claim Payment ' || ' บน ' || '&' ||
+                 'nbsp;' || '&' || 'nbsp;' ||
+                 '<span style ="color=#0033CC; font-weight=bold">' ||
+                 '<A HREF="' || v_link || '">BKI App On Web' || '</A>' ||
+                 '</span>' || '&' || 'nbsp;' || '&' || 'nbsp;' ||
+                 'เพื่อรับทราบผลการพิจารณา' || '</P>' || '</BODY>' ||
+                 '</HTML>';
+    v_to      := p_non_pa_approve.GET_USER_EMAIL(v_clmmen);
+    v_cc      := p_non_pa_approve.GET_USER_EMAIL(v_apprv);
+  end if;
+
+  if v_dbins = 'ON' then
+    null;
+  else
+    v_to := v_bcc; -- for test
+    v_cc := ''; -- for test
+  end if;
+  -- dbms_output.put_line('to: '||v_to ); 
+  -- dbms_output.put_line('allcc: '||v_allcc ); 
+  -- dbms_output.put_line('cc: '||v_cc ); 
+  -- dbms_output.put_line('bcc: '||v_bcc ); 
+  if v_to is not null then
+    nc_health_package.generate_email(v_from,
+                                     v_to,
+                                     x_subject,
+                                     x_body,
+                                     v_cc,
+                                     v_bcc);
+    nc_health_paid.WRITE_LOG('NC_APPROVE',
+                             'PACK',
+                             'EMAIL_NOTICE_APPRV',
+                             'step: send email ',
+                             'v_to:' || v_to || ' v_cc:' || v_cc ||
+                             ' I_pay:' || I_pay || ' success::',
+                             'success',
+                             v_rst);
+  
+    if v_allcc is not null and v_cnt1 > 1 then
+      -- inform email for colleage
+      nc_health_package.generate_email(v_from,
+                                       v_allcc,
+                                       x_subject || ' (FYI)',
+                                       x_body,
+                                       null,
+                                       v_bcc);
+      nc_health_paid.WRITE_LOG('NC_APPROVE',
+                               'PACK',
+                               'EMAIL_NOTICE_APPRV',
+                               'step: send FYI email ',
+                               'v_to:' || v_to || ' v_cc:' || v_cc ||
+                               ' I_pay:' || I_pay || ' success::',
+                               'success',
+                               v_rst);
+    end if;
+  end if;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    --NC_HEALTH_PACKAGE.WRITE_LOG('EMAIL' ,'DB Package mail Bancas' ,'Error: '||sqlerrm ,v_logrst);
+    nc_health_paid.WRITE_LOG('NC_APPROVE',
+                             'PACK',
+                             'EMAIL_NOTICE_APPRV',
+                             'step: send email ',
+                             'v_to:' || v_to || ' v_cc:' || v_cc ||
+                             ' I_pay:' || I_pay || ' error::' || sqlerrm,
+                             'error',
+                             v_rst);
+    dbms_output.put_line('Error: ' || sqlerrm);
+END EMAIL_NOTICE_APPRV; --email_notice bancas
+
+FUNCTION GET_LINK_BKIAPP(i_db IN VARCHAR2) Return Varchar2 IS
+   v_url varchar2(100);     
+BEGIN         
+  select descr     
+     into  v_url     
+     from clm_constant     
+  where key =  'LINKWEBBKIAPP_'||i_db;        
+ return(v_url);     
+EXCEPTION     
+ when no_data_found then     
+          return(null);  
+ when others then     
+          return(null);   
+END GET_LINK_BKIAPP;
+
+FUNCTION GET_USER_NAME(I_id IN varchar2) RETURN varchar2 IS     
+oName varchar2(200);     
+BEGIN     
+select  title_e ||' '|| name_e into oName     
+from bkiuser     
+where user_id = I_Id;     
          
+RETURN oName;     
+EXCEPTION     
+   WHEN OTHERS then     
+      return (null);     
+END GET_USER_NAME;  
+
+FUNCTION GET_USER_EMAIL(I_id IN varchar2) RETURN varchar2 IS     
+oName varchar2(200);     
+BEGIN     
+select  email into oName     
+from bkiuser     
+where user_id = I_Id;     
+         
+RETURN oName;     
+EXCEPTION     
+   WHEN OTHERS then     
+      return (null);     
+END GET_USER_EMAIL; 
+           
 END P_NON_PA_APPROVE;
 /
 
