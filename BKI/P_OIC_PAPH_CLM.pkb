@@ -5835,6 +5835,11 @@ PROCEDURE get_GM_Claim_V2(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,
     m_corr_date date;
     v_skip  boolean:=false;    
     v_chkrec    boolean;
+    v_chkrec2    boolean;
+    v_sumpaid    number;
+    v_sumpayee  number;
+    v_cntrec    number:=0;
+    
 BEGIN
     x_subject := 'run get_gm_claim v2 @'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
     x_message := 'PA Claim v2 === fr_date: '||i_datefr||' to_date: '||i_dateto||' as at: '||i_asdate||'<br/>';
@@ -5998,100 +6003,7 @@ BEGIN
                               
                 END IF;
             ELSIF V_CLAIMGROUP = 'P' and V_CLAIMAMT = 0 THEN -- case CWP.
-                null; -- hold for IMD request not send claimamt = 0
---                FOR c_paid IN ( 
---                    select '' pay_no , fleet_seq ,dis_code ,bene_code ,clm_pd_flag CLM_TYPE ,loss_date ,state_date ,nvl(res_amt,0) res_amt
---                    from clm_medical_res a
---                    where  clm_no =M1.CLM_NO
---                    and (clm_no ,state_seq) in (select clm_no ,max(aa.state_seq) from clm_medical_res aa where aa.clm_no =a.clm_no 
---                    and aa.corr_date <=  i_asdate group by aa.clm_no)
---                    and nvl(res_amt,0) > 0 
---                    order by res_amt               
---                )  LOOP
---                    -- ===== Path get prem code ====
---                    v_premcode := c_paid.bene_code;
---                    -- ===== End Path get prem code ====
---                    v_runclmseq := v_runclmseq+1;         
---                    V_CLAIMSEQ := V_CLAIMSEQ+1;
---                    V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('GM',c_paid.CLM_TYPE ,v_premcode);
---                    V_INSUREDSEQ := c_paid.fleet_seq;
---                    V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
---                    V_NOTIFYDATE := m1.reg_date; --to_date(m1.reg_date,'yyyymmdd');
-----                    V_CLAIMSTATUS := '2';  -- Reserve claim        
---                    V_LOSSDATE :=  c_paid.loss_date; --to_date(m1.loss_date,'yyyymmdd');
---                    V_CLAIMCAUSE := c_paid.dis_code ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
---                    V_ICD10CODE1 := c_paid.dis_code;
---                    V_CLAIMAMT := 0;    --CWP 
---                    V_TRANSACTIONSTATUS  :='N';  
---                    V_REFERENCENUMBER    :=null;     
---                    V_DEDUCTIBLEAMT :=0;       
---                    --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5
---
---                    V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
---                    ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
---                    V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
---                    ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
---                                            
---                    V_ACCOUNTINGDATE := c_paid.state_date ;
---                            
---                    p_oic_paph_clm.get_citizen('GM' ,m1.pol_no ,m1.pol_run ,c_paid.fleet_seq ,m1.recpt_seq ,c_paid.loss_date  ,M1.CLM_NO ,M1.PAY_NO ,V_INSUREDNAME ,V_INSUREDCITIZENID);
---                    
---                    if c_paid.clm_type = 'OPD' then
---                        V_TREATMENTTYPE := '1';
---                    elsif c_paid.clm_type = 'IPD' then
---                        V_TREATMENTTYPE := '2';
---                    else
---                        V_TREATMENTTYPE := '3';
---                    end if;
---
---                    INSERT INTO OIC_PAPH_CLAIM
---                    ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
---                    COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
---                    PROCODURECODE1 ,
---                    CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
---                    VALUES 
---                    (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMGROUP , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
---                    V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
---                    V_PROCODURECODE1 ,
---                    V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
---
---                    INSERT INTO OIC_PAPH_CLAIM_HIST
---                    ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
---                    COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
---                    PROCODURECODE1 ,
---                    CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
---                    VALUES 
---                    (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,V_CLAIMGROUP , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
---                    V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
---                    V_PROCODURECODE1 ,
---                    V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user )          ;
---                                                                  
-----                    V_CLAIMPAIDSEQ :=1;
---                END LOOP; -- C_paid
---                    
-----                dbms_output.put_line(v_cnt||' clm_no: '||M1.clm_no||' poltype: '||v_poltype||' subclass:'||V_SUBCLASS
-----                ||' clmtype:'||V_CLAIMTYPE||' prem:'||v_premcode||' lossdate:'||V_LOSSDATE);   
---
---                IF p_oic_paph_clm.hasINS_data(V_CLAIMNUMBER) THEN
---                    V_TRANSACTIONSTATUS2 := 'U';        
---                ELSE    
---                    V_TRANSACTIONSTATUS2 := 'N';  
---                    
---                    INSERT INTO OIC_PAPH_INS_CLAIM
---                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
---                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
---                    VALUES 
---                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
---                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);
---
---                    INSERT INTO OIC_PAPH_INS_CLAIM_HIST
---                    ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  INSUREDSEQ  ,  POLICYNUMBER ,  INSUREDNAME  ,  
---                    INSUREDCITIZENID ,  TREATMENTTYPE ,  DEDUCTIBLEAMT ,  TRANSACTIONSTATUS ,  REFERENCENUMBER  ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
---                    VALUES 
---                    (V_COMPANY ,V_MAINCLASS  ,V_SUBCLASS  ,V_CLAIMNUMBER ,V_INSUREDSEQ,V_POLICYNUMBER ,V_INSUREDNAME  ,
---                    V_INSUREDCITIZENID ,V_TREATMENTTYPE ,V_DEDUCTIBLEAMT ,V_TRANSACTIONSTATUS2 ,V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user);                        
---                              
---                END IF;                                                            
+                null; -- hold for IMD request not send claimamt = 0                                                
             ELSIF V_CLAIMGROUP = 'P' THEN -- case Close Paid.
                 IF not P_OIC_PAPH_CLM.check_have_EC(M1.CLM_NO) THEN
                     V_CLAIMGROUP := 'EC';
@@ -6209,7 +6121,34 @@ BEGIN
                         m_payno := '';
                         m_corr_date := null;
                 end;
-                            
+                
+                -- ********* check Advance Version 2 แบบไม่มี recov amt
+                v_chkrec2 := false;
+                BEGIN
+                    select  sum(pay_amt) into v_sumpaid
+                    from clm_gm_paid a
+                    where pay_no = M_PAYNO
+                    and corr_seq in (select max(aa.corr_seq) from clm_gm_paid aa where aa.pay_no =a.pay_no 
+                    and aa.corr_date <= i_asdate group by aa.pay_no)    ;
+
+                    select sum(payee_amt) into v_sumpayee
+                    from clm_gm_payee a
+                    where pay_no =M_PAYNO  and payee_code is not null 
+                    and nvl(payee_amt,0) >0  ;
+                                                            
+                EXCEPTION
+                    when no_data_found then
+                        v_sumpaid := 0;
+                        v_sumpayee := 0;
+                    when others then
+                        v_sumpaid :=0;
+                        v_sumpayee := 0;
+                END;
+                if (v_sumpayee - v_sumpaid >0) and v_sumpaid <> 0 then  -- case Advance 
+                    v_chkrec2 := true;
+                end if ;
+                -- ********* check Advance Version 2 แบบไม่มี recov amt เตรียมนำ Sum Payee ไปใช้แทน tot_paid
+                v_cntrec :=0;            
                 v_chkrec := false;        
                 FOR c_paid IN (
                     select  pay_no, fleet_seq ,dis_code ,bene_code ,clm_pd_flag CLM_TYPE ,loss_date ,date_paid pay_date ,nvl(pay_amt,0) pay_amt
@@ -6242,7 +6181,17 @@ BEGIN
                     V_CLAIMCAUSE := c_paid.dis_code ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
                     V_ICD10CODE1 := c_paid.dis_code;
         --            V_CLAIMAMT := m1.tot_paid;
-                    V_CLAIMAMT := c_paid.pay_amt;
+                    v_cntrec := v_cntrec+1;
+                    IF V_CHKREC2 THEN
+                        if v_cntrec =1 then
+                            V_CLAIMAMT := c_paid.pay_amt + (v_sumpayee - v_sumpaid);
+                        else
+                            V_CLAIMAMT := c_paid.pay_amt;    
+                        end if;                       
+                    ELSE
+                        V_CLAIMAMT := c_paid.pay_amt;                    
+                    END IF;    
+
                     V_TRANSACTIONSTATUS  :='N';
                     V_REFERENCENUMBER    :=null;     
                     V_DEDUCTIBLEAMT :=0;       
@@ -6317,7 +6266,7 @@ BEGIN
                         V_CLAIMCAUSE := c_paid.dis_code ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
                         V_ICD10CODE1 := c_paid.dis_code;
             --            V_CLAIMAMT := m1.tot_paid;
-                        V_CLAIMAMT := c_paid.rec_amt;
+                        V_CLAIMAMT := c_paid.rec_amt;   --********
                         V_TRANSACTIONSTATUS  :='N';
                         V_REFERENCENUMBER    :=null;     
                         V_DEDUCTIBLEAMT :=0;       
@@ -6339,7 +6288,31 @@ BEGIN
                         else
                             V_TREATMENTTYPE := '3';
                         end if;  
-                                        
+
+                        INSERT INTO OIC_PAPH_CLAIM
+                        ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                        COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                        PROCODURECODE1 ,
+                        CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                        VALUES 
+                        (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,'ES' , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                        V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                        V_PROCODURECODE1 ,
+                        V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+
+                        INSERT INTO OIC_PAPH_CLAIM_HIST
+                        ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                        COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                        PROCODURECODE1 ,
+                        CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                        VALUES 
+                        (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,'ES' , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                        V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                        V_PROCODURECODE1 ,
+                        V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+                        
+                        V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                                                                
                         INSERT INTO OIC_PAPH_CLAIM
                         ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
                         COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
@@ -6363,6 +6336,119 @@ BEGIN
                         V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
                                             
                     END LOOP; -- C_paid        
+                ELSIF V_CHKREC2 THEN    -- check Rec. แบบ ไม่มีการลง column Recov_amt 
+                    --dbms_output.put_line('in ChkRec2 v_sumpayee:'||v_sumpayee||' v_sumpaid:'||v_sumpaid);
+                    v_cntrec :=0; 
+                    FOR c_paid IN (
+                        select  pay_no, fleet_seq ,dis_code ,bene_code ,clm_pd_flag CLM_TYPE ,loss_date ,date_paid pay_date ,nvl(pay_amt,0) pay_amt
+                        ,nvl(rec_amt,0) rec_amt 
+                        from clm_gm_paid a
+                        where pay_no = M_PAYNO
+                        and corr_seq in (select max(aa.corr_seq) from clm_gm_paid aa where aa.pay_no =a.pay_no 
+                        and aa.corr_date <= i_asdate group by aa.pay_no)
+                        and rownum=1    -- for select 1 record to calculate Recovery
+                        order by pay_no 
+                    )  LOOP 
+                        v_cntrec := v_cntrec+1;
+                            
+                        -- ===== Path get prem code ====
+                        v_premcode := c_paid.bene_code;
+                        -- ===== End Path get prem code ====
+                                    
+                        v_runclmseq := v_runclmseq+1;
+                        v_tmppayno := c_paid.pay_no;
+                        V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                        V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('GM',c_paid.CLM_TYPE ,v_premcode);
+                        V_INSUREDSEQ := c_paid.fleet_seq;
+                        V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
+                        V_NOTIFYDATE := m1.reg_date; --to_date(m1.reg_date,'yyyymmdd');
+--                        V_CLAIMSTATUS := '2';  -- close claim        
+                        V_LOSSDATE :=  c_paid.loss_date; --to_date(m1.loss_date,'yyyymmdd');
+            --            V_CLAIMCAUSE :='0000' ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
+                        V_CLAIMCAUSE := c_paid.dis_code ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
+                        V_ICD10CODE1 := c_paid.dis_code;
+            --            V_CLAIMAMT := m1.tot_paid;
+            
+                        IF V_CHKREC2 THEN
+                            if v_cntrec =1 then
+                                V_CLAIMAMT := (v_sumpayee - v_sumpaid);
+                            else
+                                V_CLAIMAMT := c_paid.pay_amt;    
+                            end if;                       
+                        ELSE
+                            V_CLAIMAMT := c_paid.pay_amt;                    
+                        END IF;              
+
+                        V_TRANSACTIONSTATUS  :='N';
+                        V_REFERENCENUMBER    :=null;     
+                        V_DEDUCTIBLEAMT :=0;       
+                        --V_COVERAGECODE2 :=  p_oic_paph_clm.get_coverage2('GM',c_paid.CLM_TYPE ,v_premcode) ;  --== mapping to table 5            
+                        V_ACCOUNTINGDATE := M1.clm_date ;
+            --            V_ACCOUNTINGDATE2 := c_paid.pay_date ;
+                        V_ACCOUNTINGDATE2 := M1.close_date ;
+                        V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M_PAYNO 
+                        ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                        V_COVERAGECODE2 := p_oic_paph_clm.get_coverage2(m1.pol_no ,m1.pol_run ,c_paid.fleet_seq, M1.CLM_NO ,M_PAYNO 
+                        ,'GM',c_paid.CLM_TYPE ,v_premcode ,V_ICD10CODE1);
+                                                
+                        p_oic_paph_clm.get_citizen('GM' ,m1.pol_no ,m1.pol_run ,c_paid.fleet_seq ,m1.recpt_seq ,c_paid.loss_date  ,M1.CLM_NO ,M_PAYNO ,V_INSUREDNAME ,V_INSUREDCITIZENID);
+                            
+                        if c_paid.clm_type = 'OPD' then
+                            V_TREATMENTTYPE := '1';
+                        elsif c_paid.clm_type = 'IPD' then
+                            V_TREATMENTTYPE := '2';
+                        else
+                            V_TREATMENTTYPE := '3';
+                        end if;  
+
+                        INSERT INTO OIC_PAPH_CLAIM
+                        ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                        COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                        PROCODURECODE1 ,
+                        CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                        VALUES 
+                        (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,'ES' , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                        V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                        V_PROCODURECODE1 ,
+                        V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+
+                        INSERT INTO OIC_PAPH_CLAIM_HIST
+                        ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                        COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                        PROCODURECODE1 ,
+                        CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                        VALUES 
+                        (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,'ES' , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                        V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                        V_PROCODURECODE1 ,
+                        V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+                        
+                        V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                                                                    
+                        INSERT INTO OIC_PAPH_CLAIM
+                        ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                        COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                        PROCODURECODE1 ,
+                        CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                        VALUES 
+                        (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,'S' , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                        V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                        V_PROCODURECODE1 ,
+                        V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+
+                        INSERT INTO OIC_PAPH_CLAIM_HIST
+                        ( COMPANYCODE , MAINCLASS  , SUBCLASS  ,CLAIMNUMBER ,CLAIMGROUP , ACCOUNTINGDATE ,CLAIMSEQ ,
+                        COVERAGECODE1 , COVERAGECODE2 , INSUREDSEQ ,  POLICYNUMBER , NOTIFYDATE , LOSSDATE , CLAIMSTATUS , CLAIMCAUSE , ICD10CODE1 ,
+                        PROCODURECODE1 ,
+                        CLAIMAMT , TRANSACTIONSTATUS , REFERENCENUMBER ,CONV_DATE ,FR_DATE ,TO_DATE , AS_AT_DATE ,SELECT_DATE ,SELECT_USER) 
+                        VALUES 
+                        (V_COMPANY , V_MAINCLASS  , V_SUBCLASS  ,V_CLAIMNUMBER ,'S' , V_ACCOUNTINGDATE ,V_CLAIMSEQ ,
+                        V_COVERAGECODE1 , V_COVERAGECODE2 , V_INSUREDSEQ ,  V_POLICYNUMBER , V_NOTIFYDATE , V_LOSSDATE , V_CLAIMSTATUS , V_CLAIMCAUSE , V_ICD10CODE1 ,
+                        V_PROCODURECODE1 ,
+                        V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
+                                                
+                    END LOOP; -- C_paid                           
+                                
                 END IF;
                     
         --        dbms_output.put_line(v_cnt||' clm_no: '||M1.clm_no||' poltype: '||v_poltype||' subclass:'||V_SUBCLASS
