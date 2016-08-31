@@ -1759,6 +1759,51 @@ PROCEDURE FixPOST_ACR_PAIDTYPE IS
     mail_flag    varchar2(5);
     v_paid_type  varchar2(5);
 BEGIN
+    for c1 in (select payment_no ,payee_code 
+        from acc_clm_payee_tmp a 
+        where prod_grp = '0'
+        and prod_type in (select prod_type from clm_grp_prod where sysid in ('GM','PA') )
+     )    
+    loop    
+        if length(c1.payment_no) <13 then   -- clear Error Payment
+            begin
+                delete acc_clm_payee_tmp a
+                where prod_grp = '0'
+                and payment_no= c1.payment_no
+                ;   
+                    
+                delete acc_clm_tmp a
+                where prod_grp = '0'
+                and payment_no= c1.payment_no
+                ;       
+                
+                delete clm_gm_payee
+                where pay_no =  c1.payment_no
+                ;       
+                   
+                delete clm_gm_paid
+                where pay_no =  c1.payment_no
+                ;    
+                
+                delete mis_clmgm_paid
+                where pay_no =  c1.payment_no
+                ;        
+                
+                delete mis_cri_paid
+                where pay_no =  c1.payment_no
+                ;   
+                                                                               
+            exception
+                when others then
+                rollback;
+                dbms_output.put_line('error: '||sqlerrm);
+                return;
+            end;         
+        end if;
+    
+    end loop;
+    commit;
+        
     for px in (select payment_no ,payee_code ,title||' '||name payee_name ,acc_no ,cust_mail ,cust_mail_flag
         from acc_clm_payee_tmp a 
         where prod_grp = '0'
