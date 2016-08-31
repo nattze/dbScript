@@ -4328,6 +4328,7 @@ PROCEDURE GET_DRAFT_ACRDATA(i_clmno IN VARCHAR2 ,i_payno IN VARCHAR2 ,o_payee_am
  vPayno  varchar2(20);
  v_dummyPayno   varchar2(20);
  is_clmtype boolean:=false;
+ v_mathsign number(1);
 BEGIN
     -- i_clmno := '201501551000003';
     -- i_payno :='2015551000003';
@@ -4395,7 +4396,6 @@ BEGIN
             and b.trn_seq in (select max(bb.trn_seq) from nc_payee bb where bb.clm_no =b.clm_no and bb.pay_no = b.pay_no) 
             ) 
             loop 
-
                 v_paidcurr := p1.pay_curr_code;
                 if p3.curr_code is null then 
                     v_payeecurr := v_paidcurr ;
@@ -4465,14 +4465,25 @@ BEGIN
                 and a.trn_seq in (select max(aa.trn_seq) from nc_payment aa where aa.type<>'01' and aa.clm_no =a.clm_no and aa.pay_no = a.pay_no)                    
                 )
                 loop
+                begin
+                    select sign_type into v_mathsign
+                    from nc_nature_std     
+                    where  nature_type =  p_cms.sub_type
+                    and rownum=1;         
+                exception
+                    when no_data_found then
+                        v_mathsign := 1;
+                    when others then
+                        v_mathsign := 1;
+                end;                
                     if p_cms.sub_type like  'NCNATSUBTYPECLM%' then
                         V_SUM_PAY := V_SUM_PAY + p_cms.PAY_AMT;
                     elsif p_cms.sub_type like  'NCNATSUBTYPESAL%' then
-                        V_SUM_SAL := V_SUM_SAL + p_cms.PAY_AMT;
+                        V_SUM_SAL := V_SUM_SAL + (p_cms.PAY_AMT*v_mathsign);
                     elsif p_cms.sub_type like  'NCNATSUBTYPEDED%' then
-                        V_SUM_DEC := V_SUM_DEC + p_cms.PAY_AMT;
+                        V_SUM_DEC := V_SUM_DEC + (p_cms.PAY_AMT*v_mathsign);
                     elsif p_cms.sub_type like  'NCNATSUBTYPEREC%' then
-                        V_SUM_REC := V_SUM_REC + p_cms.PAY_AMT;                            
+                        V_SUM_REC := V_SUM_REC + (p_cms.PAY_AMT*v_mathsign);                            
                     end if;
                 end loop;   -- p_cms    
                                         
