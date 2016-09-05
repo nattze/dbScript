@@ -13,6 +13,10 @@ CREATE OR REPLACE PACKAGE P_STD_CLMNO AS
     FUNCTION split_clm_num(v_clm_no IN VARCHAR2) RETURN VARCHAR2 ;
     
     FUNCTION split_clm_run(v_clm_no  IN VARCHAR2) RETURN NUMBER ;
+    
+    FUNCTION get_clmyear(v_clm_no IN VARCHAR2) RETURN NUMBER ;
+    
+    FUNCTION get_prodgrp(v_clm_no IN VARCHAR2) RETURN VARCHAR2 ;
 
 END P_STD_CLMNO;
 
