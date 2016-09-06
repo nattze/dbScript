@@ -16,7 +16,7 @@ CREATE OR REPLACE PACKAGE P_STD_CLMNO AS
     
     FUNCTION get_clmyear(v_clm_no IN VARCHAR2) RETURN NUMBER ;
     
-    FUNCTION get_prodgrp(v_clm_no IN VARCHAR2) RETURN VARCHAR2 ;
+    FUNCTION gen_clmno_clmrun(v_clm_no IN VARCHAR2 ,v_table IN VARCHAR2 ,o_rst OUT VARCHAR2) RETURN BOOLEAN;
 
 END P_STD_CLMNO;
 
