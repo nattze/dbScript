@@ -15,9 +15,11 @@ CREATE OR REPLACE PACKAGE P_STD_CLMNO AS
     FUNCTION split_clm_run(v_clm_no  IN VARCHAR2) RETURN NUMBER ;
     
     FUNCTION get_clmyear(v_clm_no IN VARCHAR2) RETURN NUMBER ;
-    
-    FUNCTION gen_clmno_clmrun(v_clm_no IN VARCHAR2 ,v_table IN VARCHAR2 ,o_rst OUT VARCHAR2) RETURN BOOLEAN;
 
+    FUNCTION mask_clmno(v_clm_no IN VARCHAR2) RETURN VARCHAR2 ;
+    
+    FUNCTION unmask_clmno(v_clm_no IN VARCHAR2) RETURN VARCHAR2 ;
+    
 END P_STD_CLMNO;
 
 /
