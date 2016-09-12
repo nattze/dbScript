@@ -207,9 +207,42 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_STD_CLMNO AS
     END get_clmyear ;
 
     FUNCTION mask_clmno(v_clm_no IN VARCHAR2) RETURN VARCHAR2 IS
-        
+        v_retclm    varchar2(50);
+        v_clmyear   number;
+        v_shortyr   number;
+        v_fullyr    number;
+        v_reg   varchar2(20);
+        v_repyr varchar2(30);        
     BEGIN
-        return v_clm_no;
+        if v_clm_no is not null then
+            begin 
+                select to_number(remark) shortYR ,to_number(remark2) fullYR
+                into V_SHORTYR ,V_FULLYR
+                from clm_constant a
+                where key = 'CLMSPLITYEAR' ;
+            exception
+                when no_data_found then
+                    V_SHORTYR := 17;
+                    V_FULLYR := 2017;
+                when others then
+                    V_SHORTYR := 17;
+                    V_FULLYR := 2017;
+            end; 
+            v_clmyear := p_std_clmno.get_clmyear(v_clm_no);
+            if v_clmyear >=V_FULLYR then  -- New ClmNo Format
+                v_retclm := REGEXP_REPLACE (v_clm_no, '-|/', '');
+                v_retclm := substr(v_retclm,1,2)||'-'||substr(v_retclm,3,5)||'-'||substr(v_retclm,8);               
+                        
+            else    -- Old ClmNo Format
+                v_retclm := v_clm_no;
+                p_claim.disp_claim(v_retclm);            
+            end if;        
+        else 
+            v_retclm := null;
+        end if;
+                      
+
+        return v_retclm;
         EXCEPTION
             WHEN OTHERS THEN
             return v_clm_no;            
