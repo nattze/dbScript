@@ -2317,6 +2317,16 @@ BEGIN
                 and position_grp_id in ('41','42')) loop  
                     v_to := v_to || c1.tl_email ||';' ;      
                 end loop;  
+                if v_to is null then    -- find Avp
+                    for c1 in (select core_ldap.GET_EMAIL_FUNC(P_NON_PA_APPROVE.Get_Special_email('TO',user_id)) tl_email  
+                    from bkiuser  
+                    where dept_id = v_deptid  
+                    and  div_id = v_divid  
+--                    and team_id = v_team  
+                    and position_grp_id in ('35','')) loop  
+                        v_to := v_to || c1.tl_email ||';' ;      
+                    end loop;                 
+                end if;
             else -- Case TL up  
                 v_to :=   v_cc ;      
             end if;  
