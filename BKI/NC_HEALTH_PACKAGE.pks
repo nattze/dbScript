@@ -236,6 +236,14 @@ CREATE OR REPLACE PACKAGE ALLCLM.NC_HEALTH_PACKAGE IS
                                                         P_PREMCODE IN VARCHAR2, -- null คือดึงทั้งหมด 
                             P_COVER_PA  OUT v_ref_cursor1 ,RST OUT VARCHAR2);
 
+  PROCEDURE GET_COVER_PA(P_POL_NO IN VARCHAR2,
+                                                        P_POL_RUN IN NUMBER,
+                                                        P_FLEET_SEQ IN NUMBER,
+                                                        P_RECPT_SEQ IN NUMBER,
+                                                        P_LOSSDATE IN DATE,
+                                                        P_PREMCODE IN VARCHAR2, -- null คือดึงทั้งหมด 
+                            P_COVER_PA  OUT v_ref_cursor1 ,RST OUT VARCHAR2);
+                            
   PROCEDURE GET_COVER_PA_UNNAME(P_POL_NO IN VARCHAR2,
                                                         P_POL_RUN IN NUMBER,
                                                         P_END_SEQ IN NUMBER, -- null ไว้เผื่ออนาคต

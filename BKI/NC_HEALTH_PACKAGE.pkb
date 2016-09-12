@@ -1206,7 +1206,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                     
                     if  new_flag <> 'M' then        -- not dupp fleet_seq      
                    
-                           NC_HEALTH_PACKAGE.GET_COVER_PA (v1.pol_no,v1.pol_run,v1.fleet_seq ,v1.recpt_seq, null ,
+                           NC_HEALTH_PACKAGE.GET_COVER_PA (v1.pol_no,v1.pol_run,v1.fleet_seq ,v1.recpt_seq ,v_lossdate, null ,
                                                               c2 ,tSts1 );   
                                   
                             if tSts1 is null then
@@ -1221,7 +1221,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                                 END LOOP;  
                             end if;
 
-                           NC_HEALTH_PACKAGE.GET_COVER_PA (v1.pol_no,v1.pol_run,v1.fleet_seq ,v1.recpt_seq , null ,
+                           NC_HEALTH_PACKAGE.GET_COVER_PA (v1.pol_no,v1.pol_run,v1.fleet_seq ,v1.recpt_seq ,v_lossdate , null ,
                                                               c2 ,tSts1 );                       
                            dbms_output.put_line('Msg==>'||tSts1);
                             if tSts1 is null then
@@ -1364,7 +1364,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                         
                /*  get Coverage*/ 
                IF vFlag in ('Y','N') THEN
-               NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq, x1.recpt_seq, null ,
+               NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq, x1.recpt_seq ,v_lossdate, null ,
                                                   c2 ,tSts1 );   
                       
                 if tSts1 is null then
@@ -1379,7 +1379,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                     END LOOP;  
                 end if;
 
-               NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq ,x1.recpt_seq, null ,
+               NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq ,x1.recpt_seq ,v_lossdate, null ,
                                                   c2 ,tSts1 );                       
                dbms_output.put_line('Msg==>'||tSts1);
                 if tSts1 is null then
@@ -1529,7 +1529,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                         
                /*  get Coverage*/ 
                IF vFlag in ('Y','N') THEN
-               NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq ,x1.recpt_seq, null ,
+               NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq ,x1.recpt_seq ,v_lossdate, null ,
                                                   c2 ,tSts1 );   
                       
                 if tSts1 is null then
@@ -1544,7 +1544,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                     END LOOP;  
                 end if;
 
-               NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq ,x1.recpt_seq, null ,
+               NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq ,x1.recpt_seq ,v_lossdate, null ,
                                                   c2 ,tSts1 );                       
                dbms_output.put_line('Msg==>'||tSts1);
                 if tSts1 is null then
@@ -1689,7 +1689,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                         
                /*  get Coverage*/ 
                IF vFlag in ('Y','E') THEN
-               NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq ,x1.recpt_seq, null ,
+               NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq ,x1.recpt_seq ,v_lossdate, null ,
                                                   c2 ,tSts1 );   
                       
                 if tSts1 is null then
@@ -1704,7 +1704,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                     END LOOP;  
                 end if;
 
-               NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq ,x1.recpt_seq, null ,
+               NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq ,x1.recpt_seq ,v_lossdate, null ,
                                                   c2 ,tSts1 );                       
                dbms_output.put_line('Msg==>'||tSts1);
                 if tSts1 is null then
@@ -1882,7 +1882,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                         
                        /*  get Coverage*/ 
                        IF vFlag in ('Y') THEN
-                       NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq,x1.recpt_seq , null ,
+                       NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq,x1.recpt_seq ,v_lossdate , null ,
                                                           c2 ,tSts1 );   
                               
                         if tSts1 is null then
@@ -1897,7 +1897,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                             END LOOP;  
                         end if;
                 
-                       NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq ,x1.recpt_seq , null ,
+                       NC_HEALTH_PACKAGE.GET_COVER_PA (x1.pol_no,x1.pol_run,x1.fleet_seq ,x1.recpt_seq ,v_lossdate , null ,
                                                           c2 ,tSts1 );   
 
                               dbms_output.put_line('Msg==>'||tSts1);
@@ -5502,6 +5502,416 @@ PROCEDURE GET_SINGLE_CLM_DATA_BROK(V_STSKEY NUMBER, V_CLM_NO VARCHAR2,
         commit;
     END;         --END GET_COVER_PA   2
 
+
+  PROCEDURE GET_COVER_PA(P_POL_NO IN VARCHAR2,
+                                                        P_POL_RUN IN NUMBER,
+                                                        P_FLEET_SEQ IN NUMBER,
+                                                        P_RECPT_SEQ IN NUMBER,
+                                                        P_LOSSDATE IN DATE,
+                                                        P_PREMCODE IN VARCHAR2, -- null คือดึงทั้งหมด 
+                            P_COVER_PA  OUT v_ref_cursor1  ,RST OUT VARCHAR2)  IS
+
+     cursor c1 is SELECT min(a.prem_code1) prem_code1, sum(a.sum_ins1) sum_ins1,
+                min(a.prem_code2) prem_code2, sum(a.sum_ins2) sum_ins2,
+                min(a.prem_code3) prem_code3, sum(a.sum_ins3) sum_ins3,
+                min(a.prem_code4) prem_code4, sum(a.sum_ins4) sum_ins4,
+                min(a.prem_code5) prem_code5, sum(a.sum_ins5) sum_ins5,
+                min(a.prem_code6) prem_code6, sum(a.sum_ins6) sum_ins6,
+                min(a.prem_code7) prem_code7, sum(a.sum_ins7) sum_ins7,
+                min(a.prem_code8) prem_code8, sum(a.sum_ins8) sum_ins8,
+                min(a.prem_code9) prem_code9, sum(a.sum_ins9) sum_ins9,
+                min(a.prem_code10) prem_code10, sum(a.sum_ins10) sum_ins10,
+                min(a.prem_code11) prem_code11, sum(a.sum_ins11) sum_ins11,
+                min(a.prem_code12) prem_code12, sum(a.sum_ins12) sum_ins12,
+                min(a.prem_code13) prem_code13, sum(a.sum_ins13) sum_ins13,
+                min(a.prem_code14) prem_code14, sum(a.sum_ins14) sum_ins14,
+                min(a.prem_code15) prem_code15, sum(a.sum_ins15) sum_ins15,
+                min(a.prem_code16) prem_code16, sum(a.sum_ins16) sum_ins16,
+                min(a.prem_code17) prem_code17, sum(a.sum_ins17) sum_ins17,
+                min(a.prem_code18) prem_code18, sum(a.sum_ins18) sum_ins18,
+                min(a.prem_code19) prem_code19, sum(a.sum_ins19) sum_ins19,
+                min(a.prem_code20) prem_code20, sum(a.sum_ins20) sum_ins20,
+                min(a.prem_code21) prem_code21, sum(a.sum_ins21) sum_ins21,
+                min(a.prem_code22) prem_code22, sum(a.sum_ins22) sum_ins22,
+                min(a.prem_code23) prem_code23, sum(a.sum_ins23) sum_ins23,
+                min(a.prem_code24) prem_code24, sum(a.sum_ins24) sum_ins24,
+                min(a.prem_code25) prem_code25, sum(a.sum_ins25) sum_ins25
+              FROM misc.mis_pa_prem a
+                where pol_no = P_POL_NO
+                and pol_run = P_POL_RUN
+                and fleet_seq = P_FLEET_SEQ 
+                and recpt_seq = P_RECPT_SEQ 
+                and end_seq in (select nvl(max(aa.end_seq),0) from misc.mis_pa_prem aa where aa.pol_no = a.pol_no and aa.pol_run = a.pol_run and aa.fleet_seq = a.fleet_seq 
+--                    and aa.recpt_seq =a.recpt_seq
+                        and P_LOSSDATE between fr_date and to_date); 
+                   
+    c_rec c1%rowtype;
+
+    TYPE DEFINE_PREMCODE IS VARRAY(25) OF VARCHAR2(20);
+    t_premcode   DEFINE_PREMCODE ;
+    TYPE DEFINE_SUMINS IS VARRAY(25) OF NUMBER;
+    t_sumins   DEFINE_SUMINS ;    
+    TYPE DEFINE_PREMCOL IS VARRAY(25) OF NUMBER;
+    t_premcol   DEFINE_PREMCOL ;    
+        
+    v_SID number(10);
+    v_Tmp1 VARCHAR2(20);
+    cnt NUMBER:=0;                      
+    BEGIN
+       RST := null; 
+       t_premcode := DEFINE_PREMCODE(); --create empty varray 
+       t_sumins := DEFINE_SUMINS(); --create empty varray 
+       t_premcol := DEFINE_PREMCOL(); --create empty varray        
+       OPEN C1;
+       LOOP
+          FETCH C1 INTO C_REC;
+          EXIT WHEN C1%NOTFOUND;
+            if c_rec.prem_code1 is not null and c_rec.sum_ins1 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code1 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins1 ;
+
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 1 ;                
+            end if;
+              
+            if c_rec.prem_code2 is not null and c_rec.sum_ins2 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code2 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins2 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 2;
+            end if;
+            if c_rec.prem_code3 is not null and c_rec.sum_ins3 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code3 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins3 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 3 ;
+            end if;
+        
+            if c_rec.prem_code4 is not null and c_rec.sum_ins4 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code4 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins4 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 4 ;
+            end if;        
+
+            if c_rec.prem_code5 is not null and c_rec.sum_ins5 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code5 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins5 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 5 ;
+            end if;                
+        
+            if c_rec.prem_code6 is not null and c_rec.sum_ins6 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code6 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins6 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 6 ;
+            end if;        
+        
+            if c_rec.prem_code7 is not null and c_rec.sum_ins7 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code7 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins7 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 7 ;
+            end if;        
+
+            if c_rec.prem_code8 is not null and c_rec.sum_ins8 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code8 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins8 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 8 ;
+            end if;       
+        
+            if c_rec.prem_code9 is not null and c_rec.sum_ins9 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code9 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins9 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 9 ;
+            end if;         
+        
+            if c_rec.prem_code10 is not null and c_rec.sum_ins10 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code10 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins10 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 10 ;
+            end if;        
+        
+            if c_rec.prem_code11 is not null and c_rec.sum_ins11 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code11 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins11 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 11 ;
+            end if;
+        
+            if c_rec.prem_code12 is not null and c_rec.sum_ins12 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code12 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins12 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 12 ;
+            end if;        
+        
+            if c_rec.prem_code13 is not null and c_rec.sum_ins13 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code13 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins13 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 13 ;
+            end if;        
+        
+            if c_rec.prem_code14 is not null and c_rec.sum_ins14 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code14 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins14 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 14 ;
+            end if;        
+        
+            if c_rec.prem_code15 is not null and c_rec.sum_ins15 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code15 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins15 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 15 ;
+            end if;        
+                
+            if c_rec.prem_code16 is not null and c_rec.sum_ins16 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code16 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins16 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 16 ;
+            end if;
+        
+            if c_rec.prem_code17 is not null and c_rec.sum_ins17 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code17 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins17 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 17 ;
+            end if;        
+                
+            if c_rec.prem_code18 is not null and c_rec.sum_ins18 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code18 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins18 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 18 ;
+            end if;
+                
+            if c_rec.prem_code19 is not null and c_rec.sum_ins19 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code19 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins19 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 19 ;
+            end if;        
+        
+            if c_rec.prem_code20 is not null and c_rec.sum_ins20 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code20 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins20 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 20 ;
+            end if;
+        
+            if c_rec.prem_code21 is not null and c_rec.sum_ins21 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code21 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins21 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 21 ;
+            end if;        
+        
+            if c_rec.prem_code22 is not null and c_rec.sum_ins22 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code22 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins22 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 22 ;
+            end if;        
+
+            if c_rec.prem_code23 is not null and c_rec.sum_ins23 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code23 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins23 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 23 ;
+            end if;                
+        
+            if c_rec.prem_code24 is not null and c_rec.sum_ins24 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code24 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins24 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 24 ;
+            end if;        
+        
+            if c_rec.prem_code25 is not null and c_rec.sum_ins25 is not null then
+                t_premcode.EXTEND(1);
+                t_premcode(t_premcode.LAST) := c_rec.prem_code25 ;
+                        
+                t_sumins.EXTEND(1);
+                t_sumins(t_sumins.LAST) := c_rec.sum_ins25 ;
+                
+                t_premcol.EXTEND(1);
+                t_premcol(t_premcol.LAST) := 25 ;
+            end if;        
+        
+       END LOOP;
+       --DBMS_OUTPUT.PUT_LINE('COUNT='||t_premcode.COUNT);
+       
+       --*** GET SID ***
+        BEGIN
+            SELECT sys_context('USERENV', 'SID') into v_SID
+            FROM DUAL;
+        EXCEPTION
+          WHEN  NO_DATA_FOUND THEN
+          v_SID := 0;        
+          WHEN  OTHERS THEN
+          v_SID := 0;
+        END;         
+       
+       FOR I in 1..t_premcode.COUNT LOOP
+            cnt := cnt+1;            
+            --DBMS_OUTPUT.PUT_LINE('PREMCODE'||cnt||' '||t_premcode(cnt)||' SUM_INS= '||t_sumins(cnt));
+             BEGIN 
+                insert into nc_prem_tmp(SID,  PREMCODE, SUMINS ,PREMCOL)
+                values (v_SID ,t_premcode(cnt) ,t_sumins(cnt) ,t_premcol(cnt));
+             EXCEPTION
+               WHEN  OTHERS THEN
+               OPEN P_COVER_PA  FOR SELECT '' PREMCODE ,'' SUMINS ,'' PREMCOL FROM DUAL;
+               RST := 'error 1: '||sqlerrm; 
+               rollback;
+             END;     
+       END LOOP;
+        commit;
+
+        BEGIN  -- check found
+           
+           SELECT max(PREMCODE) into v_Tmp1
+           FROM   NC_PREM_TMP
+           WHERE   SID = V_SID
+           AND PREMCODE like nvl(P_PREMCODE,'%');              
+          
+        EXCEPTION
+          WHEN  NO_DATA_FOUND THEN
+            RST := 'not found coverage';         
+          WHEN  OTHERS THEN
+            RST := 'error 2: '||sqlerrm; 
+        END;   -- end check found
+                
+        BEGIN
+           OPEN P_COVER_PA  FOR 
+               SELECT PREMCODE, SUMINS ,PREMCOL
+               FROM   NC_PREM_TMP
+               WHERE   SID = V_SID
+               AND PREMCODE like nvl(P_PREMCODE,'%');              
+          
+        EXCEPTION
+          WHEN  NO_DATA_FOUND THEN
+            OPEN P_COVER_PA  FOR SELECT '' PREMCODE ,'' SUMINS ,'' PREMCOL FROM DUAL;
+            RST := 'not found coverage';         
+          WHEN  OTHERS THEN
+            OPEN P_COVER_PA  FOR SELECT '' PREMCODE ,'' SUMINS ,'' PREMCOL FROM DUAL;
+            RST := 'error 3: '||sqlerrm; 
+        END;  
+        
+        BEGIN
+               DELETE NC_PREM_TMP
+               WHERE   SID = V_SID;              
+          
+        EXCEPTION
+          WHEN  OTHERS THEN
+            --OPEN P_COVER_PA  FOR SELECT '' PREMCODE ,'' SUMINS FROM DUAL;
+            rollback;
+        END;          
+        
+        commit;
+    END;         --END GET_COVER_PA   3
+
   PROCEDURE GET_COVER_PA_UNNAME(P_POL_NO IN VARCHAR2,
                                                         P_POL_RUN IN NUMBER,
                                                         P_END_SEQ IN NUMBER, -- null ไว้เผื่ออนาคต
@@ -7574,7 +7984,7 @@ PROCEDURE GET_HISTORY_CLM2(P_POL_NO IN VARCHAR2,
           v_SID := 0;
         END;         
         
-        NC_HEALTH_PACKAGE.GET_COVER_PA (pol_no ,pol_run ,  x_fleet_seq ,RECPT_SEQ , premcode ,   c1 ,V_RST);   
+        NC_HEALTH_PACKAGE.GET_COVER_PA (pol_no ,pol_run ,  x_fleet_seq ,RECPT_SEQ ,to_date(lossdate,'dd/mm/rrrr') , premcode ,   c1 ,V_RST);   
         dbms_output.put_line('pol==>'|| pol_no||pol_run||  ' CLAIMAMT:'|| REQUEST_AMT||' Rst:'||v_rst );   
                    
         IF V_RST is null THEN
@@ -7867,7 +8277,7 @@ PROCEDURE GET_HISTORY_CLM2(P_POL_NO IN VARCHAR2,
           v_SID := 0;
         END;         
         
-        NC_HEALTH_PACKAGE.GET_COVER_PA (pol_no ,pol_run ,  x_fleet_seq , RECPT_SEQ , premcode ,   c1 ,V_RST);   
+        NC_HEALTH_PACKAGE.GET_COVER_PA (pol_no ,pol_run ,  x_fleet_seq , RECPT_SEQ ,to_date(lossdate,'dd/mm/rrrr') , premcode ,   c1 ,V_RST);   
         dbms_output.put_line('pol==>'|| pol_no||pol_run||  ' CLAIMAMT:'|| REQUEST_AMT||' Rst:'||v_rst );   
                    
         IF V_RST is null THEN
