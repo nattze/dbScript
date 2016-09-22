@@ -694,15 +694,18 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
     ,O_RST  OUT VARCHAR2) RETURN BOOLEAN IS
         cnt number:=0;
         v_pos   varchar2(5);
-        v_pos_grp   varchar2(5);      
+        v_pos_grp   varchar2(5);    
+        v_dept_id   varchar2(5);  
         chk_inbkiuser   varchar2(10);
         chk_inclmuser   varchar2(10);
         v_sys   varchar2(10); -- -- MISC     , MTR   (for table CLM_USER_STD.SYSID)
+        o_msg   varchar2(250);
         
     BEGIN
         dbms_output.put_line('==== assign ROLE : '||v_role||' ======');            
         begin
-            select user_id , position_grp_id ,(select abb_name_eng from position_grp_std where position_grp_id =a.position_grp_id ) c into chk_inbkiuser ,v_pos_grp ,v_pos
+            select user_id ,dept_id , position_grp_id ,(select abb_name_eng from position_grp_std where position_grp_id =a.position_grp_id ) c 
+            into chk_inbkiuser ,v_dept_id ,v_pos_grp ,v_pos
             from bkiuser a
             where user_id =v_user ;
         exception
@@ -710,10 +713,12 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
                 chk_inbkiuser := null;
                 v_pos_grp := null;
                 v_pos := null;
+                v_dept_id := null;
             when others then
                 chk_inbkiuser := null;
                 v_pos_grp := null;
                 v_pos := null; 
+                v_dept_id := null;
         end;
 
         if chk_inbkiuser is null then -- not found BKIUSER 
@@ -755,6 +760,10 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
                     
             end loop;
         end if; -- chk_inclmuser
+        
+        if v_dept_id = '06' then -- Legal Dept.
+            web_law_proc.regis_newuser( v_user,o_msg);
+        end if;
             
         for x in (
             select menuid ,menudesc
