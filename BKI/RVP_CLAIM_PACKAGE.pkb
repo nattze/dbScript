@@ -393,8 +393,8 @@ i_accdate  IN DATE ,o_rst OUT VARCHAR2) IS
         PREFIX            VARCHAR2(10 BYTE),
         FNAME             VARCHAR2(50 BYTE),
         LNAME             VARCHAR2(50 BYTE),
-        AMOUNT            NUMBER(8,2),
-        BALANCE           NUMBER(8,2),
+        AMOUNT            NUMBER(10,2),
+        BALANCE           NUMBER(10,2),
         PLANID            VARCHAR2(50 BYTE),
         PLANDESCRIPTION   VARCHAR2(255 BYTE),
         EXCLUSION         VARCHAR2(500 BYTE),
@@ -415,8 +415,8 @@ i_accdate  IN DATE ,o_rst OUT VARCHAR2) IS
         TITLE            VARCHAR2(10 BYTE),
         NAME             VARCHAR2(150 BYTE),
         SURNAME             VARCHAR2(150 BYTE),
-        SUM_INS1            NUMBER(8,2),
-        BALANCE           NUMBER(8,2),
+        SUM_INS1            NUMBER(10,2),
+        BALANCE           NUMBER(10,2),
         PLAN            VARCHAR2(100 BYTE)
     ); 
     j_rec2 t_data2;     
