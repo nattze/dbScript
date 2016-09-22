@@ -9,6 +9,7 @@ CREATE OR REPLACE PACKAGE ALLCLM."P_NON_PA_APPROVE" AS
  1.0 3/10/2014 2702 1. Created this package. 
 ******************************************************************************/ 
   TYPE v_ref_cursor1 IS REF CURSOR; 
+  
    
 FUNCTION CONVERT_PAYMENT_METHOD(inPaidType IN VARCHAR2) RETURN VARCHAR2 ; 
  
@@ -33,6 +34,8 @@ FUNCTION CAN_SEND_APPROVE(i_clmno IN varchar2 ,i_payno IN varchar2 ,o_rst OUT va
 FUNCTION CAN_MAKE_NEW_PAYMENT(i_clmno IN varchar2 ,o_rst OUT varchar2) RETURN BOOLEAN ;  
  
 FUNCTION CAN_GO_APPROVE(i_clmno IN varchar2 ,i_payno IN varchar2 ,i_userid IN varchar2 ,i_status IN varchar2 ,o_rst OUT varchar2) RETURN BOOLEAN ;  
+
+FUNCTION CAN_APPROVE_CLM(i_clmno IN varchar2 ,i_payno IN varchar2 ,i_userid IN varchar2 ,i_amt  IN number ,o_rst OUT varchar2) RETURN BOOLEAN ;  
   
 FUNCTION UPDATE_NCPAYMENT(v_key IN number ,v_clmno IN varchar2 ,v_payno IN varchar2 ,v_sts IN varchar2  
 ,v_apprv_flag IN varchar2 ,v_user IN varchar2 ,v_amd_user IN varchar2 ,v_apprv_user IN varchar2 ,v_res_amt IN NUMBER ,v_rst OUT VARCHAR2) RETURN boolean ;  

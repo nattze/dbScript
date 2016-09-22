@@ -52,7 +52,10 @@ BEGIN
  from clm_grp_prod
  where prod_type = vProdtype ;
  
- vProd := 'NMC';
+ IF vProd not in ('PA' ,'GM' ) THEN
+    vProd := 'NMC';
+ END IF;
+ 
  return vProd;
 EXCEPTION
  WHEN NO_DATA_FOUND THEN
@@ -408,7 +411,42 @@ BEGIN
 -- o_rst := null;
  return v_return;
 END CAN_GO_APPROVE;
+
+FUNCTION CAN_APPROVE_CLM(i_clmno IN varchar2 ,i_payno IN varchar2 ,i_userid IN varchar2 ,i_amt  IN number,o_rst OUT varchar2) RETURN BOOLEAN IS
+     v_return boolean:=true;
+     v_apprv_id varchar2(10);
+     v_sts varchar2(20);
+     v_found varchar2(20);
  
+    TYPE t_data1 IS RECORD
+    (
+    PREMCODE    VARCHAR2(10),
+    SUMINS  NUMBER,
+    PREMCOL NUMBER
+    ); 
+    j_rec1 t_data1;   
+         
+BEGIN
+
+ BEGIN
+ select key into v_found
+ from clm_constant a
+ where key like 'NONPASTSAPPRV%'
+ and key = ''
+-- and (remark2 is not null or remark2 = 'APPRV')
+ and remark2 is not null;
+ EXCEPTION
+ WHEN NO_DATA_FOUND THEN
+ v_found := null;
+ WHEN OTHERS THEN
+ v_found := null;
+ END; 
+
+ 
+-- o_rst := null;
+ return v_return;
+END CAN_APPROVE_CLM;
+  
 FUNCTION UPDATE_NCPAYMENT(v_key IN number ,v_clmno IN varchar2 ,v_payno IN varchar2 ,v_sts IN varchar2 
 ,v_apprv_flag IN varchar2 ,v_user IN varchar2 ,v_amd_user IN varchar2 ,v_apprv_user IN varchar2 ,v_res_amt IN NUMBER ,v_rst OUT VARCHAR2) RETURN boolean IS
  v_max_seq number:=1;
