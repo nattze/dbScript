@@ -412,39 +412,55 @@ BEGIN
  return v_return;
 END CAN_GO_APPROVE;
 
-FUNCTION CAN_APPROVE_CLM(i_clmno IN varchar2 ,i_payno IN varchar2 ,i_userid IN varchar2 ,i_amt  IN number,o_rst OUT varchar2) RETURN BOOLEAN IS
-     v_return boolean:=true;
+FUNCTION CAN_APPROVE_CLM(i_clmno IN varchar2 ,i_payno IN varchar2 ,i_prodtype IN varchar2 ,i_userid IN varchar2 ,i_amt  IN number,o_rst OUT varchar2) RETURN BOOLEAN IS
+     v_return boolean:=false;
      v_apprv_id varchar2(10);
      v_sts varchar2(20);
      v_found varchar2(20);
+     
+     v_sys  varchar2(10);
  
+    c1   NMTR_PACKAGE.v_ref_cursor2;  
+    
+    tnum number;
     TYPE t_data1 IS RECORD
     (
-    PREMCODE    VARCHAR2(10),
-    SUMINS  NUMBER,
-    PREMCOL NUMBER
+    SUBSYSID varchar2(5)  ,
+    USER_ID  varchar2(5) ,
+    NAME varchar2(200) ,
+    MIN_LIMIT number,
+    MAX_LIMIT number,
+    APPROVE_FLAG varchar2(1)
     ); 
-    j_rec1 t_data1;   
+    j_rec1 t_data1; 
          
 BEGIN
-
- BEGIN
- select key into v_found
- from clm_constant a
- where key like 'NONPASTSAPPRV%'
- and key = ''
--- and (remark2 is not null or remark2 = 'APPRV')
- and remark2 is not null;
- EXCEPTION
- WHEN NO_DATA_FOUND THEN
- v_found := null;
- WHEN OTHERS THEN
- v_found := null;
- END; 
-
- 
+   v_sys :=  P_NON_PA_APPROVE.GET_PRODUCTID(i_prodtype);
+   NMTR_PACKAGE.NC_WAIT_FOR_APPROVE2 (i_userid,v_sys ,i_amt,
+                                      c1 );   
+    v_return := false;
+    if 1=1 then
+        LOOP
+           FETCH  c1 INTO j_rec1;
+            EXIT WHEN c1%NOTFOUND;
+                dbms_output.put_line('User==>'|| 
+                 j_rec1.user_id||
+                 ':'||
+                 j_rec1.NAME||
+                 'MIN:'||
+                  j_rec1.MIN_LIMIT||
+                  '    MAX:'||
+                   j_rec1.MAX_LIMIT||
+                   '       FLAG:'||
+                    j_rec1.APPROVE_FLAG
+                );    
+                if j_rec1.user_id = i_userid and (i_amt between j_rec1.MIN_LIMIT and j_rec1.MAX_LIMIT) and j_rec1.APPROVE_FLAG = 'Y'  then
+                    v_return := true;
+                end if;
+          end loop;    
+      end if; 
 -- o_rst := null;
- return v_return;
+    return v_return;
 END CAN_APPROVE_CLM;
   
 FUNCTION UPDATE_NCPAYMENT(v_key IN number ,v_clmno IN varchar2 ,v_payno IN varchar2 ,v_sts IN varchar2 

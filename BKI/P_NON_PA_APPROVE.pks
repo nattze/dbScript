@@ -35,7 +35,7 @@ FUNCTION CAN_MAKE_NEW_PAYMENT(i_clmno IN varchar2 ,o_rst OUT varchar2) RETURN BO
  
 FUNCTION CAN_GO_APPROVE(i_clmno IN varchar2 ,i_payno IN varchar2 ,i_userid IN varchar2 ,i_status IN varchar2 ,o_rst OUT varchar2) RETURN BOOLEAN ;  
 
-FUNCTION CAN_APPROVE_CLM(i_clmno IN varchar2 ,i_payno IN varchar2 ,i_userid IN varchar2 ,i_amt  IN number ,o_rst OUT varchar2) RETURN BOOLEAN ;  
+FUNCTION CAN_APPROVE_CLM(i_clmno IN varchar2 ,i_payno IN varchar2  ,i_prodtype IN varchar2 ,i_userid IN varchar2 ,i_amt  IN number ,o_rst OUT varchar2) RETURN BOOLEAN ;  
   
 FUNCTION UPDATE_NCPAYMENT(v_key IN number ,v_clmno IN varchar2 ,v_payno IN varchar2 ,v_sts IN varchar2  
 ,v_apprv_flag IN varchar2 ,v_user IN varchar2 ,v_amd_user IN varchar2 ,v_apprv_user IN varchar2 ,v_res_amt IN NUMBER ,v_rst OUT VARCHAR2) RETURN boolean ;  
