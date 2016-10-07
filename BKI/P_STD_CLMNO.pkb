@@ -185,7 +185,52 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_STD_CLMNO AS
                     when others then
                         ret_clmyear := 0;
                 end;
+
+                if ret_clmyear >0 then
+                    return ret_clmyear;
+                end if;
                 
+                begin 
+                    select to_number(to_char(clm_rec_date,'yyyy')) clmyr into ret_clmyear
+                    from fir_clm_mas
+                    where clm_no = v_clm_no ;
+                exception
+                    when no_data_found then
+                        ret_clmyear := 0;
+                    when others then
+                        ret_clmyear := 0;
+                end;
+
+                if ret_clmyear >0 then
+                    return ret_clmyear;
+                end if;
+                
+                begin 
+                    select to_number(to_char(clm_rec_date,'yyyy')) clmyr into ret_clmyear
+                    from mrn_clm_mas
+                    where clm_no = v_clm_no ;
+                exception
+                    when no_data_found then
+                        ret_clmyear := 0;
+                    when others then
+                        ret_clmyear := 0;
+                end;
+
+                if ret_clmyear >0 then
+                    return ret_clmyear;
+                end if;
+                
+                begin 
+                    select to_number(to_char(clm_rec_date,'yyyy')) clmyr into ret_clmyear
+                    from hull_clm_mas
+                    where clm_no = v_clm_no ;
+                exception
+                    when no_data_found then
+                        ret_clmyear := 0;
+                    when others then
+                        ret_clmyear := 0;
+                end;
+                                                                
                 if ret_clmyear >0 then
                     return ret_clmyear;
                 else
