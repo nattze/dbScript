@@ -3743,6 +3743,7 @@ PROCEDURE get_Citizen(i_grp IN VARCHAR2 ,i_polno IN VARCHAR2 ,i_polrun IN NUMBER
 ,i_clmno IN VARCHAR2, i_payno IN VARCHAR2 ,o_insname OUT  VARCHAR2 ,o_id OUT VARCHAR2) IS
 
 BEGIN
+
     IF i_grp ='PA' THEN
         begin
             select title||' '||name||' '||surname ,id  into 
@@ -3759,6 +3760,25 @@ BEGIN
                 o_insname := null;
                 o_id  := null;
         end;    
+
+        begin
+            select  decode(card_id_no,null,card_other_no,card_id_no)  CardID
+            into o_id
+            from mis_clm_mas
+            where clm_no = i_clmno ;
+        exception
+            when no_data_found then
+                o_id  := null;
+            when others then
+                o_id  := null;
+        end;  
+                
+        if o_id is null then
+            
+            o_id := nc_health_paid.GET_CARDNO(i_polno  ,i_polrun ,i_fleet ,i_recpt
+                ,null ,null,null ,i_clmno ,i_payno);
+                
+        end if;
         
         if o_insname is null then -- check UNNAME          
             if nc_health_package.is_unname_policy(i_polno ,i_polrun) then
@@ -3778,8 +3798,8 @@ BEGIN
 
         if o_insname is null then -- get by fleet
             begin
-                select title||' '||name||' '||surname ,id  into 
-                o_insname ,o_id
+                select title||' '||name||' '||surname into 
+                o_insname
                 from mis_pa_prem
                 where pol_no = i_polno and pol_run = i_polrun
                 and fleet_seq = i_fleet --and recpt_seq=i_recpt
@@ -3787,10 +3807,8 @@ BEGIN
             exception
                 when no_data_found then
                     o_insname := null;
-                    o_id  := null;
                 when others then
                     o_insname := null;
-                    o_id  := null;
             end;         
         end if;     
 
@@ -3807,7 +3825,7 @@ BEGIN
                     null;
             end;       
         end if;                     
-    ELSE
+    ELSE    --GM 
 --        dbms_output.put_line('polno: '||i_polno||i_polrun||' fleet:'||i_fleet);
         begin
             select title||' '||name , id_no   into 
@@ -3825,10 +3843,120 @@ BEGIN
                 o_insname := null;
                 o_id  := null;
         end;        
+        
+        begin
+            select  decode(card_id_no,null,card_other_no,card_id_no)  CardID
+            into o_id
+            from mis_clm_mas
+            where clm_no = i_clmno ;
+        exception
+            when no_data_found then
+                o_id  := null;
+            when others then
+                o_id  := null;
+        end;  
+                
+        if o_id is null then
+            
+            o_id := nc_health_paid.GET_CARDNO(i_polno  ,i_polrun ,i_fleet ,i_recpt
+                ,null ,null,null ,i_clmno ,i_payno);
+                
+        end if;
+                
     END IF;
 
 END get_Citizen;
 
+--PROCEDURE get_Citizen(i_grp IN VARCHAR2 ,i_polno IN VARCHAR2 ,i_polrun IN NUMBER ,i_fleet IN NUMBER ,i_recpt IN NUMBER ,i_lossdate IN DATE 
+--,i_clmno IN VARCHAR2, i_payno IN VARCHAR2 ,o_insname OUT  VARCHAR2 ,o_id OUT VARCHAR2) IS
+--
+--BEGIN
+--    IF i_grp ='PA' THEN
+--        begin
+--            select title||' '||name||' '||surname ,id  into 
+--            o_insname ,o_id
+--            from mis_pa_prem
+--            where pol_no = i_polno and pol_run = i_polrun
+--            and fleet_seq = i_fleet and recpt_seq=i_recpt
+--            and rownum=1;
+--        exception
+--            when no_data_found then
+--                o_insname := null;
+--                o_id  := null;
+--            when others then
+--                o_insname := null;
+--                o_id  := null;
+--        end;    
+--        
+--        if o_insname is null then -- check UNNAME          
+--            if nc_health_package.is_unname_policy(i_polno ,i_polrun) then
+--                begin
+--                    select loss_name into o_insname
+--                    from mis_cpa_res a
+--                    where clm_no = i_clmno
+--                    and revise_seq in (select max(aa.revise_seq) from mis_cpa_res aa where aa.clm_no = a.clm_no);            
+--                exception
+--                    when no_data_found then
+--                        null;
+--                    when others then
+--                        null;
+--                end;         
+--            end if;         
+--        end if;
+--
+--        if o_insname is null then -- get by fleet
+--            begin
+--                select title||' '||name||' '||surname ,id  into 
+--                o_insname ,o_id
+--                from mis_pa_prem
+--                where pol_no = i_polno and pol_run = i_polrun
+--                and fleet_seq = i_fleet --and recpt_seq=i_recpt
+--                and rownum=1;
+--            exception
+--                when no_data_found then
+--                    o_insname := null;
+--                    o_id  := null;
+--                when others then
+--                    o_insname := null;
+--                    o_id  := null;
+--            end;         
+--        end if;     
+--
+--        if o_insname is null then -- get by cpa_res
+--            begin
+--                select loss_name into o_insname
+--                from mis_cpa_res a
+--                where clm_no = i_clmno
+--                and revise_seq in (select max(aa.revise_seq) from mis_cpa_res aa where aa.clm_no = a.clm_no);            
+--            exception
+--                when no_data_found then
+--                    null;
+--                when others then
+--                    null;
+--            end;       
+--        end if;                     
+--    ELSE
+----        dbms_output.put_line('polno: '||i_polno||i_polrun||' fleet:'||i_fleet);
+--        begin
+--            select title||' '||name , id_no   into 
+--            o_insname ,o_id
+--            from pa_medical_det
+--            where pol_no = i_polno and pol_run = i_polrun 
+--            and fleet_seq = i_fleet 
+----            and i_lossdate between fr_date and to_date
+--            and rownum=1;
+--        exception
+--            when no_data_found then
+--                o_insname := null;
+--                o_id  := null;
+--            when others then
+--                o_insname := null;
+--                o_id  := null;
+--        end;        
+--    END IF;
+--
+--END get_Citizen;
+--
 PROCEDURE GET_PA_RESERVE(P_CLMNO IN VARCHAR2 ,V_KEY OUT NUMBER , V_RST OUT VARCHAR2) IS
     --q_str   CLOB;
 
@@ -4824,9 +4952,9 @@ BEGIN
                 when others then v_cover := '';  v_clmpdflag := '';          
             end;       
             if v_clmpdflag = 'I' then
-                v_return :=  'H007';
+                v_return :=  'HA007';
             elsif v_clmpdflag = 'O' then 
-                v_return := 'H006';
+                v_return := 'HA006';
             else  
                 v_return := null; -- ยังไม่มี column mapping          
             end if;
@@ -4846,7 +4974,7 @@ BEGIN
             elsif v_cover in ('1.1.1','1.1.2','1.1.3') then -- เสียชีวิต
                 v_return := 'TA003';
             else
-                v_return := 'TA005';
+                v_return := 'TA999';
             end if;
             if v_chkpertime = 'Y' then  -- ชดเชย
                 v_return := 'TA004';
@@ -4854,7 +4982,7 @@ BEGIN
         end if;
     ELSE
         IF i_grp ='PA' THEN 
-            v_return := 'PA003';    -- อื่นๆ
+            v_return := 'PA999';    -- อื่นๆ
         ELSE
             v_return := 'HA006';   -- OPD
         END IF;     
@@ -4961,25 +5089,92 @@ BEGIN
                 v_return := 'H99999'; -- ยังไม่มี column mapping          
             end if;
         elsif V_MAINCLASS = '11' then -- Travel
+/*
+select  premcode ,nc_health_package.GET_PREMCODE_DESCR(premcode,'T')descr,oic_group_coverage ,chk_pertime ,chk_motorcycle_cover ,chk_totloss ,chk_accum --into v_cover ,v_chkpertime ,v_chkmotor
+from nc_h_premcode
+--where premcode in ('0031','0008')
+where nc_health_package.GET_PREMCODE_DESCR(premcode,'T') like '%%เดินทาง%'
+
+ไม่สงบ  จราจล 
+%เที่ยวบิน% T00007
+%จี้เครื่องบิน%   T00008
+%เสีย%กระเป๋า%  T00001
+%ช้า%กระเป๋า%   T00009
+%เลิก%เดินทาง% T00013
+เดินทาง
+*/        
             begin
-                select oic_group_coverage ,chk_pertime ,chk_motorcycle_cover into v_cover ,v_chkpertime ,v_chkmotor
+                select oic_group_coverage ,chk_pertime ,chk_motorcycle_cover ,nc_health_package.GET_PREMCODE_DESCR(premcode,'T') descr
+                into v_cover ,v_chkpertime ,v_chkmotor ,v_premdesc
                 from nc_h_premcode
                 where premcode = i_premcode;
             exception 
                 when no_data_found then v_cover := '1.4'; v_chkpertime := null; v_chkmotor :=null;               
                 when others then v_cover := '1.4'; v_chkpertime := null; v_chkmotor :=null; 
             end;     
-            if v_cover ='1.4' then  -- บาดเจ็บ
-                v_return := 'TA002';
-            elsif v_cover in ('1.2','1.3') then -- ทุพลภาพ
-                v_return := 'TA001';
-            elsif v_cover in ('1.1.1','1.1.2','1.1.3') then -- เสียชีวิต
-                v_return := 'TA003';
-            else
-                v_return := 'TA005';
-            end if;
-            if v_chkpertime = 'Y' then  -- ชดเชย
-                v_return := 'TA004';
+            IF NC_HEALTH_PACKAGE.IS_CHECK_ACCUM(i_premcode) THEN -- ผลประโยชน์แบบต่อครั้ง
+
+                IF NC_HEALTH_PACKAGE.IS_CHECK_MOTORCYCLE(i_premcode)    THEN    -- เช็ค motorcycle                        
+                    if v_cover ='1.4' then  -- บาดเจ็บ
+                        v_return := 'T00023';
+                    elsif v_cover in ('1.2','1.3') then -- ทุพลภาพ
+                        v_return := 'T00017';
+                    elsif v_cover in ('1.1.1','1.1.2','1.1.3') then -- เสียชีวิต
+                        v_return := 'T00047';
+                    else
+                        v_return := 'T99999';
+                    end if;          
+                ELSE
+                    if v_cover ='1.4' then  -- บาดเจ็บ
+                        v_return := 'T00022';
+                    elsif v_cover in ('1.2','1.3') then -- ทุพลภาพ
+                        v_return := 'T00015';
+                    elsif v_cover in ('1.1.1','1.1.2','1.1.3') then -- เสียชีวิต
+                        v_return := 'T00045';
+                    else
+                        v_return := 'T99999';
+                    end if;           
+                END IF;                
+
+            ELSIF NC_HEALTH_PACKAGE.IS_CHECK_PERTIME(i_premcode) THEN -- ผลประโยชน์แบบชดเชย
+                v_return := 'T00002'; -- เงินชดเชยระหว่างรักษาตัว
+            ELSIF NC_HEALTH_PACKAGE.IS_CHECK_TOTLOSS(i_premcode) THEN -- ผลประโยชน์ทุนหลัก
+                IF NC_HEALTH_PACKAGE.IS_CHECK_MOTORCYCLE(i_premcode)    THEN    -- เช็ค motorcycle
+                    if v_cover ='1.4' then  -- บาดเจ็บ
+                        v_return := 'T00023';
+                    elsif v_cover in ('1.2','1.3') then -- ทุพลภาพ
+                        v_return := 'T00017';
+                    elsif v_cover in ('1.1.1','1.1.2','1.1.3') then -- เสียชีวิต
+                        v_return := 'T00047';
+                    else
+                        v_return := 'T99999';
+                    end if;          
+                ELSE
+                    if v_cover ='1.4' then  -- บาดเจ็บ
+                        v_return := 'T00022';
+                    elsif v_cover in ('1.2','1.3') then -- ทุพลภาพ
+                        v_return := 'T00015';
+                    elsif v_cover in ('1.1.1','1.1.2','1.1.3') then -- เสียชีวิต
+                        v_return := 'T00045';
+                    else
+                        v_return := 'T99999';
+                    end if;               
+                END IF;
+            ELSE
+                v_return := 'T99999';       
+            END IF;
+            
+            -- ชดเชย
+            if v_premdesc like '%เที่ยวบิน%' then  
+                v_return := 'T00007';
+            elsif v_premdesc like '%จี้เครื่องบิน%' then  
+                v_return := 'T00008';
+            elsif v_premdesc like '%เสีย%กระเป๋า%' then  
+                v_return := 'T00001';
+            elsif v_premdesc like '%ช้า%กระเป๋า%' then  
+                v_return := 'T00009';
+            elsif v_premdesc like '%เลิก%เดินทาง%' then  
+                v_return := 'T00013';    
             end if;
         end if;    
     ELSE
@@ -5293,11 +5488,11 @@ BEGIN
         from mis_clm_mas a ,mis_cpa_res b ,mis_clm_mas_seq c
         where a.clm_no = b.clm_no and a.clm_no = c.clm_no and a.prod_grp = '0' 
         and a.prod_type in (select prod_type from clm_grp_prod where sysid='PA') 
-        and nvl(c.close_date ,c.corr_date) between i_datefr and  i_dateto
+        and nvl(c.close_date ,trunc(c.corr_date)) between i_datefr and  i_dateto
         and (b.clm_no ,b.revise_seq) in (select bb.clm_no ,max(bb.revise_seq) from mis_cpa_res bb where bb.clm_no =b.clm_no 
-            and bb.corr_date <= i_asdate group by bb.clm_no)
+            and trunc(bb.corr_date) <= i_asdate group by bb.clm_no)
         and c.corr_seq in (select max(cc.corr_seq) from mis_clm_mas_seq cc where cc.clm_no = c.clm_no 
-            and nvl(cc.close_date ,cc.corr_date)  <= i_asdate)            
+            and nvl(cc.close_date ,trunc(cc.corr_date))  <= i_asdate)            
 --        and b.corr_date <= i_asdate
         and a.channel <> '9'
         and pol_yr > 2010 
@@ -5336,7 +5531,7 @@ BEGIN
         V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('PA',m1.CLM_TYPE ,v_premcode);
         V_INSUREDSEQ := nvl(M1.fleet_seq,0);
         V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
-        V_NOTIFYDATE := m1.reg_date; --to_date(m1.reg_date,'yyyymmdd');
+        V_NOTIFYDATE := m1.clm_date; --to_date(m1.reg_date,'yyyymmdd');
         V_LOSSDATE :=  m1.loss_date; --to_date(m1.loss_date,'yyyymmdd');
 --        V_CLAIMSTATUS := '1';  --  open claim
         V_CLAIMCAUSE := m1.dis_code ; -- Accident
@@ -5852,12 +6047,12 @@ BEGIN
         from mis_clm_mas a ,clm_medical_res b ,mis_clm_mas_seq c
         where a.clm_no = b.clm_no and a.clm_no = c.clm_no and a.prod_grp = '0' 
         and c.corr_seq in (select max(cc.corr_seq) from mis_clm_mas_seq cc where cc.clm_no = c.clm_no 
-            and nvl(cc.close_date ,cc.corr_date)   <= i_asdate) 
+            and nvl(cc.close_date ,trunc(cc.corr_date))   <= i_asdate) 
         and a.prod_type in (select prod_type from clm_grp_prod where sysid='GM') 
-        and nvl(c.close_date ,c.corr_date) between i_datefr and  i_dateto
+        and nvl(c.close_date ,trunc(c.corr_date)) between i_datefr and  i_dateto
         and (b.clm_no ,b.state_seq) in (select bb.clm_no ,max(bb.state_seq) from clm_medical_res bb where bb.clm_no =b.clm_no 
-        and bb.corr_date <=  i_asdate group by bb.clm_no)
-        and b.corr_date <=  i_asdate
+        and trunc(bb.corr_date) <=  i_asdate group by bb.clm_no)
+        and trunc(b.corr_date) <=  i_asdate
 --        and a.clm_no = i_clmno
         and a.channel <> '9'    
         and pol_yr > 2010     
@@ -5926,7 +6121,7 @@ BEGIN
                     V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('GM',c_paid.CLM_TYPE ,v_premcode);
                     V_INSUREDSEQ := c_paid.fleet_seq;
                     V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
-                    V_NOTIFYDATE := m1.reg_date; --to_date(m1.reg_date,'yyyymmdd');
+                    V_NOTIFYDATE := m1.clm_date; --to_date(m1.reg_date,'yyyymmdd');
 --                    V_CLAIMSTATUS := '1';  -- Reserve claim        
                     V_LOSSDATE :=  c_paid.loss_date; --to_date(m1.loss_date,'yyyymmdd');
                     V_CLAIMCAUSE := c_paid.dis_code ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
@@ -6026,7 +6221,7 @@ BEGIN
                         V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('GM',c_paid.CLM_TYPE ,v_premcode);
                         V_INSUREDSEQ := c_paid.fleet_seq;
                         V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
-                        V_NOTIFYDATE := m1.reg_date; --to_date(m1.reg_date,'yyyymmdd');
+                        V_NOTIFYDATE := m1.clm_date; --to_date(m1.reg_date,'yyyymmdd');
     --                    V_CLAIMSTATUS := '1';  -- Reserve claim        
                         V_LOSSDATE :=  c_paid.loss_date; --to_date(m1.loss_date,'yyyymmdd');
                         V_CLAIMCAUSE := c_paid.dis_code ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
@@ -6174,7 +6369,7 @@ BEGIN
                     V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('GM',c_paid.CLM_TYPE ,v_premcode);
                     V_INSUREDSEQ := c_paid.fleet_seq;
                     V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
-                    V_NOTIFYDATE := m1.reg_date; --to_date(m1.reg_date,'yyyymmdd');
+                    V_NOTIFYDATE := m1.clm_date; --to_date(m1.reg_date,'yyyymmdd');
 --                    V_CLAIMSTATUS := '2';  -- close claim        
                     V_LOSSDATE :=  c_paid.loss_date; --to_date(m1.loss_date,'yyyymmdd');
         --            V_CLAIMCAUSE :='0000' ; -- ยังไม่รู้ เพราะไม่สามารถ mapping กับ ICD10 ที่มีได้         
