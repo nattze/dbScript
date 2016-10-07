@@ -7890,9 +7890,24 @@ FUNCTION GET_CARDNO(v_polno in varchar2  ,v_polrun in number ,v_fleet in number,
 ,v_cuscode in varchar2 ,v_cusseq in number ,v_name in varchar2 ,v_clmno in varchar2 ,v_payno in varchar2) RETURN varchar2 IS
     rst varchar2(100);
     v_sys   varchar2(10);
+    v_prodtype  varchar2(5);
 BEGIN
-    
-    v_sys := NC_HEALTH_PAID.GET_PRODUCT(v_clmno);
+    if v_clmno is null and (v_polno is not null and v_polrun is not null) then
+        begin
+            select sysid into v_sys
+            from clm_grp_prod a
+            where a.prod_type in (
+                select x.prod_type from bkiquery x where x.pol_no = v_polno and x.pol_run = v_polrun
+            ) ;
+        exception 
+            when no_data_found then
+                v_sys :=null;
+            when others then
+                v_sys := null;
+        end;                
+    else
+        v_sys := NC_HEALTH_PAID.GET_PRODUCT(v_clmno);
+    end if;
     dbms_output.put_line('clm_no='||v_clmno||' sys: '||v_sys);
     if v_sys = 'PA' then
         begin
@@ -7909,6 +7924,25 @@ BEGIN
                 rst := null;
         end;
         
+        if rst is null then -- find in Payee Data
+            begin
+                select personal_id   into rst
+                from acc_payee a
+                where payee_code in (
+                select trunc(x.payee_code) from mis_clm_payee x where 
+                clm_no = v_clmno
+                and pay_no like nvl(v_payno ,'%') 
+                and payee_code is not null
+                and rownum=1
+                );                                    
+            exception 
+                when no_data_found then
+                    rst :=null;
+                when others then
+                    rst := null;
+            end;    
+        end if;
+        
     elsif v_sys = 'GM' then
         begin
             select decode(id_card,null,id_no,id_card) newid
@@ -7923,6 +7957,26 @@ BEGIN
             when others then
                 rst := null;
         end;
+
+        if rst is null then -- find in Payee Data
+            begin
+                select personal_id   into rst
+                from acc_payee a
+                where payee_code in (
+                select trunc(x.payee_code) from clm_gm_payee x where 
+                clm_no = v_clmno
+                and pay_no like nvl(v_payno ,'%') 
+                and payee_code is not null
+                and rownum=1                
+                );                                    
+            exception 
+                when no_data_found then
+                    rst :=null;
+                when others then
+                    rst := null;
+            end;    
+        end if;        
+        
     end if;
 
     return rst;
