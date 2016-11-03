@@ -46,6 +46,9 @@ CREATE OR REPLACE PACKAGE P_MANAGE_ROLE AS
     
     FUNCTION isFREEZEMENU(v_user IN VARCHAR2) RETURN BOOLEAN;
     
+    FUNCTION isFREEZEMENU_STD(v_user IN VARCHAR2) RETURN BOOLEAN;
+    
+    FUNCTION isFREEZEMENU_SPC(v_user IN VARCHAR2) RETURN BOOLEAN;
     /*
     v_sys -- MISC     , MTR   (for table CLM_USER_STD.SYSID)
     v_assignby    -- who's run script

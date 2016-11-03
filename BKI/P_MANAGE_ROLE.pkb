@@ -513,10 +513,10 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
         v_date  date:=sysdate;
     BEGIN
         /*
-            check from bkiuser.freezemenu รอ DBA add column
+            check from bkiuser.freezemenustd , bkiuser.freezemenuspc
             v_chkFreeze := null;
         */
-        if p_manage_role.isFREEZEMENU(v_user) then
+        if p_manage_role.isFREEZEMENU_STD(v_user) or p_manage_role.isFREEZEMENU_SPC(v_user) then
             O_RST := 'user_id: '||v_user||' was set FreezeMenu ,cannot remove menu';
             return false;           
         end if;
@@ -580,7 +580,7 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
 --        o_rst   varchar2(250);
     BEGIN
 
-        if p_manage_role.isFREEZEMENU(v_user) then
+        if p_manage_role.isFREEZEMENU_STD(v_user) then
             O_RST := 'user_id: '||v_user||' was set FreezeMenu ,cannot remove menu';
             return false;           
         end if;
@@ -639,7 +639,7 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
     FUNCTION assignUserSpecialRole(v_user IN VARCHAR2 ,O_RST  OUT VARCHAR2) RETURN BOOLEAN IS
         v_role varchar2(250);   --Z0591 
     BEGIN
-        if p_manage_role.isFREEZEMENU(v_user) then
+        if p_manage_role.isFREEZEMENU_SPC(v_user) then
             O_RST := 'user_id: '||v_user||' was set FreezeMenu ,cannot remove menu';
             return false;           
         end if;
@@ -807,6 +807,7 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
     FUNCTION isFREEZEMENU(v_user IN VARCHAR2) RETURN BOOLEAN IS
         v_chkFreeze varchar2(10);
     BEGIN
+    
         if v_chkFreeze = 'Y' then   -- รอ script อ่าน bkiuser หลัง DBA add column ให้
             return true;           
         else
@@ -816,7 +817,55 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
     when others then
         return false;
     END isFREEZEMENU;
+
+    FUNCTION isFREEZEMENU_STD(v_user IN VARCHAR2) RETURN BOOLEAN IS
+        v_chkFreeze varchar2(10);
+    BEGIN
+
+        begin
+            select freezemenuSTD into v_chkFreeze
+            from bkiuser
+            where user_id = v_user;
+        exception
+            when no_data_found then
+                v_chkFreeze := null;
+            when others then
+                v_chkFreeze := null;
+        end;
+            
+        if v_chkFreeze = 'Y' then   -- รอ script อ่าน bkiuser หลัง DBA add column ให้
+            return true;           
+        else
+            return false;        
+        end if;    
+    exception
+    when others then
+        return false;
+    END isFREEZEMENU_STD;
     
+    FUNCTION isFREEZEMENU_SPC(v_user IN VARCHAR2) RETURN BOOLEAN IS
+        v_chkFreeze varchar2(10);
+    BEGIN
+        begin
+            select freezemenuSPC into v_chkFreeze
+            from bkiuser
+            where user_id = v_user;
+        exception
+            when no_data_found then
+                v_chkFreeze := null;
+            when others then
+                v_chkFreeze := null;
+        end;
+    
+        if v_chkFreeze = 'Y' then   -- รอ script อ่าน bkiuser หลัง DBA add column ให้
+            return true;           
+        else
+            return false;        
+        end if;    
+    exception
+    when others then
+        return false;
+    END isFREEZEMENU_SPC;        
     
     FUNCTION split_clm_num(v_clm_no IN VARCHAR2) RETURN VARCHAR2 IS
     
