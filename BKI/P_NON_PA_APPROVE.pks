@@ -125,6 +125,9 @@ FUNCTION GET_METHOD_DESCR(i_med IN VARCHAR2) RETURN VARCHAR2;
  
 FUNCTION GET_PAID_INFO(i_pay IN VARCHAR2 ,i_mode IN VARCHAR2) RETURN VARCHAR2;  
 --i_mode : vou_date ,paid_date ,paid_amt ,paid_by ,cheque_no 
+
+FUNCTION GET_PAID_INFO(i_pay IN VARCHAR2 ,i_payseq IN VARCHAR2 ,i_mode IN VARCHAR2) RETURN VARCHAR2;  
+--i_mode : vou_date ,paid_date ,paid_amt ,paid_by ,cheque_no 
  
 FUNCTION IS_ACTIVATE_AUTOPOST RETURN BOOLEAN; -- TRUE = ON ,FALSE= OFF 
  

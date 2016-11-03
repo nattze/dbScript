@@ -5802,6 +5802,37 @@ EXCEPTION
     return ''; 
 END GET_PAID_INFO;
 
+FUNCTION GET_PAID_INFO(i_pay IN VARCHAR2 ,i_payseq IN VARCHAR2 ,i_mode IN VARCHAR2) RETURN VARCHAR2 IS
+--i_mode : vou_date ,paid_date ,paid_amt ,paid_by ,cheque_no
+    o_paid_date  DATE;
+    o_vou_date DATE;
+    o_amount NUMBER;
+    o_pay_method VARCHAR2(50);
+    o_chq_no VARCHAR2(50);  
+BEGIN
+    ACCOUNT.P_ACTR_PACKAGE.GET_PAYMENT_PAID_INFO(i_pay ,
+    o_vou_date, o_paid_date ,
+    o_amount, o_pay_method,
+    o_chq_no,nvl(i_payseq ,'1') ) ;
+    
+    if i_mode = 'vou_date' then
+        return o_vou_date;    
+    elsif i_mode = 'paid_date' then
+        return o_paid_date;    
+    elsif i_mode = 'paid_amt' then
+        return o_amount;    
+    elsif i_mode = 'paid_by' then
+        return o_pay_method;     
+    elsif i_mode = 'cheque_no' then
+        return o_chq_no;    
+    end if;
+    
+    return ''; 
+EXCEPTION 
+ WHEN OTHERS THEN
+    return ''; 
+END GET_PAID_INFO;
+
 FUNCTION IS_ACTIVATE_AUTOPOST RETURN BOOLEAN IS -- TRUE = ON ,FALSE= OFF
     v_remark    varchar2(20);
 BEGIN
