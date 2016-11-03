@@ -17,6 +17,8 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_GET_IDMDATA AS
   PROCEDURE GET_EMPLOYEE_UPDATE( I_USERID IN VARCHAR2 ,O_RST OUT VARCHAR2);  
   -- input I_USERID-> if null = get all staff that was modified on system date; if not null get staff that matched with i_userid 
   -- output O_RST -> if complete value = null ,if error value is error message 
+  
+  PROCEDURE EMAIL_NOTIFY(i_date IN DATE );
 END P_GET_IDMDATA;
 /
 

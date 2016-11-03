@@ -77,11 +77,13 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
                 (
                 USER_ID, TITLE_T, NAME_T, TITLE_E, NAME_E, BRN_CODE, TEL, EMAIL, PASSWORD, MENU_ID, ORG_ID, DEPT_ID, DIV_ID, TEAM_ID, POSITION_GRP_ID, POSITION_ID, HR_ORG_ID, HR_DEPT_ID, HR_DIV_ID, HR_TEAM_ID, JOIN_DATE, CREATE_DATE, CREATE_BY, EXPIRED_DATE, NEW_EMAIL, OLD_EMAIL, HR_POSITION_GRP_ID, HR_POSITION_ID, SUPERVISOR1_ID
                 ,CHANNEL ,DEPT ,UNIT ,FAX ,POSTN_ID ,DIV ,TEAM ,TERMINATION_FLAG ,TERMINATION_DATE ,OS_FLAG ,TEL_EXT ,AMEND_DATE ,AMEND_BY ,ACCT_LOCK ,ACCT_LOCK_DATE ,LAST_LOGON ,LAST_LOGOUT ,POSITION_LEVEL ,JOB_DESC
+                ,PL_CODE ,CLM_BRN ,SPECIAL_FLAG ,FREEZEMENUSTD ,FREEZEMENUSPC 
                 ,HIST_ID ,HIST_REC_DATE
                 )
                 (
                 select USER_ID, TITLE_T, NAME_T, TITLE_E, NAME_E, BRN_CODE, TEL, EMAIL, PASSWORD, MENU_ID, ORG_ID, DEPT_ID, DIV_ID, TEAM_ID, POSITION_GRP_ID, POSITION_ID, HR_ORG_ID, HR_DEPT_ID, HR_DIV_ID, HR_TEAM_ID, JOIN_DATE, CREATE_DATE, CREATE_BY, EXPIRED_DATE, NEW_EMAIL, OLD_EMAIL, HR_POSITION_GRP_ID, HR_POSITION_ID, SUPERVISOR1_ID
                 ,CHANNEL ,DEPT ,UNIT ,FAX ,POSTN_ID ,DIV ,TEAM ,TERMINATION_FLAG ,TERMINATION_DATE ,OS_FLAG ,TEL_EXT ,AMEND_DATE ,AMEND_BY ,ACCT_LOCK ,ACCT_LOCK_DATE ,LAST_LOGON ,LAST_LOGOUT ,POSITION_LEVEL ,JOB_DESC
+                ,PL_CODE ,CLM_BRN ,SPECIAL_FLAG ,FREEZEMENUSTD ,FREEZEMENUSPC
                 ,v_hist ,v_date
                 from bkiuser
                 where user_id = X.USER_ID
@@ -126,11 +128,13 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
                 (
                 USER_ID, TITLE_T, NAME_T, TITLE_E, NAME_E, BRN_CODE, TEL, EMAIL, PASSWORD, MENU_ID, ORG_ID, DEPT_ID, DIV_ID, TEAM_ID, POSITION_GRP_ID, POSITION_ID, HR_ORG_ID, HR_DEPT_ID, HR_DIV_ID, HR_TEAM_ID, JOIN_DATE, CREATE_DATE, CREATE_BY, EXPIRED_DATE, NEW_EMAIL, OLD_EMAIL, HR_POSITION_GRP_ID, HR_POSITION_ID, SUPERVISOR1_ID
                 ,CHANNEL ,DEPT ,UNIT ,FAX ,POSTN_ID ,DIV ,TEAM ,TERMINATION_FLAG ,TERMINATION_DATE ,OS_FLAG ,TEL_EXT ,AMEND_DATE ,AMEND_BY ,ACCT_LOCK ,ACCT_LOCK_DATE ,LAST_LOGON ,LAST_LOGOUT ,POSITION_LEVEL ,JOB_DESC
+                ,PL_CODE ,CLM_BRN ,SPECIAL_FLAG ,FREEZEMENUSTD ,FREEZEMENUSPC
                 ,HIST_ID ,HIST_REC_DATE
                 )
                 (
                 select USER_ID, TITLE_T, NAME_T, TITLE_E, NAME_E, BRN_CODE, TEL, EMAIL, PASSWORD, MENU_ID, ORG_ID, DEPT_ID, DIV_ID, TEAM_ID, POSITION_GRP_ID, POSITION_ID, HR_ORG_ID, HR_DEPT_ID, HR_DIV_ID, HR_TEAM_ID, JOIN_DATE, CREATE_DATE, CREATE_BY, EXPIRED_DATE, NEW_EMAIL, OLD_EMAIL, HR_POSITION_GRP_ID, HR_POSITION_ID, SUPERVISOR1_ID
                 ,CHANNEL ,DEPT ,UNIT ,FAX ,POSTN_ID ,DIV ,TEAM ,TERMINATION_FLAG ,TERMINATION_DATE ,OS_FLAG ,TEL_EXT ,AMEND_DATE ,AMEND_BY ,ACCT_LOCK ,ACCT_LOCK_DATE ,LAST_LOGON ,LAST_LOGOUT ,POSITION_LEVEL ,JOB_DESC
+                ,PL_CODE ,CLM_BRN ,SPECIAL_FLAG ,FREEZEMENUSTD ,FREEZEMENUSPC
                 ,v_hist ,v_date
                 from bkiuser
                 where user_id = X.USER_ID
@@ -186,11 +190,13 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
                 (
                 USER_ID, TITLE_T, NAME_T, TITLE_E, NAME_E, BRN_CODE, TEL, EMAIL, PASSWORD, MENU_ID, ORG_ID, DEPT_ID, DIV_ID, TEAM_ID, POSITION_GRP_ID, POSITION_ID, HR_ORG_ID, HR_DEPT_ID, HR_DIV_ID, HR_TEAM_ID, JOIN_DATE, CREATE_DATE, CREATE_BY, EXPIRED_DATE, NEW_EMAIL, OLD_EMAIL, HR_POSITION_GRP_ID, HR_POSITION_ID, SUPERVISOR1_ID
                 ,CHANNEL ,DEPT ,UNIT ,FAX ,POSTN_ID ,DIV ,TEAM ,TERMINATION_FLAG ,TERMINATION_DATE ,OS_FLAG ,TEL_EXT ,AMEND_DATE ,AMEND_BY ,ACCT_LOCK ,ACCT_LOCK_DATE ,LAST_LOGON ,LAST_LOGOUT ,POSITION_LEVEL ,JOB_DESC
+                ,PL_CODE ,CLM_BRN ,SPECIAL_FLAG ,FREEZEMENUSTD ,FREEZEMENUSPC
                 ,HIST_ID ,HIST_REC_DATE
                 )
                 (
                 select USER_ID, TITLE_T, NAME_T, TITLE_E, NAME_E, BRN_CODE, TEL, EMAIL, PASSWORD, MENU_ID, ORG_ID, DEPT_ID, DIV_ID, TEAM_ID, POSITION_GRP_ID, POSITION_ID, HR_ORG_ID, HR_DEPT_ID, HR_DIV_ID, HR_TEAM_ID, JOIN_DATE, CREATE_DATE, CREATE_BY, EXPIRED_DATE, NEW_EMAIL, OLD_EMAIL, HR_POSITION_GRP_ID, HR_POSITION_ID, SUPERVISOR1_ID
                 ,CHANNEL ,DEPT ,UNIT ,FAX ,POSTN_ID ,DIV ,TEAM ,TERMINATION_FLAG ,TERMINATION_DATE ,OS_FLAG ,TEL_EXT ,AMEND_DATE ,AMEND_BY ,ACCT_LOCK ,ACCT_LOCK_DATE ,LAST_LOGON ,LAST_LOGOUT ,POSITION_LEVEL ,JOB_DESC
+                ,PL_CODE ,CLM_BRN ,SPECIAL_FLAG ,FREEZEMENUSTD ,FREEZEMENUSPC
                 ,v_hist ,v_date
                 from bkiuser
                 where user_id = X.USER_ID
@@ -235,11 +241,13 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
                 (
                 USER_ID, TITLE_T, NAME_T, TITLE_E, NAME_E, BRN_CODE, TEL, EMAIL, PASSWORD, MENU_ID, ORG_ID, DEPT_ID, DIV_ID, TEAM_ID, POSITION_GRP_ID, POSITION_ID, HR_ORG_ID, HR_DEPT_ID, HR_DIV_ID, HR_TEAM_ID, JOIN_DATE, CREATE_DATE, CREATE_BY, EXPIRED_DATE, NEW_EMAIL, OLD_EMAIL, HR_POSITION_GRP_ID, HR_POSITION_ID, SUPERVISOR1_ID
                 ,CHANNEL ,DEPT ,UNIT ,FAX ,POSTN_ID ,DIV ,TEAM ,TERMINATION_FLAG ,TERMINATION_DATE ,OS_FLAG ,TEL_EXT ,AMEND_DATE ,AMEND_BY ,ACCT_LOCK ,ACCT_LOCK_DATE ,LAST_LOGON ,LAST_LOGOUT ,POSITION_LEVEL ,JOB_DESC
+                ,PL_CODE ,CLM_BRN ,SPECIAL_FLAG ,FREEZEMENUSTD ,FREEZEMENUSPC
                 ,HIST_ID ,HIST_REC_DATE
                 )
                 (
                 select USER_ID, TITLE_T, NAME_T, TITLE_E, NAME_E, BRN_CODE, TEL, EMAIL, PASSWORD, MENU_ID, ORG_ID, DEPT_ID, DIV_ID, TEAM_ID, POSITION_GRP_ID, POSITION_ID, HR_ORG_ID, HR_DEPT_ID, HR_DIV_ID, HR_TEAM_ID, JOIN_DATE, CREATE_DATE, CREATE_BY, EXPIRED_DATE, NEW_EMAIL, OLD_EMAIL, HR_POSITION_GRP_ID, HR_POSITION_ID, SUPERVISOR1_ID
                 ,CHANNEL ,DEPT ,UNIT ,FAX ,POSTN_ID ,DIV ,TEAM ,TERMINATION_FLAG ,TERMINATION_DATE ,OS_FLAG ,TEL_EXT ,AMEND_DATE ,AMEND_BY ,ACCT_LOCK ,ACCT_LOCK_DATE ,LAST_LOGON ,LAST_LOGOUT ,POSITION_LEVEL ,JOB_DESC
+                ,PL_CODE ,CLM_BRN ,SPECIAL_FLAG ,FREEZEMENUSTD ,FREEZEMENUSPC
                 ,v_hist ,v_date
                 from bkiuser
                 where user_id = X.USER_ID
@@ -257,6 +265,154 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
             ROLLBACK;
             O_RST := 'error: '||sqlerrm;
     END GET_EMPLOYEE_UPDATE;
+    
+    PROCEDURE EMAIL_NOTIFY(i_date IN DATE ) IS  
+     v_to varchar2(2000);  
+     v_cc varchar2(1000);  
+     v_bcc varchar2(1000);  
+     v_allcc varchar2(2000);  
+     v_from varchar2(50):= 'AdminClm@bangkokinsurance.com' ;   
+     v_dbins varchar2(10);  
+     v_whatsys varchar2(30);  
+     x_body varchar2(4000);  
+     x_subject varchar2(1000);  
+     v_listPerson varchar2(2000);  
+       
+     v_logrst varchar2(200);  
+     v_link varchar2(200);  
+     v_clmmen varchar2(10);  
+     v_remark varchar2(500);  
+          
+     v_rst varchar2(1000);  
+       
+     v_cnt1 number:=0;  
+     
+     v_cntPerson number:=0;  
+       
+     i_sts varchar2(10);  
+    BEGIN  
+        BEGIN
+            select count(*) into v_cntPerson
+            from hr_emp_history
+            where trunc(modified) = i_date;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+               v_cntPerson := 0;
+            WHEN OTHERS THEN
+                v_cntPerson := 0;
+        END;    
+        dbms_output.put_line('v_cntPerson='||v_cntPerson);
+        IF v_cntPerson = 0 THEN
+            return;
+        END IF;
+    
+        FOR X in (  
+            select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail   
+            from nc_med_email a  
+            where module = 'IDM-PROV'   
+            and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)  
+            and direction = 'BCC' and CANCEL is null   
+        ) LOOP  
+            v_bcc := v_bcc || x.ldap_mail ||';' ;  
+        END LOOP;  
+
+        FOR X in (  
+            select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail   
+            from nc_med_email a  
+            where module = 'IDM-PROV'   
+            and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)  
+            and direction = 'TO' and CANCEL is null   
+        ) LOOP  
+            v_to := v_to || x.ldap_mail ||';' ;  
+        END LOOP;  
+                   
+        begin   
+            select UPPER(substr(instance_name,1,8)) instance_name   
+            into v_dbins  
+            from v$instance;
+               
+            if v_dbins='UATBKIIN' then  
+                v_whatsys := '[ระบบทดสอบ]';  
+            else   
+                v_whatsys := null;  
+            end if;   
+        exception   
+            when no_data_found then   
+                v_dbins := null;  
+            when others then   
+                v_dbins := null;  
+        end;   
+           
+        if v_to is not null then  
+        
+            v_listPerson := null;
+            FOR lst in (
+                select user_id ,title_th||' '||first_name_th||' '||last_name_th NAME
+                ,org_unit_id ,org_unit_th ,position_grp_th ,org_group_th job_desc ,supervisor1_id
+                ,action ,employ_date ,depart_date 
+                ,BKI_ACCREQROLEID ,BKI_CLAIMREQROLEID ,BKI_UNDERWRITEREQROLEID ,BKI_ACC_ROLE_ID  ,BKI_CLAIM_ROLE_ID ,BKI_UNDERWRITE_ROLE_ID
+                from hr_emp_history
+                where trunc(modified) = i_date
+            ) LOOP
+                v_listPerson :=  v_listPerson||'<tr><td>'||lst.user_id||'</td>'||'<td>'||lst.NAME||'</td>'||'<td>'||lst.org_unit_id||'</td>'||'<td>'||lst.action||'</td>'||
+            '<td>'||lst.employ_date||'</td>'||'<td>'||lst.depart_date||'</td></tr>';
+            END LOOP;
+                    
+            x_subject := 'รายการพนักงานเปลี่ยนแปลง วันที่ '||to_char(i_date,'dd/mm/yy')||' จาก HRdata '||v_whatsys;   
+            X_BODY := '<!DOCTYPE html>'||  
+            '<html lang="en">'||'<head><meta charset="utf-8">'||  
+            '<title>รายการพนักงานเปลี่ยนแปลง HRdata</title>'||'</head>'||  
+            '<body style="font-family:''Angsana New'';background-color:#dff1f8">'||  
+            '<h2 align="center" style="color:blue;">รายการพนักงานเปลี่ยนแปลง วันที่ '||to_char(i_date,'dd/mm/yy')||' จาก HRdata </h2>'||  
+            '<div>'||  
+            '<table border="1" style="color:blue;border:thin;padding:4px;margin:4px; ">'||
+            '<thead style="background-color:lightblue;color:blue ">'||
+            '<tr>'||
+            '<td>USER_ID</td>'||'<td>NAME</td>'||'<td>ORGUNIT</td>'||'<td>ACTION</td>'||
+            '<td>EMPLOY_DATE</td>'||'<td>DEPART_DATE</td>'||
+            '</tr>'||
+            '</thead>'||
+            '<tbody>'||
+            v_listPerson||    
+            '</tbody>'||
+            '</table>'||
+            '<br/>'||  
+            '<h3 style="color:brown">ขณะนี้ข้อมูลได้ update เข้า table BKIUSER แล้ว </h3>'||
+            '</div>'||   
+            '</body></html>' ;  
+        end if;   
+--
+--        dbms_output.put_line('dummy to: '||v_to );   
+--        dbms_output.put_line('dummy cc: '||v_cc );  
+--               
+--        if v_dbins='DBBKIINS' then  
+--        null;   
+--        else   
+--        v_to := v_bcc; -- for test  
+--        v_cc := ''; -- for test  
+--        end if;   
+           
+        dbms_output.put_line(x_body);  
+           
+        dbms_output.put_line('to: '||v_to );   
+        dbms_output.put_line('allcc: '||v_allcc );   
+        dbms_output.put_line('bcc: '||v_bcc );   
+        if v_to is not null then  
+        nc_health_package.generate_email(v_from, v_to ,  
+        x_subject,   
+        x_body   
+        ,v_cc  
+        ,v_bcc);   
+        -- nc_health_paid.WRITE_LOG('NC_APPROVE' ,'PACK','EMAIL_NOTICE_APPRV' ,'step: send email ' ,'v_to:'||v_to||' v_cc:'||v_cc||' I_pay:'||I_pay||' success::' ,'success' ,v_rst) ;  
+        end if;  
+      
+    EXCEPTION  
+     WHEN OTHERS THEN  
+     --NC_HEALTH_PACKAGE.WRITE_LOG('EMAIL' ,'DB Package mail Bancas' ,'Error: '||sqlerrm ,v_logrst);  
+     nc_health_paid.WRITE_LOG('NC_APPROVE' ,'PACK','EMAIL_IDM' ,'step: send email ' ,'v_to:'||v_to||' v_cc:'||v_cc||' I_date:'||I_date||' error::'||sqlerrm ,'error' ,v_rst) ;  
+     dbms_output.put_line('Error: '||sqlerrm );  
+    END EMAIL_NOTIFY; --email_notice bancas   
+     
 END P_GET_IDMDATA;
 /
 
