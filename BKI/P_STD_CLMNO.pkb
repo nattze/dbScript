@@ -32,15 +32,15 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_STD_CLMNO AS
                     V_SHORTYR := 17;
                     V_FULLYR := 2017;
             end;         
-            dbms_output.put_line('V_FULLYR= '||V_FULLYR||' v_clm_no='||v_clm_no);   
+--            dbms_output.put_line('V_FULLYR= '||V_FULLYR||' v_clm_no='||v_clm_no);   
             if length(v_clm_no) <15 then  
-                dbms_output.put_line('in length(v_clm_no) <15');
+--                dbms_output.put_line('in length(v_clm_no) <15');
                 v_clmyear := p_std_clmno.get_clmyear(v_clm_no) ;
                 v_reg := '^'||to_char(v_clmyear)||'|'||substr(to_char(v_clmyear),3,2); 
-                dbms_output.put_line('clmyear='||v_clmyear||' v_reg= '||v_reg);     
+--                dbms_output.put_line('clmyear='||v_clmyear||' v_reg= '||v_reg);     
                 v_repyr := REGEXP_REPLACE (substr(v_clm_no ,1,4), v_reg, to_char(v_clmyear)) ;        
                 v_repyr := v_repyr||substr(v_clm_no,5) ;  
-                dbms_output.put_line('v_repyr= '||v_repyr);             
+--                dbms_output.put_line('v_repyr= '||v_repyr);             
                 if to_number(substr(v_clm_no ,1,2)) >=V_SHORTYR then  -- have clm run
                         
                     if v_clmyear < V_FULLYR then
@@ -57,16 +57,16 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_STD_CLMNO AS
                     end if;
                 end if;
             else    -- case normal                 
-                dbms_output.put_line('in length(v_clm_no) >=15');                
+--                dbms_output.put_line('in length(v_clm_no) >=15');                
                 v_clmyear := p_std_clmno.get_clmyear(v_clm_no) ;
                 if v_clmyear < V_FULLYR then
                     ret_clmno := v_clm_no;
                 else
                     v_reg := '^'||to_char(v_clmyear)||'|'||substr(to_char(v_clmyear),3,2); 
-                    dbms_output.put_line('clmyear='||v_clmyear||' v_reg= '||v_reg);        
+--                    dbms_output.put_line('clmyear='||v_clmyear||' v_reg= '||v_reg);        
                     v_repyr := REGEXP_REPLACE (substr(v_clm_no ,1,4), v_reg, to_char(v_clmyear)) ;   
                     v_repyr := v_repyr||substr(v_clm_no,5) ;  
-                    dbms_output.put_line('v_repyr= '||v_repyr);                   
+--                    dbms_output.put_line('v_repyr= '||v_repyr);                   
                     ret_clmno := substr(v_repyr ,1,9);
                 end if;                
             end if;
@@ -106,13 +106,13 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_STD_CLMNO AS
             end;     
             
             if length(v_clm_no) <15 then
-                dbms_output.put_line('in length(v_clm_no) <15');
+--                dbms_output.put_line('in length(v_clm_no) <15');
                 v_clmyear := p_std_clmno.get_clmyear(v_clm_no) ;
                 v_reg := '^'||to_char(v_clmyear)||'|'||substr(to_char(v_clmyear),3,2); 
-                dbms_output.put_line('clmyear='||v_clmyear||' v_reg= '||v_reg);         
+--                dbms_output.put_line('clmyear='||v_clmyear||' v_reg= '||v_reg);         
                 v_repyr := REGEXP_REPLACE (substr(v_clm_no ,1,4), v_reg, to_char(v_clmyear)) ;  
                 v_repyr := v_repyr||substr(v_clm_no,5) ;  
-                dbms_output.put_line('v_repyr= '||v_repyr);  
+--                dbms_output.put_line('v_repyr= '||v_repyr);  
                                 
                 if to_number(substr(v_clm_no ,1,2)) >=V_SHORTYR then
                     if v_clmyear < V_FULLYR then
@@ -131,13 +131,13 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_STD_CLMNO AS
                     end if;
                 end if;
             else    -- case normal 
-                dbms_output.put_line('in length(v_clm_no) >=15');
+--                dbms_output.put_line('in length(v_clm_no) >=15');
                 v_clmyear := p_std_clmno.get_clmyear(v_clm_no) ;
                 v_reg := '^'||to_char(v_clmyear)||'|'||substr(to_char(v_clmyear),3,2); 
-                dbms_output.put_line('clmyear='||v_clmyear||' v_reg= '||v_reg);        
+--                dbms_output.put_line('clmyear='||v_clmyear||' v_reg= '||v_reg);        
                 v_repyr := REGEXP_REPLACE (substr(v_clm_no ,1,4), v_reg, to_char(v_clmyear)) ;
                 v_repyr := v_repyr||substr(v_clm_no,5) ;  
-                dbms_output.put_line('v_repyr= '||v_repyr);  
+--                dbms_output.put_line('v_repyr= '||v_repyr);  
                                 
                 if v_clmyear < V_FULLYR then
                     ret_clmrun := 0;
