@@ -6586,6 +6586,372 @@ EXCEPTION
     WHEN others THEN
         return false;
 END check_have_EC;
+
+PROCEDURE get_PA_TORBOR3(i_datefr IN DATE ,i_dateto IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2) IS
+
+    v_prod  varchar2(10):='PA';
+    v_brn   varchar2(5):='01';
+--    m_frdate date:='01-oct-16';
+--    m_todate date:='31-oct-16';
+    m_frdate date:=i_datefr;
+    m_todate date:=i_dateto;
+    v_frdate varchar2(10);
+    v_todate varchar2(10);
+    v_payeename varchar2(250);
+    v_policy    varchar2(50);
+    v_not_date  date;
+
+    v_cnt   number(10):=0;
+    v_ricnt  number(10):=0;
+    
+    v_ins_name  varchar2(250);
+    v_fleet_seq number(10);
+    v_paid_date date;
+    v_receive_date date;
+    v_id_card   varchar2(30);
+    v_dummy_name   varchar2(250);
+    v_ricode  varchar2(30);
+    stamp   date:=sysdate;
+    -- CLM_TORBOR3.Notify_date คือ วันที่รับเอกสาร / Doc_date 
+BEGIN
+    v_frdate := to_char(m_frdate , 'yyyymmdd');
+    v_todate := to_char(m_todate , 'yyyymmdd');
+    dbms_output.put_line('=====Start @'||to_char(stamp,'dd/mm/yy HH24:MI:SS')||'=====');
+    FOR X in (
+        select  m.sts_key ,m.clm_no,m.pol_no,m.pol_run,m.cus_enq mas_cus_enq, 
+                   m.loss_date,m.clm_date, fax_clm_date doc_date,s.tot_res,m.prod_type,m.clm_sts,s.close_date
+                   ,recpt_seq
+        from    mis_clm_mas m,mis_clm_mas_seq  s
+        where to_char(m.clm_date,'yyyymmdd') between V_FRDATE and  V_TODATE
+            and m.prod_type in (select p.prod_type from clm_grp_prod p where p.sysid = V_PROD ) 
+            and m.clm_br_code like V_BRN
+            and m.clm_no = s.clm_no
+            and s.corr_seq in (select max(a.corr_seq) from mis_clm_mas_seq a
+                                         where a.clm_no = s.clm_no
+                                            and  to_char(a.corr_date,'yyyymmdd') <= V_TODATE ) 
+           -- and rownum<=100                                
+        order by m.clm_no    
+    )LOOP
+        
+        if length(X.pol_no) = 8 and X.pol_run = 0 then
+             V_POLICY := substr(X.pol_no,1,2)||'/'||substr(X.pol_no,3);
+        else
+             pol_end.Disp_no_prn(X.pol_no,nvl(X.pol_run,0),V_POLICY);
+        end if;        
+    
+        for cres in (
+            select fleet_seq ,loss_name 
+            from mis_cpa_res a 
+            where clm_no = X.CLM_NO
+            and revise_seq in (select max(aa.revise_seq) from mis_cpa_res aa where aa.clm_no = a.clm_no and 
+            trunc(corr_date) <=M_TODATE )
+        )loop
+            v_ins_name := cres.loss_name;
+            v_fleet_seq :=  cres.fleet_seq;
+            p_oic_paph_clm.get_Citizen( 'PA' ,X.pol_no ,X.pol_run ,v_fleet_seq ,X.recpt_seq ,X.loss_date 
+            ,X.clm_no, null /*i_payno */ ,V_DUMMY_NAME ,V_ID_CARD) ;       
+        end loop; --cres
+        
+        v_cnt := v_cnt+1;
+        
+--        if X.sts_key is not null then   -- get NOT_DATE
+--                begin
+--                    select reg_date into v_not_date
+--                    from nc_mas a
+--                    where clm_no = X.clm_no
+--                    and prod_grp ='0' ;                
+--                exception
+--                    when no_data_found then
+--                        v_not_date := null;
+--                    when others then
+--                        v_not_date := null;
+--                end;         
+--        end if; -- get NOT_DATE
+        v_not_date := X.doc_date;
+        
+        v_ricnt:=0;
+        v_payeename:=null;
+        for RI in (
+            select   p.clm_no clm_paid,p.pay_no  pay_no,pay_total ,p.pay_date,p.pay_sts,r.ri_code,r.ri_br_code,r.lf_flag,r.ri_type,r.ri_sub_type,r.pay_amt,nvl(p.pay_curr_code,'BHT') curr_code
+              from   mis_clm_paid p,mis_cri_paid r
+              where (p.pay_no,p.corr_seq) in (select b.pay_no,max(b.corr_seq) from mis_clm_paid b
+                                               where  b.clm_no = p.clm_no
+                                               and    b.pay_no = p.pay_no
+                                               and    b.pay_sts = '0'
+                                               and    b.state_flag = '1'   -- Pure statement
+                                               and nvl(pay_total ,0) >0
+            --                                   and    to_char(b.corr_date,'yyyymmdd') between to_char(:Pdate1,'yyyymmdd') and to_char(:Pdate2,'yyyymmdd')
+                                               group by b.pay_no) 
+              and    p.pay_sts        = '0'
+              and    p.state_flag     =  '1'   -- Pure statement
+              and    r.clm_no          = p.clm_no
+              and    r.pay_no         = p.pay_no
+              and    r.pay_sts         = p.pay_sts
+              and    r.corr_seq        = p.corr_seq
+              and p.clm_no = X.clm_no
+            order by p.pay_no        
+        )loop
+            v_ricnt := v_ricnt+1;
+            
+            if v_ricnt =1 then --get v_payeename
+                begin
+                    select payee_name into v_payeename
+                    from mis_clm_payee a
+                    where clm_no = X.clm_no
+                    and pay_no = RI.pay_no 
+                    and nvl(corr_seq,0) in (select nvl(max(aa.corr_seq),0) from mis_clm_payee aa where aa.pay_no = a.pay_no);                
+                exception
+                    when no_data_found then
+                        v_payeename := null;
+                    when others then
+                        v_payeename := null;
+                end;        
+            end if; -- v_payeename
+            
+            v_ricode := RI.ri_code||RI.ri_br_code||RI.lf_flag||RI.ri_type||RI.ri_sub_type;
+            v_paid_date := RI.pay_date;
+            begin
+                select max(settle_date) into v_receive_date
+                from  rsl_mas
+                where  ri_code     = RI.ri_code
+                and  ri_br_code  = RI.ri_br_code
+                and  type        = '0'
+                and  dept_no     = '04'
+                and  acc_type    = '06'
+                and  q_mm        = '04'
+                and  settle_date is not null 
+                and  vou_no      is not null
+                and  curr_code   = RI.curr_code
+                group by ri_code,ri_br_code,type,dept_no,acc_type,q_mm;
+            exception 
+                when no_data_found   then v_receive_date := null;
+                when others   then v_receive_date := null;
+            end;            
+--            dbms_output.put_line('no. '||v_cnt||' clmno='||X.clm_no||' pol='||V_POLICY||' v_ins_name='||v_ins_name||' ID='||V_ID_CARD||' payee='||v_payeename||' pay_no='||RI.pay_no||' ResAmt='||X.tot_res||' PayAmt='||RI.pay_total||' riCode='||v_ricode
+--            ||' riAmt='||RI.pay_amt||' recv_date='||v_receive_date||' clm_date='||X.clm_date||' not_date='||v_not_date);
+            
+            Insert into ALLCLM.CLM_TORBOR3
+            (CLM_PROD_GRP, SELECT_FR, SELECT_TO, CLM_SEQ, CLM_NO, CLM_DATE, LOSS_DATE, POLICY_NO, IDCARD_NO, CUS_NAME ,PAYEE_NAME, EST_AMT, PAID_AMT, RICODE, RI_PAID_AMT, RECEIVE_DATE
+            ,CLOSE_DATE ,FLEET_SEQ ,INSURE_NAME ,NOTIFY_DATE ,PAID_DATE)
+            Values(v_prod ,m_frdate ,m_todate ,v_cnt ,X.clm_no ,X.clm_date ,x.loss_date ,V_POLICY ,V_ID_CARD ,X.mas_cus_enq ,v_payeename ,X.tot_res ,RI.pay_total ,V_RICODE ,RI.pay_amt,V_RECEIVE_DATE
+            ,X.close_date ,v_fleet_seq ,V_INS_NAME ,v_not_date ,v_paid_date);
+        end loop; --RI
+        
+        if v_ricnt =0 then
+            --dbms_output.put_line('no. '||v_cnt||' clmno='||X.clm_no||' pol='||V_POLICY||' v_ins_name='||v_ins_name||' ID='||V_ID_CARD||' ResAmt='||X.tot_res||' clm_date='||X.clm_date||' not_date='||v_not_date);        
+
+            Insert into ALLCLM.CLM_TORBOR3
+            (CLM_PROD_GRP, SELECT_FR, SELECT_TO, CLM_SEQ, CLM_NO, CLM_DATE, LOSS_DATE, POLICY_NO, IDCARD_NO, CUS_NAME ,PAYEE_NAME , EST_AMT, PAID_AMT, RICODE, RI_PAID_AMT, RECEIVE_DATE
+            ,CLOSE_DATE ,FLEET_SEQ ,INSURE_NAME ,NOTIFY_DATE)
+            Values(v_prod ,m_frdate ,m_todate ,v_cnt ,X.clm_no ,X.clm_date ,x.loss_date ,V_POLICY ,V_ID_CARD ,X.mas_cus_enq ,v_payeename ,X.tot_res ,null ,null ,null,null
+            ,null ,v_fleet_seq ,V_INS_NAME ,v_not_date);
+        end if;
+        if mod(v_cnt,1000) = 0 then COMMIT; end if;
+    END LOOP; -- X
+    COMMIT;
+    stamp := sysdate;
+    dbms_output.put_line('=====Complete  @'||to_char(stamp,'dd/mm/yy HH24:MI:SS')||'=====');
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        o_rst :='Error: '||sqlerrm;
+
+END get_PA_TORBOR3;
      
+
+PROCEDURE get_GM_TORBOR3(i_datefr IN DATE ,i_dateto IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2) IS
+
+    v_prod  varchar2(10):='GM';
+    v_brn   varchar2(5):='01';
+--    m_frdate date:='01-oct-16';
+--    m_todate date:='31-oct-16';
+    m_frdate date:=i_datefr;
+    m_todate date:=i_dateto;
+    v_frdate varchar2(10);
+    v_todate varchar2(10);
+    v_payeename varchar2(250);
+    v_policy    varchar2(50);
+    v_not_date  date;
+    v_loss_date date;
+    v_cnt   number(10):=0;
+    v_ricnt  number(10):=0;
+    
+    v_ins_name  varchar2(250);
+    v_fleet_seq number(10);
+    v_paytotal  number(13,2);
+    v_paid_date date;
+    v_receive_date date;
+    v_id_card   varchar2(30);
+    v_dummy_name   varchar2(250);
+    v_ricode  varchar2(30);
+    stamp   date:=sysdate;
+    
+    -- CLM_TORBOR3.Notify_date คือ วันที่รับเอกสาร / Doc_date 
+BEGIN
+    v_frdate := to_char(m_frdate , 'yyyymmdd');
+    v_todate := to_char(m_todate , 'yyyymmdd');
+    dbms_output.put_line('=====Start @'||to_char(stamp,'dd/mm/yy HH24:MI:SS')||'=====');
+    FOR X in (
+        select  m.sts_key ,out_clm_no ,m.clm_no,m.pol_no,m.pol_run,m.cus_enq mas_cus_enq, 
+                   m.loss_date,m.clm_date ,fax_clm_date doc_date ,s.tot_res,m.prod_type,m.clm_sts,s.close_date
+                   ,recpt_seq
+        from    mis_clm_mas m,mis_clm_mas_seq  s
+        where to_char(m.clm_date,'yyyymmdd') between V_FRDATE and  V_TODATE
+            and m.prod_type in (select p.prod_type from clm_grp_prod p where p.sysid = V_PROD ) 
+            and m.clm_br_code like V_BRN
+            and m.clm_no = s.clm_no
+            and s.corr_seq in (select max(a.corr_seq) from mis_clm_mas_seq a
+                                         where a.clm_no = s.clm_no
+                                            and  to_char(a.corr_date,'yyyymmdd') <= V_TODATE ) 
+           -- and rownum<=100                                
+        order by m.clm_no    
+    )LOOP
+        
+        if length(X.pol_no) = 8 and X.pol_run = 0 then
+             V_POLICY := substr(X.pol_no,1,2)||'/'||substr(X.pol_no,3);
+        else
+             pol_end.Disp_no_prn(X.pol_no,nvl(X.pol_run,0),V_POLICY);
+        end if;        
+    
+        for cres in (
+            select fleet_seq ,title||' '||name loss_name ,loss_date
+            from clm_medical_res a 
+            where clm_no = X.CLM_NO
+            and state_seq in (select max(aa.state_seq) from clm_medical_res aa where aa.clm_no = a.clm_no and 
+            trunc(corr_date) <=M_TODATE )
+        )loop
+            v_ins_name := cres.loss_name;
+            v_fleet_seq :=  cres.fleet_seq;
+            v_loss_date := cres.loss_date;
+            p_oic_paph_clm.get_Citizen( 'GM' ,X.pol_no ,X.pol_run ,v_fleet_seq ,X.recpt_seq ,v_loss_date 
+            ,X.clm_no, null /*i_payno */ ,V_DUMMY_NAME ,V_ID_CARD) ;       
+        end loop; --cres
+        
+        v_cnt := v_cnt+1;
+        
+        v_not_date := X.doc_date;
+        
+        v_ricnt:=0;
+        v_payeename:=null;
+        for RI in (
+--            select   p.clm_no ,p.pay_no  pay_no,pay_total-rec_total  pay_total ,p.pay_date ,r.ri_code,r.ri_br_code,r.lf_flag,r.ri_type,r.ri_sub_type,r.pay_amt,'BHT' curr_code
+--              from   mis_clmgm_paid p,mis_cri_paid r
+--              where (p.pay_no,p.corr_seq) in (select b.pay_no,max(b.corr_seq) from mis_clmgm_paid b
+--                                               where  b.clm_no = p.clm_no
+--                                               and    b.pay_no = p.pay_no
+--                                               and    b.print_type = '1'   -- Pure statement
+--                                               and nvl(pay_total ,0) >0
+--            --                                   and    to_char(b.corr_date,'yyyymmdd') between to_char(:Pdate1,'yyyymmdd') and to_char(:Pdate2,'yyyymmdd')
+--                                               group by b.pay_no) 
+--              and    p.print_type     =  '1'   -- Pure statement
+--              and    r.clm_no          = p.clm_no
+--              and    r.pay_no         = p.pay_no
+--              and    r.corr_seq        = p.corr_seq
+--              and p.clm_no = X.clm_no
+--            order by p.pay_no        
+            select  distinct  p.clm_no clm_paid,p.pay_no pay_no,p.date_paid,r.ri_code,r.ri_br_code,r.lf_flag,r.ri_type,r.ri_sub_type,r.pay_amt
+              from   clm_gm_paid p,mis_cri_paid r
+            where 
+            -- to_char(p.date_paid,'yyyymmdd') between to_char(:Pdate1,'yyyymmdd') and to_char(:Pdate2,'yyyymmdd') and 
+                         p.corr_seq  = (select max(b.corr_seq) from clm_gm_paid b
+                                                where b.clm_no         = p.clm_no and
+                                             --             b.clm_pd_flag = 'O' and
+                                                          b.fleet_seq       = p.fleet_seq    and
+                                                          b.bene_code   = p.bene_code and
+                                                          b.dis_code       = p.dis_code     and
+                                                        --  to_char(b.corr_date,'yyyymmdd') between to_char(:Pdate1,'yyyymmdd') and to_char(:Pdate2,'yyyymmdd') and 
+                                                          b.loss_date = p.loss_date
+                                                group by b.clm_no)
+              and    r.clm_no          = p.clm_no
+              and    r.pay_no          = p.pay_no
+              and    r.corr_seq        = p.corr_seq
+              and p.clm_no = X.clm_no
+            order by p.pay_no            
+        )loop
+            v_ricnt := v_ricnt+1;
+            
+            if v_ricnt =1 then --get v_payeename
+                begin
+                    select payee_name into v_payeename
+                    from clm_gm_payee a
+                    where clm_no = X.clm_no
+                    and pay_no = RI.pay_no ;                
+                exception
+                    when no_data_found then
+                        v_payeename := null;
+                    when others then
+                        v_payeename := null;
+                end;        
+                
+                begin
+                    select pay_total-rec_total ,pay_date  into v_paytotal ,v_paid_date  
+                    from mis_clmgm_paid a
+                    where clm_no = X.clm_no
+                    and pay_no = RI.pay_no 
+                    and a.corr_seq in (select max(b.corr_seq) from mis_clmgm_paid b
+                                               where   b.pay_no = a.pay_no
+                    ) ;                
+                exception
+                    when no_data_found then
+                        v_paytotal := 0;
+                        v_paid_date := X.close_date;
+                    when others then
+                        v_paytotal := 0;
+                        v_paid_date := X.close_date;
+                end;                      
+            end if; -- v_payeename
+            
+            v_ricode := RI.ri_code||RI.ri_br_code||RI.lf_flag||RI.ri_type||RI.ri_sub_type;
+            
+            begin
+                select max(settle_date) into v_receive_date
+                from  rsl_mas
+                where  ri_code     = RI.ri_code
+                and  ri_br_code  = RI.ri_br_code
+                and  type        = '0'
+                and  dept_no     = '04'
+                and  acc_type    = '06'
+                and  q_mm        = '04'
+                and  settle_date is not null 
+                and  vou_no      is not null
+                and  curr_code   = 'BHT'
+                group by ri_code,ri_br_code,type,dept_no,acc_type,q_mm;
+                
+            exception 
+                when no_data_found   then v_receive_date := null;
+                when others   then v_receive_date := null;
+            end;            
+--            dbms_output.put_line('no. '||v_cnt||' clmno='||X.clm_no||' pol='||V_POLICY||' v_ins_name='||v_ins_name||' ID='||V_ID_CARD||' payee='||v_payeename||' pay_no='||RI.pay_no||' ResAmt='||X.tot_res||' PayAmt='||RI.pay_total||' riCode='||v_ricode
+--            ||' riAmt='||RI.pay_amt||' recv_date='||v_receive_date||' clm_date='||X.clm_date||' not_date='||v_not_date);
+            
+            Insert into ALLCLM.CLM_TORBOR3
+            (CLM_PROD_GRP, SELECT_FR, SELECT_TO, CLM_SEQ, CLM_NO, CLM_DATE, LOSS_DATE, POLICY_NO, IDCARD_NO, CUS_NAME ,PAYEE_NAME, EST_AMT, PAID_AMT, RICODE, RI_PAID_AMT, RECEIVE_DATE
+            ,CLOSE_DATE ,FLEET_SEQ ,INSURE_NAME ,NOTIFY_DATE ,PAID_DATE)
+            Values(v_prod ,m_frdate ,m_todate ,v_cnt ,X.clm_no ,X.clm_date ,v_loss_date ,V_POLICY ,V_ID_CARD ,X.mas_cus_enq ,v_payeename ,X.tot_res ,v_paytotal ,V_RICODE ,RI.pay_amt,V_RECEIVE_DATE
+            ,X.close_date ,v_fleet_seq ,V_INS_NAME ,v_not_date ,v_paid_date);
+        end loop; --RI
+        
+        if v_ricnt =0 then
+            --dbms_output.put_line('no. '||v_cnt||' clmno='||X.clm_no||' pol='||V_POLICY||' v_ins_name='||v_ins_name||' ID='||V_ID_CARD||' ResAmt='||X.tot_res||' clm_date='||X.clm_date||' not_date='||v_not_date);        
+
+            Insert into ALLCLM.CLM_TORBOR3
+            (CLM_PROD_GRP, SELECT_FR, SELECT_TO, CLM_SEQ, CLM_NO, CLM_DATE, LOSS_DATE, POLICY_NO, IDCARD_NO, CUS_NAME ,PAYEE_NAME , EST_AMT, PAID_AMT, RICODE, RI_PAID_AMT, RECEIVE_DATE
+            ,CLOSE_DATE ,FLEET_SEQ ,INSURE_NAME ,NOTIFY_DATE)
+            Values(v_prod ,m_frdate ,m_todate ,v_cnt ,X.clm_no ,X.clm_date ,v_loss_date ,V_POLICY ,V_ID_CARD ,X.mas_cus_enq ,v_payeename ,X.tot_res ,null ,null ,null,null
+            ,null ,v_fleet_seq ,V_INS_NAME ,v_not_date);
+        end if;
+        if mod(v_cnt,1000) = 0 then COMMIT; end if;
+    END LOOP; -- X
+    COMMIT;
+    stamp := sysdate;
+    dbms_output.put_line('=====Complete  @'||to_char(stamp,'dd/mm/yy HH24:MI:SS')||'=====');
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        o_rst :='Error: '||sqlerrm;
+
+END get_GM_TORBOR3;
+     
+
 END P_OIC_PAPH_CLM;
 /
