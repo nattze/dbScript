@@ -7877,7 +7877,7 @@ BEGIN
     
     commit;
     
-    dbms_output.put_line('complete : clm_no='||v_clmno);
+    --dbms_output.put_line('complete : clm_no='||v_clmno);
     return true;
 EXCEPTION
     WHEN OTHERS THEN
@@ -7908,7 +7908,7 @@ BEGIN
     else
         v_sys := NC_HEALTH_PAID.GET_PRODUCT(v_clmno);
     end if;
-    dbms_output.put_line('clm_no='||v_clmno||' sys: '||v_sys);
+    --dbms_output.put_line('clm_no='||v_clmno||' sys: '||v_sys);
     if v_sys = 'PA' then
         begin
             select id into rst
