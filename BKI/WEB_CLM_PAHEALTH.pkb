@@ -45,7 +45,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
                         into v_policy_no           
                         from mis_pa_prem a       
                         where id = id_card       
-                        and i_loss_date   between a.fr_date and  a.to_date   ;              
+                        and i_loss_date   between a.fr_date and  a.to_date  and cancel is null ;              
                                 
          exception               
                    when others then               
@@ -71,7 +71,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
                         into v_cnt      
                         from mis_pa_prem a  
                         where other = other_card  
-                        and i_loss_date   between a.fr_date and  a.to_date   ;                      
+                        and i_loss_date   between a.fr_date and  a.to_date  and cancel is null ;                      
          exception        
                    when others then        
                         v_cnt := 1;       
@@ -96,7 +96,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
                         into v_cnt           
                         from mis_pa_prem a       
                         where id = id_card       
-                        and i_loss_date   between a.fr_date and  a.to_date   ;                           
+                        and i_loss_date   between a.fr_date and  a.to_date   and cancel is null  ;                           
          exception             
                    when others then             
                         v_cnt := 1;            
@@ -124,7 +124,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
                        where b.pol_no  = a.pol_no and            
                              b.pol_run = a.pol_run and              
                              i_loss_date between b.fr_date and b.to_date and            
-                             id = id_card and rownum = 1) ;           
+                             id = id_card and rownum = 1) and cancel is null;           
   END;            
   
   PROCEDURE get_policy_by_other   
@@ -607,7 +607,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
             and x_loss_date  between fr_date and to_date         
             and id = in_id_no         
             and recpt_seq in (select max(aa.recpt_seq) from mis_pa_prem aa where aa.pol_no = a.pol_no and aa.pol_run =a.pol_run         
-            and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no)      ;           
+            and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no) and cancel is null     ;           
         exception         
         when no_data_found then         
             x_fleet_seq := in_fleet_seq;         
@@ -646,7 +646,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
             and x_loss_date  between fr_date and to_date         
             and id = in_id_no         
             and recpt_seq in (select max(aa.recpt_seq) from mis_pa_prem aa where aa.pol_no = a.pol_no and aa.pol_run =a.pol_run         
-            and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no) ;          
+            and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no) and cancel is null ;          
         open out_cursor_policy for         
              select pol_no||pol_run policy_no ,prod_type         
             from mis_pa_prem a         
@@ -655,7 +655,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
             and x_loss_date  between fr_date and to_date         
             and id = in_id_no         
             and recpt_seq in (select max(aa.recpt_seq) from mis_pa_prem aa where aa.pol_no = a.pol_no and aa.pol_run =a.pol_run         
-            and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no) ;                       
+            and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no) and cancel is null ;                       
                                       
     elsif x_type in ('PG','HG') and in_fleet_seq = 0 then --For x_type = PG or HG and user didn't key a fleet_seq         
              if MISC.HEALTHUTIL.get_type_family(x_pol_no,x_pol_run) then --For Telemarketing         
@@ -745,7 +745,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
             else           
                out_name := x_name1;          
             end if;         
-            --Get Status                  
+            --Get Status                   
             MISC.HEALTHUTIL.get_status_active(x_pol_no,x_pol_run,in_fleet_seq,x_recpt_seq,x_loss_date,out_status);         
             --Get Coverage         
             MISC.HEALTHUTIL.get_coverage(x_pol_no,x_pol_run,in_fleet_seq,x_recpt_seq,x_loss_date,out_cursor);         
@@ -930,7 +930,8 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
             and x_loss_date  between fr_date and to_date  
             and id = in_id_no  
             and recpt_seq in (select max(aa.recpt_seq) from mis_pa_prem aa where aa.pol_no = a.pol_no and aa.pol_run =a.pol_run  
-            and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no)      ;    
+            and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no)      
+            and cancel is null;    
         exception  
         when no_data_found then  
             x_fleet_seq := in_fleet_seq;  
@@ -969,7 +970,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
             and x_loss_date  between fr_date and to_date  
             and id = in_id_no  
             and recpt_seq in (select max(aa.recpt_seq) from mis_pa_prem aa where aa.pol_no = a.pol_no and aa.pol_run =a.pol_run  
-            and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no) ;   
+            and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no)  and cancel is null;   
         open out_cursor_policy for  
              select pol_no||pol_run policy_no ,prod_type  
             from mis_pa_prem a  
@@ -978,7 +979,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
             and x_loss_date  between fr_date and to_date  
             and id = in_id_no  
             and recpt_seq in (select max(aa.recpt_seq) from mis_pa_prem aa where aa.pol_no = a.pol_no and aa.pol_run =a.pol_run  
-            and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no) ;                
+            and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no)  and cancel is null;                
                                
     elsif x_type in ('PG','HG') and in_fleet_seq = 0 then --For x_type = PG or HG and user didn't key a fleet_seq  
              if MISC.HEALTHUTIL.get_type_family(x_pol_no,x_pol_run) then --For Telemarketing  
