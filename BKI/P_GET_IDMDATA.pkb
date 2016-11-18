@@ -36,6 +36,120 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
     return true;
     END ASSIGN_BKIUSER_ROLE;
 
+
+    PROCEDURE GET_EMPLOYEE_UPDATE(I_USERID IN VARCHAR2 ,I_ACCREQ IN VARCHAR2 ,I_CLMREQ IN VARCHAR2 ,I_UNWREQ IN VARCHAR2 ,O_RST OUT VARCHAR2) IS
+        v_date  date:=sysdate;
+        v_hist  number:=99;   
+    BEGIN
+        IF I_USERID is null THEN -- sweep
+            BEGIN        
+                SELECT IDM_HIST_BKIUSER_SEQ.NEXTVAL into v_hist        
+                FROM dual;        
+            EXCEPTION        
+                WHEN  NO_DATA_FOUND THEN        
+                    v_hist := 0;        
+                WHEN  OTHERS THEN        
+                    v_hist := 0;        
+            END;           
+            FOR x in (select user_id ,modified 
+            from HR_EMP
+            where trunc(modified) = trunc(sysdate)
+            )LOOP           
+            BEGIN
+                Insert into HR_EMP_HISTORY
+                (
+                USER_ID, TITLE_TH, FIRST_NAME_TH, LAST_NAME_TH, TITLE_ENG, FIRST_NAME_ENG, LAST_NAME_ENG, WORK_STATUS, EMPLOY_DATE ,DEPART_DATE, PROBATION_END_DATE, ORG_UNIT_ID, ORG_UNIT_TH, ORG_UNIT_ENG, POSITION_ID, POSITION_TH, POSITION_ENG, POSITION_GRP_TH, POSITION_GRP_ENG, CREATED_BY, CREATED_DATE, POSITION_LEVEL_ENG, POSITION_GRP_ID, SUPERVISOR1_ID
+                ,ORG_GROUP_TH ,ORG_GROUP_ENG ,ACTION ,BKI_ACCREQROLEID ,BKI_CLAIMREQROLEID ,BKI_UNDERWRITEREQROLEID ,BKI_ACC_ROLE_ID  ,BKI_CLAIM_ROLE_ID ,BKI_UNDERWRITE_ROLE_ID ,MODIFIED  ,DISABLESTATE 
+                ,HIST_ID ,HIST_REC_DATE
+                )
+                (
+                select USER_ID, TITLE_TH, FIRST_NAME_TH, LAST_NAME_TH, TITLE_ENG, FIRST_NAME_ENG, LAST_NAME_ENG, WORK_STATUS, EMPLOY_DATE ,DEPART_DATE, PROBATION_END_DATE, ORG_UNIT_ID, ORG_UNIT_TH, ORG_UNIT_ENG, POSITION_ID, POSITION_TH, POSITION_ENG, POSITION_GRP_TH, POSITION_GRP_ENG, CREATED_BY, CREATED_DATE, POSITION_LEVEL_ENG, POSITION_GRP_ID, SUPERVISOR1_ID
+                ,ORG_GROUP_TH ,ORG_GROUP_ENG ,ACTION ,I_ACCREQ BKI_ACCREQROLEID ,I_CLMREQ BKI_CLAIMREQROLEID ,I_UNWREQ BKI_UNDERWRITEREQROLEID,BKI_ACC_ROLE_ID  ,BKI_CLAIM_ROLE_ID ,BKI_UNDERWRITE_ROLE_ID ,MODIFIED  ,DISABLESTATE 
+                ,v_hist ,v_date 
+                from hr_emp
+                where user_id = X.USER_ID
+                );
+
+                Insert into BKIUSER_HISTORY
+                (
+                USER_ID, TITLE_T, NAME_T, TITLE_E, NAME_E, BRN_CODE, TEL, EMAIL, PASSWORD, MENU_ID, ORG_ID, DEPT_ID, DIV_ID, TEAM_ID, POSITION_GRP_ID, POSITION_ID, HR_ORG_ID, HR_DEPT_ID, HR_DIV_ID, HR_TEAM_ID, JOIN_DATE, CREATE_DATE, CREATE_BY, EXPIRED_DATE, NEW_EMAIL, OLD_EMAIL, HR_POSITION_GRP_ID, HR_POSITION_ID, SUPERVISOR1_ID
+                ,CHANNEL ,DEPT ,UNIT ,FAX ,POSTN_ID ,DIV ,TEAM ,TERMINATION_FLAG ,TERMINATION_DATE ,OS_FLAG ,TEL_EXT ,AMEND_DATE ,AMEND_BY ,ACCT_LOCK ,ACCT_LOCK_DATE ,LAST_LOGON ,LAST_LOGOUT ,POSITION_LEVEL ,JOB_DESC
+                ,PL_CODE ,CLM_BRN ,SPECIAL_FLAG ,FREEZEMENUSTD ,FREEZEMENUSPC
+                ,HIST_ID ,HIST_REC_DATE
+                )
+                (
+                select USER_ID, TITLE_T, NAME_T, TITLE_E, NAME_E, BRN_CODE, TEL, EMAIL, PASSWORD, MENU_ID, ORG_ID, DEPT_ID, DIV_ID, TEAM_ID, POSITION_GRP_ID, POSITION_ID, HR_ORG_ID, HR_DEPT_ID, HR_DIV_ID, HR_TEAM_ID, JOIN_DATE, CREATE_DATE, CREATE_BY, EXPIRED_DATE, NEW_EMAIL, OLD_EMAIL, HR_POSITION_GRP_ID, HR_POSITION_ID, SUPERVISOR1_ID
+                ,CHANNEL ,DEPT ,UNIT ,FAX ,POSTN_ID ,DIV ,TEAM ,TERMINATION_FLAG ,TERMINATION_DATE ,OS_FLAG ,TEL_EXT ,AMEND_DATE ,AMEND_BY ,ACCT_LOCK ,ACCT_LOCK_DATE ,LAST_LOGON ,LAST_LOGOUT ,POSITION_LEVEL ,JOB_DESC
+                ,PL_CODE ,CLM_BRN ,SPECIAL_FLAG ,FREEZEMENUSTD ,FREEZEMENUSPC
+                ,v_hist ,v_date
+                from bkiuser
+                where user_id = X.USER_ID
+                );            
+            EXCEPTION
+                WHEN OTHERS THEN
+                    O_RST := 'get all modified have error: '||sqlerrm;
+                    RETURN;
+            END;            
+            END LOOP; --select HR_EMP
+       
+        ELSE -- by user_id
+            BEGIN        
+                SELECT IDM_HIST_BKIUSER_SEQ.NEXTVAL into v_hist        
+                FROM dual;        
+            EXCEPTION        
+                WHEN  NO_DATA_FOUND THEN        
+                    v_hist := 0;        
+                WHEN  OTHERS THEN        
+                    v_hist := 0;        
+            END;             
+            FOR x in (select user_id ,modified 
+            from HR_EMP
+            where user_id = I_USERID
+            )LOOP            
+            BEGIN
+                Insert into HR_EMP_HISTORY
+                (
+                USER_ID, TITLE_TH, FIRST_NAME_TH, LAST_NAME_TH, TITLE_ENG, FIRST_NAME_ENG, LAST_NAME_ENG, WORK_STATUS, EMPLOY_DATE ,DEPART_DATE, PROBATION_END_DATE, ORG_UNIT_ID, ORG_UNIT_TH, ORG_UNIT_ENG, POSITION_ID, POSITION_TH, POSITION_ENG, POSITION_GRP_TH, POSITION_GRP_ENG, CREATED_BY, CREATED_DATE, POSITION_LEVEL_ENG, POSITION_GRP_ID, SUPERVISOR1_ID
+                ,ORG_GROUP_TH ,ORG_GROUP_ENG ,ACTION ,BKI_ACCREQROLEID ,BKI_CLAIMREQROLEID ,BKI_UNDERWRITEREQROLEID ,BKI_ACC_ROLE_ID  ,BKI_CLAIM_ROLE_ID ,BKI_UNDERWRITE_ROLE_ID ,MODIFIED  ,DISABLESTATE 
+                ,HIST_ID ,HIST_REC_DATE
+                )
+                (
+                select USER_ID, TITLE_TH, FIRST_NAME_TH, LAST_NAME_TH, TITLE_ENG, FIRST_NAME_ENG, LAST_NAME_ENG, WORK_STATUS, EMPLOY_DATE ,DEPART_DATE, PROBATION_END_DATE, ORG_UNIT_ID, ORG_UNIT_TH, ORG_UNIT_ENG, POSITION_ID, POSITION_TH, POSITION_ENG, POSITION_GRP_TH, POSITION_GRP_ENG, CREATED_BY, CREATED_DATE, POSITION_LEVEL_ENG, POSITION_GRP_ID, SUPERVISOR1_ID
+                ,ORG_GROUP_TH ,ORG_GROUP_ENG ,ACTION ,I_ACCREQ BKI_ACCREQROLEID ,I_CLMREQ BKI_CLAIMREQROLEID ,I_UNWREQ BKI_UNDERWRITEREQROLEID,BKI_ACC_ROLE_ID  ,BKI_CLAIM_ROLE_ID ,BKI_UNDERWRITE_ROLE_ID ,MODIFIED  ,DISABLESTATE 
+                ,v_hist ,v_date 
+                from hr_emp
+                where user_id = X.USER_ID
+                );
+
+                Insert into BKIUSER_HISTORY
+                (
+                USER_ID, TITLE_T, NAME_T, TITLE_E, NAME_E, BRN_CODE, TEL, EMAIL, PASSWORD, MENU_ID, ORG_ID, DEPT_ID, DIV_ID, TEAM_ID, POSITION_GRP_ID, POSITION_ID, HR_ORG_ID, HR_DEPT_ID, HR_DIV_ID, HR_TEAM_ID, JOIN_DATE, CREATE_DATE, CREATE_BY, EXPIRED_DATE, NEW_EMAIL, OLD_EMAIL, HR_POSITION_GRP_ID, HR_POSITION_ID, SUPERVISOR1_ID
+                ,CHANNEL ,DEPT ,UNIT ,FAX ,POSTN_ID ,DIV ,TEAM ,TERMINATION_FLAG ,TERMINATION_DATE ,OS_FLAG ,TEL_EXT ,AMEND_DATE ,AMEND_BY ,ACCT_LOCK ,ACCT_LOCK_DATE ,LAST_LOGON ,LAST_LOGOUT ,POSITION_LEVEL ,JOB_DESC
+                ,PL_CODE ,CLM_BRN ,SPECIAL_FLAG ,FREEZEMENUSTD ,FREEZEMENUSPC
+                ,HIST_ID ,HIST_REC_DATE
+                )
+                (
+                select USER_ID, TITLE_T, NAME_T, TITLE_E, NAME_E, BRN_CODE, TEL, EMAIL, PASSWORD, MENU_ID, ORG_ID, DEPT_ID, DIV_ID, TEAM_ID, POSITION_GRP_ID, POSITION_ID, HR_ORG_ID, HR_DEPT_ID, HR_DIV_ID, HR_TEAM_ID, JOIN_DATE, CREATE_DATE, CREATE_BY, EXPIRED_DATE, NEW_EMAIL, OLD_EMAIL, HR_POSITION_GRP_ID, HR_POSITION_ID, SUPERVISOR1_ID
+                ,CHANNEL ,DEPT ,UNIT ,FAX ,POSTN_ID ,DIV ,TEAM ,TERMINATION_FLAG ,TERMINATION_DATE ,OS_FLAG ,TEL_EXT ,AMEND_DATE ,AMEND_BY ,ACCT_LOCK ,ACCT_LOCK_DATE ,LAST_LOGON ,LAST_LOGOUT ,POSITION_LEVEL ,JOB_DESC
+                ,PL_CODE ,CLM_BRN ,SPECIAL_FLAG ,FREEZEMENUSTD ,FREEZEMENUSPC
+                ,v_hist ,v_date
+                from bkiuser
+                where user_id = X.USER_ID
+                );            
+            EXCEPTION
+                WHEN OTHERS THEN
+                    O_RST := 'get by user have error: '||sqlerrm;
+                    RETURN;
+            END;            
+            END LOOP; --select HR_EMP        
+        END IF;          
+        COMMIT;  
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            O_RST := 'error: '||sqlerrm;
+    END GET_EMPLOYEE_UPDATE;
+    
     PROCEDURE GET_EMPLOYEE_UPDATE( I_USERID IN VARCHAR2 ,I_DATE IN DATE ,O_RST OUT VARCHAR2) IS
         v_date  date:=sysdate;
         v_hist  number:=99;   
@@ -322,6 +436,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
             where module = 'IDM-PROV'   
             and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)  
             and direction = 'TO' and CANCEL is null   
+--            and user_id='2702'
         ) LOOP  
             v_to := v_to || x.ldap_mail ||';' ;  
         END LOOP;  
@@ -347,39 +462,72 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
         
             v_listPerson := null;
             FOR lst in (
-                select user_id ,title_th||' '||first_name_th||' '||last_name_th NAME
+                select user_id 
+--                ,title_th||' '||first_name_th||' '||last_name_th NAME
+                ,first_name_th NAME
                 ,org_unit_id ,org_unit_th ,position_grp_th ,org_group_th job_desc ,supervisor1_id
                 ,action ,employ_date ,depart_date 
                 ,BKI_ACCREQROLEID ,BKI_CLAIMREQROLEID ,BKI_UNDERWRITEREQROLEID ,BKI_ACC_ROLE_ID  ,BKI_CLAIM_ROLE_ID ,BKI_UNDERWRITE_ROLE_ID
                 from hr_emp_history
                 where trunc(modified) = i_date
             ) LOOP
-                v_listPerson :=  v_listPerson||'<tr><td>'||lst.user_id||'</td>'||'<td>'||lst.NAME||'</td>'||'<td>'||lst.org_unit_id||'</td>'||'<td>'||lst.action||'</td>'||
-            '<td>'||lst.employ_date||'</td>'||'<td>'||lst.depart_date||'</td></tr>';
+                if v_cntPerson > 30 then
+                    v_listPerson :=  v_listPerson||'<tr><td>'||lst.user_id||'</td></tr>';                   
+                else
+                    v_listPerson :=  v_listPerson||'<tr><td>'||lst.user_id||'</td>'||'<td>'||lst.NAME||'</td>'||'<td>'||lst.org_unit_id||'</td>'||'<td>'||lst.action||'</td>'||
+                '<td>'||lst.employ_date||'</td>'||'<td>'||lst.depart_date||'</td></tr>';               
+                end if;
+                
             END LOOP;
                     
             x_subject := 'รายการพนักงานเปลี่ยนแปลง วันที่ '||to_char(i_date,'dd/mm/yy')||' จาก HRdata '||v_whatsys;   
+            
+            if v_cntPerson > 30 then
             X_BODY := '<!DOCTYPE html>'||  
-            '<html lang="en">'||'<head><meta charset="utf-8">'||  
-            '<title>รายการพนักงานเปลี่ยนแปลง HRdata</title>'||'</head>'||  
-            '<body style="font-family:''Angsana New'';background-color:#dff1f8">'||  
-            '<h2 align="center" style="color:blue;">รายการพนักงานเปลี่ยนแปลง วันที่ '||to_char(i_date,'dd/mm/yy')||' จาก HRdata </h2>'||  
-            '<div>'||  
-            '<table border="1" style="color:blue;border:thin;padding:4px;margin:4px; ">'||
-            '<thead style="background-color:lightblue;color:blue ">'||
-            '<tr>'||
-            '<td>USER_ID</td>'||'<td>NAME</td>'||'<td>ORGUNIT</td>'||'<td>ACTION</td>'||
-            '<td>EMPLOY_DATE</td>'||'<td>DEPART_DATE</td>'||
-            '</tr>'||
-            '</thead>'||
-            '<tbody>'||
-            v_listPerson||    
-            '</tbody>'||
-            '</table>'||
-            '<br/>'||  
-            '<h3 style="color:brown">ขณะนี้ข้อมูลได้ update เข้า table BKIUSER แล้ว </h3>'||
-            '</div>'||   
-            '</body></html>' ;  
+                '<html lang="en">'||'<head><meta charset="utf-8">'||  
+                '<title>รายการพนักงานเปลี่ยนแปลง HRdata</title>'||'</head>'||  
+                '<body style="font-family:''Angsana New'';background-color:#dff1f8">'||  
+                '<h2 align="center" style="color:blue;">รายการพนักงานเปลี่ยนแปลง วันที่ '||to_char(i_date,'dd/mm/yy')||' จาก HRdata จำนวน '||v_cntPerson||' รายการ</h2>'||  
+                '<div>'||  
+                '<table border="1" style="color:blue;border:thin;padding:4px;margin:4px; ">'||
+                '<thead style="background-color:lightblue;color:blue ">'||
+                '<tr>'||
+                '<td>USER_ID</td>'||
+                '</tr>'||
+                '</thead>'||
+                '<tbody>'||
+                v_listPerson||    
+                '</tbody>'||
+                '</table>'||
+                '<br/>'||  
+                '<h3 style="color:brown">ขณะนี้ข้อมูลได้ update เข้า table BKIUSER แล้ว </h3>'||
+                 '<p style="color:red;">มีรายการ>30 ตัดแสดงแต่ user_id</p>'||
+                '</div>'||   
+                '</body></html>' ;                    
+            else
+                X_BODY := '<!DOCTYPE html>'||  
+                '<html lang="en">'||'<head><meta charset="utf-8">'||  
+                '<title>รายการพนักงานเปลี่ยนแปลง HRdata</title>'||'</head>'||  
+                '<body style="font-family:''Angsana New'';background-color:#dff1f8">'||  
+                '<h2 align="center" style="color:blue;">รายการพนักงานเปลี่ยนแปลง วันที่ '||to_char(i_date,'dd/mm/yy')||' จาก HRdata จำนวน '||v_cntPerson||' รายการ</h2>'||  
+                '<div>'||  
+                '<table border="1" style="color:blue;border:thin;padding:4px;margin:4px; ">'||
+                '<thead style="background-color:lightblue;color:blue ">'||
+                '<tr>'||
+                '<td>USER_ID</td>'||'<td>NAME</td>'||'<td>ORGUNIT</td>'||'<td>ACTION</td>'||
+                '<td>EMPLOY_DATE</td>'||'<td>DEPART_DATE</td>'||
+                '</tr>'||
+                '</thead>'||
+                '<tbody>'||
+                v_listPerson||    
+                '</tbody>'||
+                '</table>'||
+                '<br/>'||  
+                '<h3 style="color:brown">ขณะนี้ข้อมูลได้ update เข้า table BKIUSER แล้ว </h3>'||
+                '</div>'||   
+                '</body></html>' ;              
+            end if;
+
         end if;   
 --
 --        dbms_output.put_line('dummy to: '||v_to );   
@@ -391,7 +539,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
 --        v_to := v_bcc; -- for test  
 --        v_cc := ''; -- for test  
 --        end if;   
-           
+        dbms_output.put_line('length(x_body)='||length(x_body));   
         dbms_output.put_line(x_body);  
            
         dbms_output.put_line('to: '||v_to );   
