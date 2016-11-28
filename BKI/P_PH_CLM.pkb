@@ -365,6 +365,32 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
                       
     END GET_LIST_ICD10;   
      
+
+    FUNCTION GET_LIST_ADMISSION (O_ADM_LIST Out P_PH_CLM.v_curr ) RETURN VARCHAR2 IS  
+        v_searchname varchar2(100);
+        v_ret varchar2(250);
+    BEGIN
+           OPEN O_ADM_LIST  FOR 
+                select key value ,remark text
+                from clm_constant a
+                where key like 'PHADMTYPE%'
+                 ;       
+             return v_ret;       
+
+    EXCEPTION
+           when no_data_found then 
+            v_ret := 'Not found Type';
+            OPEN O_ADM_LIST  FOR SELECT '' VALUE ,'' TEXT   FROM DUAL;
+            return v_ret;           
+   
+           when others then 
+            v_ret := 'error: '||sqlerrm;
+            OPEN O_ADM_LIST  FOR SELECT '' VALUE ,'' TEXT   FROM DUAL;
+            return v_ret;  
+                      
+    END GET_LIST_ADMISSION;   
+     
+
 END P_PH_CLM;
 
 /

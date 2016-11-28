@@ -36,7 +36,10 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
 
     FUNCTION GET_LIST_ICD10 (vName IN VARCHAR2 ,O_ICD10_LIST Out P_PH_CLM.v_curr ) RETURN VARCHAR2 ;
     -- ดึง รายชื่อโรงพยาบาล เตรียมแสดงใน DropdownList -- Return null = success ,not null = show error    
-        
+
+    FUNCTION GET_LIST_ADMISSION (O_ADM_LIST Out P_PH_CLM.v_curr ) RETURN VARCHAR2 ;
+    -- ดึง รายประเภทการรักษา เตรียมแสดงใน DropdownList -- Return null = success ,not null = show error    
+            
 END P_PH_CLM; 
 
 /
