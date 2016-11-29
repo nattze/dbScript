@@ -1124,29 +1124,32 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                 x_fleet_seq := j_rec1.FLEET_SEQ ;
                 if vRecpt is not null then
                     x_recpt_seq := vRecpt ;
-                    qry_str := 'select pol_no ,pol_run ,recpt_seq ,fleet_seq , end_seq ,id ,title ,name ,surname ,fr_date ,to_date  '||    
+                    qry_str := 'select pol_no ,pol_run ,recpt_seq ,fleet_seq ,min(end_seq) end_seq ,id ,title ,name ,surname ,fr_date ,to_date  '||    
                     '   from mis_pa_prem a  where pol_no ='''||v_polno ||''' '||
                     ' and pol_run= '||v_polrun ||
                     ' and to_date('''|| v_lossdate||''' ,''DD/MM/RRRR'')  between fr_date and to_date ' ||
                     ' and recpt_seq = '||x_recpt_seq||
-                    ' and fleet_seq = '||x_fleet_seq  ;
+                    ' and fleet_seq = '||x_fleet_seq ||
+                    'and cancel is null group by pol_no ,pol_run ,recpt_seq ,fleet_seq  ,id ,title ,name ,surname ,fr_date ,to_date' ;
                     dbms_output.put_line('query ระบุ recpt: '||qry_str);       
                 else -- กรณี many Policy 
                     if vFleet > 0  and  vRecpt is null and  HEALTHUTIL.GET_COUNT_NAME(v_polno ,v_polrun ,vFleet) > 1 then -- Dupp Fleet_seq 
-                        qry_str := 'select pol_no ,pol_run ,recpt_seq ,fleet_seq , end_seq ,id ,title ,name ,surname ,fr_date ,to_date  '||    
+                        qry_str := 'select pol_no ,pol_run ,recpt_seq ,fleet_seq , min(end_seq) end_seq ,id ,title ,name ,surname ,fr_date ,to_date  '||    
                             '   from mis_pa_prem a  where pol_no ='''||v_polno ||''' '||
                             ' and pol_run= '||v_polrun ||
                             ' and to_date('''|| v_lossdate||''' ,''DD/MM/RRRR'')  between fr_date and to_date ' ||
                             ' and recpt_seq = '||x_recpt_seq||
-                            ' and fleet_seq = '||x_fleet_seq  ;    
+                            ' and fleet_seq = '||x_fleet_seq  ||
+                            'and cancel is null group by pol_no ,pol_run ,recpt_seq ,fleet_seq  ,id ,title ,name ,surname ,fr_date ,to_date' ;    
                             dbms_output.put_line('query ไม่ระบุ recpt dupp_fleet: '||qry_str);       
                     else
-                        qry_str := 'select pol_no ,pol_run ,recpt_seq ,fleet_seq , end_seq ,id ,title ,name ,surname ,fr_date ,to_date  '||    
+                        qry_str := 'select pol_no ,pol_run ,recpt_seq ,fleet_seq , min(end_seq) end_seq ,id ,title ,name ,surname ,fr_date ,to_date  '||    
                         '   from mis_pa_prem a  where pol_no ='''||v_polno ||''' '||
                         ' and pol_run= '||v_polrun ||
                         ' and to_date('''|| v_lossdate||''' ,''DD/MM/RRRR'')  between fr_date and to_date ' ||
                         ' and recpt_seq = '||x_recpt_seq||
-                        ' and fleet_seq = '||x_fleet_seq  ;           
+                        ' and fleet_seq = '||x_fleet_seq  ||
+                        'and cancel is null group by pol_no ,pol_run ,recpt_seq ,fleet_seq  ,id ,title ,name ,surname ,fr_date ,to_date' ;           
                         dbms_output.put_line('query ไม่ระบุ recpt ไม่ระบุ fleet: '||qry_str);              
                     end if;                      
            
@@ -1468,19 +1471,21 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
             dbms_output.put_line('v_polno==>'||v_polno||v_polrun||' v_lossdate:'||v_lossdate||'  x_recpt_seq:'||x_recpt_seq);        
                 if vRecpt is not null then
                     x_recpt_seq := vRecpt ;
-                    qry_str := 'select pol_no ,pol_run ,recpt_seq ,fleet_seq , end_seq ,id ,title ,name ,surname ,fr_date ,to_date  '||    
+                    qry_str := 'select pol_no ,pol_run ,recpt_seq ,fleet_seq ,min(end_seq) end_seq ,id ,title ,name ,surname ,fr_date ,to_date  '||    
                     '   from mis_pa_prem a  where pol_no ='''||v_polno ||''' '||
                     ' and pol_run= '||v_polrun ||
                     ' and to_date('''|| v_lossdate||''' ,''DD/MM/RRRR'')  between fr_date and to_date ' ||
                     ' and recpt_seq = '||x_recpt_seq||
-                    ' and fleet_seq = '||x_fleet_seq  ;
+                    ' and fleet_seq = '||x_fleet_seq ||
+                    ' and cancel is null group by pol_no ,pol_run ,recpt_seq ,fleet_seq  ,id ,title ,name ,surname ,fr_date ,to_date' ;
                 else -- กรณี many Policy 
-                    qry_str := 'select pol_no ,pol_run ,recpt_seq ,fleet_seq , end_seq ,id ,title ,name ,surname ,fr_date ,to_date  '||    
+                    qry_str := 'select pol_no ,pol_run ,recpt_seq ,fleet_seq ,min(end_seq) end_seq ,id ,title ,name ,surname ,fr_date ,to_date  '||    
                     '   from mis_pa_prem a  where pol_no ='''||v_polno ||''' '||
                     ' and pol_run= '||v_polrun ||
                     ' and to_date('''|| v_lossdate||''' ,''DD/MM/RRRR'')  between fr_date and to_date ' ||
                     ' and recpt_seq = '||x_recpt_seq||
-                    ' and fleet_seq = '||x_fleet_seq  ;                
+                    ' and fleet_seq = '||x_fleet_seq ||
+                    ' and cancel is null group by pol_no ,pol_run ,recpt_seq ,fleet_seq  ,id ,title ,name ,surname ,fr_date ,to_date' ;                
                 end if;
                 
             OPEN P_X1 FOR qry_str ;
@@ -1637,15 +1642,16 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                 
             dbms_output.put_line('v_polno==>'||v_polno||v_polrun||' v_lossdate:'||v_lossdate||'  x_recpt_seq:'||x_recpt_seq);        
             FOR x1 in (
-                select pol_no ,pol_run ,recpt_seq ,fleet_seq , end_seq ,id ,title ,name ,surname ,fr_date ,to_date 
+                select pol_no ,pol_run ,recpt_seq ,fleet_seq ,min(end_seq) end_seq ,id ,title ,name ,surname ,fr_date ,to_date 
                 from mis_pa_prem a
                 where pol_no =v_polno
                 and pol_run=v_polrun
                 and v_lossdate  between fr_date and to_date /* งาน tele ตอ้งใช้ loss_date หา recpt*/
                 --and id = vIDNO
                 --and recpt_seq =x_recpt_seq
-                and fleet_seq = x_fleet_seq
-                and rownum=1
+                and fleet_seq = x_fleet_seq 
+                and cancel is null 
+                group by pol_no ,pol_run ,recpt_seq ,fleet_seq  ,id ,title ,name ,surname ,fr_date ,to_date
                 ) LOOP
                                     
                 v_cus_code := null;
@@ -1831,14 +1837,16 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                     --end if;
                                 
                     FOR x1 in (
-                        select pol_no ,pol_run ,recpt_seq ,fleet_seq , end_seq ,id ,title ,name ,surname ,fr_date ,to_date 
+                        select pol_no ,pol_run ,recpt_seq ,fleet_seq ,min(end_seq) end_seq ,id ,title ,name ,surname ,fr_date ,to_date 
                         from mis_pa_prem a
                         where pol_no =v_polno
                         and pol_run=v_polrun
                         and v_lossdate  between fr_date and to_date
                         and id = vIDNO
+                        and cancel is null
                         and recpt_seq in (select max(aa.recpt_seq) from mis_pa_prem aa where aa.pol_no = a.pol_no and aa.pol_run =a.pol_run
-                        and v_lossdate between aa.fr_date and aa.to_date and id= vIDNO)
+                        and v_lossdate between aa.fr_date and aa.to_date and id= vIDNO and cancel is null)
+                        group by pol_no ,pol_run ,recpt_seq ,fleet_seq  ,id ,title ,name ,surname ,fr_date ,to_date 
                         ) LOOP
                                     
                         v_cus_code := null;
