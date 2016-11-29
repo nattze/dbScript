@@ -5541,9 +5541,11 @@ PROCEDURE GET_SINGLE_CLM_DATA_BROK(V_STSKEY NUMBER, V_CLM_NO VARCHAR2,
                 and pol_run = P_POL_RUN
                 and fleet_seq = P_FLEET_SEQ 
                 and recpt_seq = P_RECPT_SEQ 
-                and end_seq in (select nvl(max(aa.end_seq),0) from misc.mis_pa_prem aa where aa.pol_no = a.pol_no and aa.pol_run = a.pol_run and aa.fleet_seq = a.fleet_seq 
-                    and aa.recpt_seq =a.recpt_seq
-                        and P_LOSSDATE between fr_date and to_date); 
+                and P_LOSSDATE between fr_date and to_date;
+                
+--                and end_seq in (select nvl(max(aa.end_seq),0) from misc.mis_pa_prem aa where aa.pol_no = a.pol_no and aa.pol_run = a.pol_run and aa.fleet_seq = a.fleet_seq 
+--                    and aa.recpt_seq =a.recpt_seq
+--                        and P_LOSSDATE between fr_date and to_date); 
                    
     c_rec c1%rowtype;
 
