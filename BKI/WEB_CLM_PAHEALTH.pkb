@@ -110,7 +110,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
   BEGIN                          
                                     
       open o_cursor_pol for               
-        select a.pol_no||a.pol_run policy_no ,fleet_seq ,recpt_seq ,id,title||' '||name||surname cust_name --,fr_date ,to_date ,cancel ,prem_code6 ,sum_ins6           
+        select distinct a.pol_no||a.pol_run policy_no ,fleet_seq ,recpt_seq ,id,title||' '||name||surname cust_name --,fr_date ,to_date ,cancel ,prem_code6 ,sum_ins6           
         , (select c.prod_type||'-'||c.name_th from prod_type_std c where c.prod_type = a.prod_type)  prod_type            
         from mis_pa_prem a           
         where            
@@ -135,7 +135,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
  BEGIN   
    
      open o_cursor_pol for   
-     select a.pol_no||a.pol_run policy_no ,fleet_seq ,recpt_seq ,id,other,title||' '||name||surname cust_name --,fr_date ,to_date ,cancel ,prem_code6 ,sum_ins6  
+     select distinct a.pol_no||a.pol_run policy_no ,fleet_seq ,recpt_seq ,id,other,title||' '||name||surname cust_name --,fr_date ,to_date ,cancel ,prem_code6 ,sum_ins6  
      , (select c.prod_type||'-'||c.name_th from prod_type_std c where c.prod_type = a.prod_type) prod_type   
      from mis_pa_prem a  
      where   
@@ -599,7 +599,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
              select null policy_no,null prod_type from dual;                 
     elsif x_type in ('PG','PI') and  in_id_no is not null and x_cnt = 1 then -- case search ID get one result         
         begin         
-            select fleet_seq ,recpt_seq         
+            select distinct fleet_seq ,recpt_seq         
             into x_fleet_seq ,x_recpt_seq         
             from mis_pa_prem a         
             where pol_no =x_pol_no         
@@ -639,7 +639,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
 --             select x_policy_no policy_no,null prod_type from dual;             
          
         open out_cursor_name for         
-             select title||' '||name||' '||surname name, fleet_seq, recpt_seq          
+             select distinct title||' '||name||' '||surname name, fleet_seq, recpt_seq          
             from mis_pa_prem a         
             where pol_no =x_pol_no         
             and pol_run=x_pol_run         
@@ -648,7 +648,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
             and recpt_seq in (select max(aa.recpt_seq) from mis_pa_prem aa where aa.pol_no = a.pol_no and aa.pol_run =a.pol_run         
             and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no) and cancel is null ;          
         open out_cursor_policy for         
-             select pol_no||pol_run policy_no ,prod_type         
+             select distinct pol_no||pol_run policy_no ,prod_type         
             from mis_pa_prem a         
             where pol_no =x_pol_no         
             and pol_run=x_pol_run         
@@ -721,7 +721,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
             else                     
 --                x_recpt_seq := in_recpt_seq;  -- get recpt_seq         
                 begin         
-                    select recpt_seq          
+                    select distinct recpt_seq          
                     into x_recpt_seq         
                     from mis_pa_prem a         
                     where pol_no =x_pol_no         
@@ -922,7 +922,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
              select null policy_no,null prod_type from dual;          
     elsif x_type in ('PG','PI') and  in_id_no is not null and x_cnt = 1 then -- case search ID get one result  
         begin  
-            select fleet_seq ,recpt_seq  
+            select distinct fleet_seq ,recpt_seq  
             into x_fleet_seq ,x_recpt_seq  
             from mis_pa_prem a  
             where pol_no =x_pol_no  
@@ -963,7 +963,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
 --             select x_policy_no policy_no,null prod_type from dual;      
   
         open out_cursor_name for  
-             select title||' '||name||' '||surname name, fleet_seq, recpt_seq   
+             select distinct title||' '||name||' '||surname name, fleet_seq, recpt_seq   
             from mis_pa_prem a  
             where pol_no =x_pol_no  
             and pol_run=x_pol_run  
@@ -972,7 +972,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
             and recpt_seq in (select max(aa.recpt_seq) from mis_pa_prem aa where aa.pol_no = a.pol_no and aa.pol_run =a.pol_run  
             and x_loss_date between aa.fr_date and aa.to_date and id= in_id_no)  and cancel is null;   
         open out_cursor_policy for  
-             select pol_no||pol_run policy_no ,prod_type  
+             select distinct pol_no||pol_run policy_no ,prod_type  
             from mis_pa_prem a  
             where pol_no =x_pol_no  
             and pol_run=x_pol_run  
@@ -1045,7 +1045,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
             else              
 --                x_recpt_seq := in_recpt_seq;  -- get recpt_seq  
                 begin  
-                    select recpt_seq   
+                    select distinct recpt_seq   
                     into x_recpt_seq  
                     from mis_pa_prem a  
                     where pol_no =x_pol_no  
@@ -1245,7 +1245,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
              select null policy_no,null prod_type from dual;                 
     elsif x_type in ('PG','PI') and  in_id_no is not null and x_cnt = 1 then -- case search ID get one result         
         begin         
-            select fleet_seq ,recpt_seq   
+            select distinct fleet_seq ,recpt_seq   
             into x_fleet_seq ,x_recpt_seq   
             from mis_pa_prem a   
             where pol_no =x_pol_no   
@@ -1557,7 +1557,7 @@ FUNCTION  get_policy_by_other(other_card  IN VARCHAR2, i_loss_date IN DATE) retu
              select null policy_no,null prod_type from dual;          
     elsif x_type in ('PG','PI') and  in_id_no is not null and x_cnt = 1 then -- case search ID get one result  
         begin  
-            select fleet_seq ,recpt_seq  
+            select distinct fleet_seq ,recpt_seq  
             into x_fleet_seq ,x_recpt_seq  
             from mis_pa_prem a  
             where pol_no =x_pol_no  
