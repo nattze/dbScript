@@ -390,6 +390,32 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
                       
     END GET_LIST_ADMISSION;   
      
+    FUNCTION GET_LIST_BILLSTD (vName IN VARCHAR2 ,O_BILLSTD_LIST Out P_PH_CLM.v_curr ) RETURN VARCHAR2 IS  
+        v_searchname varchar2(100);
+        v_ret varchar2(250);
+    BEGIN
+        v_searchname := vName ;
+           OPEN O_BILLSTD_LIST  FOR    
+                select code value ,descr_th text
+                from nc_billing_std                
+                where  code like '%'||v_searchname||'%' 
+                or descr_th like '%'||v_searchname||'%' ;
+                
+             return v_ret;       
+
+    EXCEPTION
+           when no_data_found then 
+            v_ret := 'Not found Code';
+            OPEN O_BILLSTD_LIST  FOR SELECT '' VALUE ,'' TEXT   FROM DUAL;
+            return v_ret;           
+   
+           when others then 
+            v_ret := 'error: '||sqlerrm;
+            OPEN O_BILLSTD_LIST  FOR SELECT '' VALUE ,'' TEXT   FROM DUAL;
+            return v_ret;  
+                      
+    END GET_LIST_BILLSTD;   
+     
 
 END P_PH_CLM;
 
