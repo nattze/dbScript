@@ -54,9 +54,12 @@ CREATE OR REPLACE PACKAGE P_MANAGE_ROLE AS
     v_assignby    -- who's run script
     */
     
-    FUNCTION split_clm_num(v_clm_no IN VARCHAR2) RETURN VARCHAR2 ;
+    FUNCTION keepRole(v_user IN VARCHAR2  ,v_role IN VARCHAR2  ,v_type IN VARCHAR2 ,v_seq IN NUMBER,v_date IN date) RETURN BOOLEAN;
     
-    FUNCTION split_clm_run(v_clm_no  IN VARCHAR2) RETURN NUMBER ;
+    FUNCTION getSeq RETURN NUMBER;
+    
+    FUNCTION sweepRole(v_user IN VARCHAR2)  RETURN BOOLEAN;
+    
 END P_MANAGE_ROLE;
 
 /

@@ -577,6 +577,9 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
     
     FUNCTION assignUserStdRole(v_user IN VARCHAR2 ,O_RST  OUT VARCHAR2) RETURN BOOLEAN IS
         v_role varchar2(250);   --Z0591 
+        v_seq   number;
+        dumm    boolean;
+        v_date  date:=sysdate;
 --        o_rst   varchar2(250);
     BEGIN
 
@@ -590,40 +593,20 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
         end if;        
             
         -- *** ตอนใช้จริงต้องเปลี่ยนมาอ่านที่ HR_EMP ** --
+--        v_seq := p_manage_role.getSeq;
         for x in (
-        select user_id ,bki_acc_role_id STD_ROLE
-        from hr_emp_history a
-        where (a.user_id ,a.hist_id) in (select aa.user_id ,max(aa.hist_id) from hr_emp_history aa
-            where aa.user_id = a.user_id group by aa.user_id)
-        and  bki_acc_role_id is not null 
-        and user_id = v_user
-        union 
-        select user_id ,bki_claim_role_id STD_ROLE
-        from hr_emp_history a
-        where (a.user_id ,a.hist_id) in (select aa.user_id ,max(aa.hist_id) from hr_emp_history aa
-            where aa.user_id = a.user_id group by aa.user_id)
-        and  bki_claim_role_id is not null 
-        and user_id = v_user
-        union
-        select user_id ,bki_underwrite_role_id STD_ROLE
-        from hr_emp_history a
-        where (a.user_id ,a.hist_id) in (select aa.user_id ,max(aa.hist_id) from hr_emp_history aa
-            where aa.user_id = a.user_id group by aa.user_id)
-        and  bki_underwrite_role_id is not null 
-        and user_id =v_user
+            select user_id ,ROLE_ID 
+            from IDM_USER_ROLE a 
+            where  hist_id in (select max(aa.hist_id) from IDM_USER_ROLE aa where aa.user_id = a.user_id and role_type='Standard')
+            and user_id =v_user
+            order by role_id 
         )loop 
-            dbms_output.put_line('Role: '||x.STD_ROLE);
-            if x.STD_ROLE is not null then
-                for R in (
-                    select regexp_substr(x.STD_ROLE,'[^,;]+', 1, level) innerRole from dual
-                    connect by regexp_substr(x.STD_ROLE, '[^,;]+', 1, level) is not null            
-                )loop
-                    dbms_output.put_line('Inner Role: '||R.innerRole);  -- unique role for assign to menu
-                    if NOT P_MANAGE_ROLE.ASSIGNMENUTOUSER(v_user, R.innerRole ,'0000' ,o_rst) then
-                        return false;
-                    end if;
-                    
-                end loop; --R
+            dbms_output.put_line('Role: '||x.ROLE_ID);
+            
+            if x.ROLE_ID is not null then
+                if NOT P_MANAGE_ROLE.ASSIGNMENUTOUSER(v_user, x.ROLE_ID ,'0000' ,o_rst) then
+                    return false;
+                end if;
             end if;
         end loop;   --X
         
@@ -638,6 +621,9 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
 
     FUNCTION assignUserSpecialRole(v_user IN VARCHAR2 ,O_RST  OUT VARCHAR2) RETURN BOOLEAN IS
         v_role varchar2(250);   --Z0591 
+        v_seq   number;
+        dumm    boolean;
+        v_date  date:=sysdate;        
     BEGIN
         if p_manage_role.isFREEZEMENU_SPC(v_user) then
             O_RST := 'user_id: '||v_user||' was set FreezeMenu ,cannot remove menu';
@@ -646,38 +632,18 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
                     
         -- *** ตอนใช้จริงต้องเปลี่ยนมาอ่านที่ HR_EMP ** --
         for x in (
-        select user_id ,bki_accreqroleid SPE_ROLE
-        from hr_emp_history a
-        where (a.user_id ,a.hist_id) in (select aa.user_id ,max(aa.hist_id) from hr_emp_history aa
-            where aa.user_id = a.user_id group by aa.user_id)
-        and  bki_acc_role_id is not null 
-        and user_id = v_user
-        union 
-        select user_id ,bki_claimreqroleid SPE_ROLE
-        from hr_emp_history a
-        where (a.user_id ,a.hist_id) in (select aa.user_id ,max(aa.hist_id) from hr_emp_history aa
-            where aa.user_id = a.user_id group by aa.user_id)
-        and  bki_claim_role_id is not null 
-        and user_id = v_user
-        union
-        select user_id ,bki_underwritereqroleid SPE_ROLE
-        from hr_emp_history a
-        where (a.user_id ,a.hist_id) in (select aa.user_id ,max(aa.hist_id) from hr_emp_history aa
-            where aa.user_id = a.user_id group by aa.user_id)
-        and  bki_underwrite_role_id is not null 
-        and user_id =v_user
+            select user_id ,ROLE_ID 
+            from IDM_USER_ROLE a 
+            where  hist_id in (select max(aa.hist_id) from IDM_USER_ROLE aa where aa.user_id = a.user_id and role_type='Special')
+            and user_id =v_user
+            order by role_id 
         )loop 
-            dbms_output.put_line('SpecialRole: '||x.SPE_ROLE);
-            if x.SPE_ROLE is not null then
-                for R in (
-                    select regexp_substr(x.SPE_ROLE,'[^,;]+', 1, level) innerRole from dual
-                    connect by regexp_substr(x.SPE_ROLE, '[^,;]+', 1, level) is not null            
-                )loop
-                    dbms_output.put_line('Inner Role: '||R.innerRole);  -- unique role for assign to menu
-                    if NOT P_MANAGE_ROLE.ASSIGNMENUTOUSER(v_user, R.innerRole ,'0000' ,o_rst) then
-                        return false;
-                    end if;                    
-                end loop; --R
+            dbms_output.put_line('Role: '||x.ROLE_ID);
+            
+            if x.ROLE_ID is not null then
+                if NOT P_MANAGE_ROLE.ASSIGNMENUTOUSER(v_user, x.ROLE_ID ,'0000' ,o_rst) then
+                    return false;
+                end if;
             end if;
         end loop;   --X
         
@@ -867,27 +833,109 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
         return false;
     END isFREEZEMENU_SPC;        
     
-    FUNCTION split_clm_num(v_clm_no IN VARCHAR2) RETURN VARCHAR2 IS
-    
+    FUNCTION keepRole(v_user IN VARCHAR2 ,v_role IN VARCHAR2 ,v_type IN VARCHAR2 ,v_seq IN NUMBER,v_date IN date) RETURN BOOLEAN IS
+        v_chkFreeze varchar2(10);
     BEGIN
-        if v_clm_no is not null then
-            return substr(v_clm_no ,1,4);
-        else
-            return null;
-        end if;
-    END;
+        INSERT INTO IDM_USER_ROLE (USER_ID ,ROLE_ID ,ROLE_TYPE ,HIST_ID ,REC_DATE) VALUES
+        (v_user ,v_role ,v_type ,v_seq ,v_date);
+        
+        commit;
+        return true;
+    exception
+    when others then
+        rollback;
+        return false;
+    END keepRole; 
     
-    FUNCTION split_clm_run(v_clm_no  IN VARCHAR2) RETURN NUMBER  IS
-    
+    FUNCTION getSeq RETURN NUMBER IS
+        vRet    number:=0;
     BEGIN
-        if v_clm_no is not null then
-            return to_number(substr(v_clm_no ,5));
-        else
-            return 0;
-        end if;    
-    END;
-    
-    
+        BEGIN        
+            SELECT IDM_HIST_USERROLE_SEQ.NEXTVAL into vRet        
+            FROM dual;        
+        EXCEPTION        
+            WHEN  NO_DATA_FOUND THEN        
+                vRet := 0;        
+            WHEN  OTHERS THEN        
+                vRet := 0;        
+        END;     
+        return vRet;
+    exception
+    when others then
+        return 0;
+    END getSeq;         
+
+    FUNCTION sweepRole(v_user IN VARCHAR2)  RETURN BOOLEAN IS -- on ly Standard Role
+        v_role varchar2(250);   --Z0591 
+        v_seq   number;
+        dumm    boolean;
+        v_date  date:=sysdate;    
+    BEGIN
+        v_seq := p_manage_role.getSeq;
+        
+        for x in (
+        select user_id ,bki_acc_role_id STD_ROLE
+        from hr_emp a
+        where bki_acc_role_id is not null 
+        and user_id = v_user
+        union 
+        select user_id ,bki_claim_role_id STD_ROLE
+        from hr_emp a
+        where bki_claim_role_id is not null 
+        and user_id = v_user
+        union
+        select user_id ,bki_underwrite_role_id STD_ROLE
+        from hr_emp a
+        where bki_underwrite_role_id is not null 
+        and user_id =v_user
+        )loop 
+            dbms_output.put_line('Role: '||x.STD_ROLE);            
+            if x.STD_ROLE is not null then
+                for R in (
+                    select regexp_substr(x.STD_ROLE,'[^,;]+', 1, level) innerRole from dual
+                    connect by regexp_substr(x.STD_ROLE, '[^,;]+', 1, level) is not null            
+                )loop
+                    dbms_output.put_line('Inner Role: '||R.innerRole);  -- unique role for assign to menu
+                    dumm := p_manage_role.KeepRole(v_user ,R.innerRole ,'Standard' ,v_seq ,v_date);
+                end loop; --R
+            end if;
+        end loop;   --X
+
+--        for x in (
+--        select user_id ,bki_accreqroleid SPE_ROLE
+--        from hr_emp a
+--        where  bki_accreqroleid is not null 
+--        and user_id = v_user
+--        union 
+--        select user_id ,bki_claimreqroleid SPE_ROLE
+--        from hr_emp a
+--        where bki_claimreqroleid is not null 
+--        and user_id = v_user
+--        union
+--        select user_id ,bki_underwritereqroleid SPE_ROLE
+--        from hr_emp a
+--        where  bki_underwrite_role_id is not null 
+--        and user_id =v_user
+--        )loop 
+--            dbms_output.put_line('SpecialRole: '||x.SPE_ROLE);
+--            
+--            if x.SPE_ROLE is not null then
+--                for R in (
+--                    select regexp_substr(x.SPE_ROLE,'[^,;]+', 1, level) innerRole from dual
+--                    connect by regexp_substr(x.SPE_ROLE, '[^,;]+', 1, level) is not null            
+--                )loop
+--                    dbms_output.put_line('Inner Role: '||R.innerRole);  -- unique role for assign to menu                
+--                    dumm := p_manage_role.KeepRole(v_user ,R.innerRole ,'Special' ,v_seq ,v_date);
+--                end loop; --R
+--            end if;
+--        end loop;   --X
+                
+        return true;
+    exception
+    when others then
+        return false;
+    END sweepRole;     
+        
 END P_MANAGE_ROLE;
 
 /
