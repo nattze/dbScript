@@ -51,18 +51,59 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
             p_rst := 'some required parameter not found!';
             return false;
         end if;
-    
-        BEGIN      
-            null ;
-        EXCEPTION
-            WHEN OTHERS THEN
-            rollback;
-            p_rst := 'error: '||sqlerrm ;
-            return false;
-        END;    
         
-        commit;
-    return true;
+        IF role_type = 'Standard' THEN
+            if NOT p_manage_role.assignUserStdRole(I_USERID ,O_RST2) then
+                FOR X in (  
+                    select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail   
+                    from nc_med_email a  
+                    where module = 'IDM-PROV'   
+                    and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)  
+                    and direction = 'TO' and CANCEL is null   
+        --            and user_id='2702'
+                ) LOOP  
+                    v_to := v_to || x.ldap_mail ||';' ;  
+                END LOOP;        
+                x_subject :='Auto Assign Standard Role ['||I_USERID||']';
+                x_body :='Issue on assign role for User: '||I_USERID||' <br/>'||O_RST2;
+                if v_to is not null then  
+                nc_health_package.generate_email(v_from, v_to ,  
+                x_subject,   
+                x_body   
+                ,''  
+                ,'');   
+                -- nc_health_paid.WRITE_LOG('NC_APPROVE' ,'PACK','EMAIL_NOTICE_APPRV' ,'step: send email ' ,'v_to:'||v_to||' v_cc:'||v_cc||' I_pay:'||I_pay||' success::' ,'success' ,v_rst) ;  
+                end if;                            
+            end if;
+        ELSE
+            if NOT p_manage_role.assignUserSpecialRole(I_USERID ,O_RST2) then
+                FOR X in (  
+                    select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail   
+                    from nc_med_email a  
+                    where module = 'IDM-PROV'   
+                    and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)  
+                    and direction = 'TO' and CANCEL is null   
+        --            and user_id='2702'
+                ) LOOP  
+                    v_to := v_to || x.ldap_mail ||';' ;  
+                END LOOP;        
+                x_subject :='Auto Assign Special Role ['||I_USERID||']';
+                x_body :='Issue on assign role for User: '||I_USERID||' <br/>'||O_RST2;
+                if v_to is not null then  
+                nc_health_package.generate_email(v_from, v_to ,  
+                x_subject,   
+                x_body   
+                ,''  
+                ,'');   
+                -- nc_health_paid.WRITE_LOG('NC_APPROVE' ,'PACK','EMAIL_NOTICE_APPRV' ,'step: send email ' ,'v_to:'||v_to||' v_cc:'||v_cc||' I_pay:'||I_pay||' success::' ,'success' ,v_rst) ;  
+                end if;                            
+            end if;        
+        END IF;                
+        return true;
+    EXCEPTION
+        WHEN OTHERS THEN
+        p_rst := 'error: '||sqlerrm;
+        return false;
     END ASSIGN_ROLE_MENU;
 
 
@@ -192,29 +233,6 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
             
             dumm := P_MANAGE_ROLE.SweepRole(X.USER_ID);     -- keep Standard Role in Table   
 
-            if NOT p_manage_role.assignUserStdRole(X.USER_ID ,O_RST2) then
-                FOR X in (  
-                    select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail   
-                    from nc_med_email a  
-                    where module = 'IDM-PROV'   
-                    and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)  
-                    and direction = 'TO' and CANCEL is null   
-        --            and user_id='2702'
-                ) LOOP  
-                    v_to := v_to || x.ldap_mail ||';' ;  
-                END LOOP;        
-                x_subject :='Auto Assign Standard Role ['||X.USER_ID||']';
-                x_body :='Issue on assign role for User: '||X.USER_ID||' <br/>'||O_RST2;
-                if v_to is not null then  
-                nc_health_package.generate_email(v_from, v_to ,  
-                x_subject,   
-                x_body   
-                ,''  
-                ,'');   
-                -- nc_health_paid.WRITE_LOG('NC_APPROVE' ,'PACK','EMAIL_NOTICE_APPRV' ,'step: send email ' ,'v_to:'||v_to||' v_cc:'||v_cc||' I_pay:'||I_pay||' success::' ,'success' ,v_rst) ;  
-                end if;                            
-            end if;
-                        
             BEGIN
                 Insert into HR_EMP_HISTORY
                 (
@@ -268,31 +286,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
             )LOOP   
             
             dumm := P_MANAGE_ROLE.SweepRole(X.USER_ID);     -- keep Standard Role in Table        
-            
-            
-            if NOT p_manage_role.assignUserStdRole(X.USER_ID ,O_RST2) then
-                FOR X in (  
-                    select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail   
-                    from nc_med_email a  
-                    where module = 'IDM-PROV'   
-                    and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)  
-                    and direction = 'TO' and CANCEL is null   
-        --            and user_id='2702'
-                ) LOOP  
-                    v_to := v_to || x.ldap_mail ||';' ;  
-                END LOOP;        
-                x_subject :='Auto Assign Standard Role ['||X.USER_ID||']';
-                x_body :='Issue on assign role for User: '||X.USER_ID||' <br/>'||O_RST2;
-                if v_to is not null then  
-                nc_health_package.generate_email(v_from, v_to ,  
-                x_subject,   
-                x_body   
-                ,''  
-                ,'');   
-                -- nc_health_paid.WRITE_LOG('NC_APPROVE' ,'PACK','EMAIL_NOTICE_APPRV' ,'step: send email ' ,'v_to:'||v_to||' v_cc:'||v_cc||' I_pay:'||I_pay||' success::' ,'success' ,v_rst) ;  
-                end if;                            
-            end if;
-                
+                      
             BEGIN
                 Insert into HR_EMP_HISTORY
                 (
@@ -366,29 +360,6 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
             
             dumm := P_MANAGE_ROLE.SweepRole(X.USER_ID);     -- keep Standard Role in Table   
 
-            if NOT p_manage_role.assignUserStdRole(X.USER_ID ,O_RST2) then
-                FOR X in (  
-                    select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail   
-                    from nc_med_email a  
-                    where module = 'IDM-PROV'   
-                    and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)  
-                    and direction = 'TO' and CANCEL is null   
-        --            and user_id='2702'
-                ) LOOP  
-                    v_to := v_to || x.ldap_mail ||';' ;  
-                END LOOP;        
-                x_subject :='Auto Assign Standard Role ['||X.USER_ID||']';
-                x_body :='Issue on assign role for User: '||X.USER_ID||' <br/>'||O_RST2;
-                if v_to is not null then  
-                nc_health_package.generate_email(v_from, v_to ,  
-                x_subject,   
-                x_body   
-                ,''  
-                ,'');   
-                -- nc_health_paid.WRITE_LOG('NC_APPROVE' ,'PACK','EMAIL_NOTICE_APPRV' ,'step: send email ' ,'v_to:'||v_to||' v_cc:'||v_cc||' I_pay:'||I_pay||' success::' ,'success' ,v_rst) ;  
-                end if;                            
-            end if;
-                        
             BEGIN
                 Insert into HR_EMP_HISTORY
                 (
@@ -443,29 +414,6 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
             
             dumm := P_MANAGE_ROLE.SweepRole(X.USER_ID);     -- keep Standard Role in Table   
 
-            if NOT p_manage_role.assignUserStdRole(X.USER_ID ,O_RST2) then
-                FOR X in (  
-                    select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail   
-                    from nc_med_email a  
-                    where module = 'IDM-PROV'   
-                    and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)  
-                    and direction = 'TO' and CANCEL is null   
-        --            and user_id='2702'
-                ) LOOP  
-                    v_to := v_to || x.ldap_mail ||';' ;  
-                END LOOP;        
-                x_subject :='Auto Assign Standard Role ['||X.USER_ID||']';
-                x_body :='Issue on assign role for User: '||X.USER_ID||' <br/>'||O_RST2;
-                if v_to is not null then  
-                nc_health_package.generate_email(v_from, v_to ,  
-                x_subject,   
-                x_body   
-                ,''  
-                ,'');   
-                -- nc_health_paid.WRITE_LOG('NC_APPROVE' ,'PACK','EMAIL_NOTICE_APPRV' ,'step: send email ' ,'v_to:'||v_to||' v_cc:'||v_cc||' I_pay:'||I_pay||' success::' ,'success' ,v_rst) ;  
-                end if;                            
-            end if;
-                        
             BEGIN
                 Insert into HR_EMP_HISTORY
                 (
