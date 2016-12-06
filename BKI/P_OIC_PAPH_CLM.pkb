@@ -5571,6 +5571,9 @@ BEGIN
             V_CLAIMAMT := M1.TOT_PAID;
         END IF;
         
+        IF NOT v_skip THEN  
+            v_skip := P_OIC_PAPH_CLM.check_have_paid(V_CLAIMNUMBER ,'3');   -- check  last claim status (don't care as of date for select period)
+        END IF;
          
         IF NOT v_skip THEN  -- validate flag for insert or do nothing
             IF V_CLAIMGROUP = 'EC' and V_CLAIMAMT = -1 THEN -- case Out.
@@ -6101,7 +6104,10 @@ BEGIN
             V_CLAIMAMT := M1.TOT_PAID;
         END IF;
         
-         
+        IF NOT v_skip THEN  
+            v_skip := P_OIC_PAPH_CLM.check_have_paid(V_CLAIMNUMBER ,'3');   -- check  last claim status (don't care as of date for select period)
+        END IF;
+                 
         IF NOT v_skip THEN  -- validate flag for insert or do nothing
             IF V_CLAIMGROUP = 'EC' and V_CLAIMAMT = -1 THEN -- case Out.
                 FOR c_paid IN ( 
@@ -6555,11 +6561,16 @@ BEGIN
         from OIC_PAPH_CLAIM
         where claimnumber =P_CLMNO 
         and ClaimGroup  = 'P' and ClaimAmt = 0;
-     ELSE
+     ELSIF P_MODE = '2' THEN
         select distinct claimnumber into dummyClaim
         from OIC_PAPH_CLAIM
         where claimnumber =P_CLMNO 
-        and ClaimGroup  = 'P' ;     
+        and ClaimGroup  = 'P' ;   
+     ELSE
+        select distinct clm_no into dummyClaim
+        from mis_clm_mas
+        where clm_no =P_CLMNO 
+        and clm_sts ='3' ;                   
      END IF;   
     
     return true;
