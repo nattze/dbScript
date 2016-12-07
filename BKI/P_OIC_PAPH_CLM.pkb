@@ -5477,6 +5477,7 @@ PROCEDURE get_PA_Claim_v2(i_datefr IN DATE ,i_dateto IN DATE  ,i_asdate IN DATE 
     v_skip  boolean:=false;
     v_foundpayee    boolean:=false;
     v_payeename varchar2(250);
+    dummyClaim  varchar2(20);
 BEGIN
     x_subject := 'run get_pa_claim_v2 @'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
     x_message := 'PA Claim v2 === fr_date: '||i_datefr||' to_date: '||i_dateto||' as at: '||i_asdate||'<br/>';
@@ -5506,7 +5507,7 @@ BEGIN
         V_CLAIMNUMBER := m1.clm_no;
         V_CLAIMSEQ := 0;
 --        V_CLAIMGROUP := 'EC'; 
-
+        dbms_output.put_line('clm='||M1.clm_no||' clmsts='||M1.clm_sts);
         misc.healthutil.get_pa_health_type(m1.pol_no ,m1.pol_run , v_poltype); 
 
         --==== get Main Class ,Sub Class from CORE
@@ -5571,11 +5572,14 @@ BEGIN
             V_CLAIMAMT := M1.TOT_PAID;
         END IF;
         
+        -- check  last claim status (don't care as of date for select period)
         IF NOT v_skip THEN  
             v_skip := P_OIC_PAPH_CLM.check_have_paid(V_CLAIMNUMBER ,'3');   -- check  last claim status (don't care as of date for select period)
         END IF;
-         
+        -- end check last claim status
+                 
         IF NOT v_skip THEN  -- validate flag for insert or do nothing
+            dbms_output.put_line('IN Loop v_claimamt='||V_CLAIMAMT);
             IF V_CLAIMGROUP = 'EC' and V_CLAIMAMT = -1 THEN -- case Out.
                 -- ===== Path get prem code ====
                 P_OIC_PAPH_CLM.GET_PA_RESERVE(M1.CLM_NO,
@@ -5722,8 +5726,10 @@ BEGIN
                     from mis_clm_paid b
                     where clm_no = M1.CLM_NO
                     and (b.pay_no ,b.corr_seq) in (select bb.pay_no ,max(bb.corr_seq) from mis_clm_paid bb where bb.pay_no =b.pay_no 
-                    and bb.corr_date <= i_asdate group by bb.pay_no)
-                    and pay_total <> 0 and rownum=1;
+                    and trunc(bb.corr_date) between i_datefr and i_dateto and pay_total <> 0 and pay_date is not null 
+                    group by bb.pay_no)
+--                    and pay_total <> 0 and pay_date is not null  
+                    and rownum=1;
                 exception
                     when no_data_found then
                         m_payno := '';
@@ -5747,6 +5753,8 @@ BEGIN
                     when others then
                         v_foundpayee := false;
                 end;
+                
+                dbms_output.put_line('payno='||M_PAYNO||' v_payeename='||v_payeename);
                             
                 IF not P_OIC_PAPH_CLM.check_have_EC(M1.CLM_NO) and v_foundpayee THEN
                     V_CLAIMGROUP := 'EC';
@@ -5824,12 +5832,15 @@ BEGIN
                 V_CLAIMSTATUS := '2';  --  close claim                
                 
                 if v_foundpayee then    -- filter data , have payee data
+                    dbms_output.put_line('in Found Payee');
                     begin
                         select trunc(pay_date) ,corr_seq into V_CHEQUEDATE ,M_CORR_SEQ
                         from mis_clm_paid a
                         where pay_no = M_PAYNO and
                         a.corr_seq in (select max(aa.corr_seq) from mis_clm_paid aa where aa.pay_no = a.pay_no 
-                        and aa.corr_date <=  i_asdate group by aa.pay_no);
+                        and aa.corr_date <=  i_asdate 
+                        and pay_total <> 0 and pay_date is not null
+                        group by aa.pay_no);
                         
                         if V_CHEQUEDATE is null then
                             V_CHEQUEDATE := M1.close_date;                          
@@ -5921,7 +5932,7 @@ BEGIN
                     FOR c_payee in (  -- Get Payee
                         select pay_no ,pay_seq ,payee_code ,payee_amt ,settle
                         from mis_clm_payee a
-                        where pay_no = M_PAYNO and payee_code is not null 
+                        where clm_no = M1.clm_no and payee_code is not null 
                     ) LOOP
                         V_PAYEEAMT := c_payee.payee_amt;
                         V_PAIDBY := p_oic_paph_clm.get_paidby('PA',c_payee.settle);
@@ -6037,7 +6048,7 @@ PROCEDURE get_GM_Claim_V2(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,
     v_sumpaid    number;
     v_sumpayee  number;
     v_cntrec    number:=0;
-    
+    dummyClaim  varchar2(20);    
 BEGIN
     x_subject := 'run get_gm_claim v2 @'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
     x_message := 'PA Claim v2 === fr_date: '||i_datefr||' to_date: '||i_dateto||' as at: '||i_asdate||'<br/>';
@@ -6104,9 +6115,11 @@ BEGIN
             V_CLAIMAMT := M1.TOT_PAID;
         END IF;
         
+        -- check  last claim status (don't care as of date for select period)
         IF NOT v_skip THEN  
             v_skip := P_OIC_PAPH_CLM.check_have_paid(V_CLAIMNUMBER ,'3');   -- check  last claim status (don't care as of date for select period)
         END IF;
+        -- end check last claim status
                  
         IF NOT v_skip THEN  -- validate flag for insert or do nothing
             IF V_CLAIMGROUP = 'EC' and V_CLAIMAMT = -1 THEN -- case Out.
@@ -6215,7 +6228,8 @@ BEGIN
                         from clm_medical_res a
                         where  clm_no =M1.CLM_NO
                         and (clm_no ,state_seq) in (select clm_no ,max(aa.state_seq) from clm_medical_res aa where aa.clm_no =a.clm_no 
-                        and aa.corr_date <=  i_asdate group by aa.clm_no)
+                        and aa.corr_date <=  i_asdate group by aa.clm_no
+                        )
                         and nvl(res_amt,0) > 0
                         order by res_amt               
                     )  LOOP
@@ -6312,7 +6326,9 @@ BEGIN
                     from clm_gm_paid b
                     where clm_no = M1.CLM_NO
                     and (b.pay_no ,b.corr_seq) in (select bb.pay_no ,max(bb.corr_seq) from clm_gm_paid bb where bb.pay_no =b.pay_no 
-                    and bb.corr_date <= i_asdate group by bb.pay_no)
+--                    and bb.corr_date <= i_asdate group by bb.pay_no
+                    and trunc(bb.corr_date) between i_datefr and i_dateto  group by bb.pay_no                   
+                    )
                     and pay_amt <> 0 and rownum=1;
                 exception
                     when no_data_found then
@@ -6330,7 +6346,9 @@ BEGIN
                     from clm_gm_paid a
                     where pay_no = M_PAYNO
                     and corr_seq in (select max(aa.corr_seq) from clm_gm_paid aa where aa.pay_no =a.pay_no 
-                    and aa.corr_date <= i_asdate group by aa.pay_no)    ;
+--                    and aa.corr_date <= i_asdate group by aa.pay_no
+                    and trunc(aa.corr_date) between i_datefr and i_dateto  group by aa.pay_no 
+                    )    ;
 
                     select sum(payee_amt) into v_sumpayee
                     from clm_gm_payee a
@@ -6357,7 +6375,9 @@ BEGIN
                     from clm_gm_paid a
                     where pay_no = M_PAYNO
                     and corr_seq in (select max(aa.corr_seq) from clm_gm_paid aa where aa.pay_no =a.pay_no 
-                    and aa.corr_date <= i_asdate group by aa.pay_no)
+--                    and aa.corr_date <= i_asdate group by aa.pay_no
+                    and trunc(aa.corr_date) between i_datefr and i_dateto  group by aa.pay_no 
+                    )
                     and ( nvl(pay_amt,0) > 0 or nvl(rec_amt,0) > 0 )
                     order by pay_no 
                 )  LOOP 
