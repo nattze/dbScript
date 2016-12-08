@@ -5744,7 +5744,7 @@ BEGIN
                 begin 
                     select payee_name into v_payeename
                     from mis_clm_payee
-                    where pay_no = M_PAYNO
+                    where clm_no = M1.clm_no and pay_no = M_PAYNO
                     and payee_code is not null and rownum=1;
                     v_foundpayee := true;
                 exception
@@ -5836,7 +5836,7 @@ BEGIN
                     begin
                         select trunc(pay_date) ,corr_seq into V_CHEQUEDATE ,M_CORR_SEQ
                         from mis_clm_paid a
-                        where pay_no = M_PAYNO and
+                        where clm_no = M1.clm_no and pay_no = M_PAYNO and
                         a.corr_seq in (select max(aa.corr_seq) from mis_clm_paid aa where aa.pay_no = a.pay_no 
                         and aa.corr_date <=  i_asdate 
                         and pay_total <> 0 and pay_date is not null
@@ -5932,7 +5932,7 @@ BEGIN
                     FOR c_payee in (  -- Get Payee
                         select pay_no ,pay_seq ,payee_code ,payee_amt ,settle
                         from mis_clm_payee a
-                        where clm_no = M1.clm_no and payee_code is not null 
+                        where clm_no = M1.clm_no  and pay_no = M_PAYNO and payee_code is not null 
                     ) LOOP
                         V_PAYEEAMT := c_payee.payee_amt;
                         V_PAIDBY := p_oic_paph_clm.get_paidby('PA',c_payee.settle);
