@@ -604,7 +604,7 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
             dbms_output.put_line('Role: '||x.ROLE_ID);
             
             if x.ROLE_ID is not null then
-                if NOT P_MANAGE_ROLE.ASSIGNMENUTOUSER(v_user, x.ROLE_ID ,'0000' ,o_rst) then
+                if NOT P_MANAGE_ROLE.ASSIGNMENUTOUSER(v_user, x.ROLE_ID ,'ADMIN' ,o_rst) then
                     return false;
                 end if;
             end if;
@@ -641,7 +641,7 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
             dbms_output.put_line('Role: '||x.ROLE_ID);
             
             if x.ROLE_ID is not null then
-                if NOT P_MANAGE_ROLE.ASSIGNMENUTOUSER(v_user, x.ROLE_ID ,'0000' ,o_rst) then
+                if NOT P_MANAGE_ROLE.ASSIGNMENUTOUSER(v_user, x.ROLE_ID ,'ADMIN' ,o_rst) then
                     return false;
                 end if;
             end if;
@@ -666,9 +666,9 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
         chk_inclmuser   varchar2(10);
         v_sys   varchar2(10); -- -- MISC     , MTR   (for table CLM_USER_STD.SYSID)
         o_msg   varchar2(250);
-        
+        dumm_prog   varchar2(20);
     BEGIN
-        dbms_output.put_line('==== assign ROLE : '||v_role||' ======');            
+        --dbms_output.put_line('==== assign ROLE : '||v_role||' ======');            
         begin
             select user_id ,dept_id , position_grp_id ,(select abb_name_eng from position_grp_std where position_grp_id =a.position_grp_id ) c 
             into chk_inbkiuser ,v_dept_id ,v_pos_grp ,v_pos
@@ -721,7 +721,7 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
                        (USER_ID, TITLE, NAME, POSITION, PRIV, SYSID, PASSWORD, CLM_BR_CODE)
                      Values
                        (q.user_id, q.title_t, q.name_t, V_POS, q.priv, V_SYS, null , q.brn_code);
-                       dbms_output.put_line('++++ Add Clm_user_std ++++');
+                       --dbms_output.put_line('++++ Add Clm_user_std ++++');
                 end if;
                     
             end loop;
@@ -732,14 +732,31 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
         end if;
             
         for x in (
-            select menuid ,menudesc
+            select menuid ,menudesc ,rolemenu
             from idm_mapping_role2menu a
             where roleid = v_role
         )loop
             cnt := cnt+1;
-            Insert into ACCOUNT.USER_MODULE  (USER_ID, PROG_CODE, CREATED_BY, CREATED_DATE, PROG_SEQ, EXPIRED_DATE ,ROLE_ID) 
-            Values ( v_user , x.menuid , v_assignby , trunc(sysdate) , null , null ,null );
-            dbms_output.put_line('no: '||cnt||' menu: '||x.menuid||'  '||x.menudesc);
+            dumm_prog := null;
+            begin
+                select prog_code into dumm_prog
+                from user_module
+                where prog_code = x.menuid and nvl(role_id,'x') = nvl(x.rolemenu,'x') 
+                and user_id =v_user
+                and rownum=1;        
+            exception
+                when no_data_found then
+                    dumm_prog := null;
+                when others then
+                    dumm_prog := null;
+            end;
+            
+            if dumm_prog is null then
+                Insert into ACCOUNT.USER_MODULE  (USER_ID, PROG_CODE, CREATED_BY, CREATED_DATE, PROG_SEQ, EXPIRED_DATE ,ROLE_ID) 
+                Values ( v_user , x.menuid , v_assignby , trunc(sysdate) , null , null ,x.rolemenu );
+            end if;
+            
+            --dbms_output.put_line('no: '||cnt||' menu: '||x.menuid||'  '||x.menudesc);
         end loop;
         
         if cnt = 0 then -- not found menu for asign by Role
@@ -747,7 +764,7 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
             return false;
         end if;
             
-        dbms_output.put_line('==== assign Menu Access : '||v_role||' ======');
+        --dbms_output.put_line('==== assign Menu Access : '||v_role||' ======');
         cnt := 0;
         for y in (
             select menuid ,ins ,upd ,del ,sel ,remark
@@ -755,9 +772,27 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
             where roleid = v_role
         )loop
             cnt := cnt+1;
-            Insert into ACCOUNT.USER_ACCESS (USERID, PROGRAM, TRN_DATE, INS, UPD, DEL ,SEL ,REMARK)
-            Values  ( v_user , y.menuid, sysdate,y.ins , y.upd , y.del ,y.sel ,y.remark );    
-            dbms_output.put_line('no: '||cnt||' menu: '||y.menuid||'  '||'Menu Access');
+
+            begin
+                select program into dumm_prog
+                from user_access
+                where program = y.menuid
+                and userid =v_user
+                and rownum=1;  
+                      
+            exception
+                when no_data_found then
+                    dumm_prog := null;
+                when others then
+                    dumm_prog := null;
+            end;
+            
+            if dumm_prog is null then
+                Insert into ACCOUNT.USER_ACCESS (USERID, PROGRAM, TRN_DATE, INS, UPD, DEL ,SEL ,REMARK)
+                Values  ( v_user , y.menuid, sysdate,y.ins , y.upd , y.del ,y.sel ,y.remark );              
+            end if;            
+  
+            --dbms_output.put_line('no: '||cnt||' menu: '||y.menuid||'  '||'Menu Access');
         end loop;
 
         commit;

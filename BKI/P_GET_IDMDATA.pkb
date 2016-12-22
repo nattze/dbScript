@@ -44,7 +44,9 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
 --         v_dbins varchar2(10);  
 --         v_whatsys varchar2(30);  
          x_body varchar2(4000);  
-         x_subject varchar2(1000);        
+         x_subject varchar2(1000);  
+         o_err  varchar2(250);      
+         v_action   varchar2(10);
     BEGIN
         
         if i_userid is null or role_type is null then
@@ -53,6 +55,28 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
         end if;
         
         IF role_type = 'Standard' THEN
+            begin 
+                select action into v_action
+                from hr_emp
+                where user_id = i_userid
+--                and action = 'create'
+                ;           
+            exception
+                when no_data_found then
+                    v_action := null;
+                when others then
+                    v_action :=null ;
+            end;
+            
+            -- call UNW Package for setup UNW Parameter and Menu
+            if v_action = 'create' then
+                BkiUserUtil.set_user_brn_code(i_userid ,o_err);
+                BkiUserUtil.set_user_email(i_userid ,o_err);
+                BkiUserUtil.set_user_tel_fax(i_userid ,o_err);
+                BkiUserUtil.initial_menu(i_userid ,o_err);            
+            end if;
+            -- End call UNW Package for setup UNW Parameter and Menu
+        
             if NOT p_manage_role.assignUserStdRole(I_USERID ,O_RST2) then
                 FOR X in (  
                     select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail   

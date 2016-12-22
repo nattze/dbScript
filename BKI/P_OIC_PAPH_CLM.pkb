@@ -6051,7 +6051,7 @@ PROCEDURE get_GM_Claim_V2(i_datefr IN DATE ,i_dateto IN DATE ,i_asdate IN DATE ,
     dummyClaim  varchar2(20);    
 BEGIN
     x_subject := 'run get_gm_claim v2 @'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
-    x_message := 'PA Claim v2 === fr_date: '||i_datefr||' to_date: '||i_dateto||' as at: '||i_asdate||'<br/>';
+    x_message := 'GM Claim v2 === fr_date: '||i_datefr||' to_date: '||i_dateto||' as at: '||i_asdate||'<br/>';
     x_message := x_message||' start@'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
     
     FOR M1 in (
@@ -6081,6 +6081,7 @@ BEGIN
 
         misc.healthutil.get_pa_health_type(m1.pol_no ,m1.pol_run , v_poltype);
 
+--        dbms_output.put_line('clm='||M1.clm_no||' clmsts='||M1.clm_sts);
         --==== get Main Class ,Sub Class from CORE
         V_MAINCLASS := CENTER.OIC_CORE_UTIL.GET_MAIN_CLASS(M1.prod_type);
         V_SUBCLASS := CENTER.OIC_CORE_UTIL.GET_SUBMAIN_CLASS(M1.prod_type);
@@ -6119,7 +6120,7 @@ BEGIN
         IF NOT v_skip THEN  
             v_skip := P_OIC_PAPH_CLM.check_have_paid(V_CLAIMNUMBER ,'3');   -- check  last claim status (don't care as of date for select period)
         END IF;
-        -- end check last claim status
+        -- end check las claim status
                  
         IF NOT v_skip THEN  -- validate flag for insert or do nothing
             IF V_CLAIMGROUP = 'EC' and V_CLAIMAMT = -1 THEN -- case Out.
@@ -6327,7 +6328,7 @@ BEGIN
                     where clm_no = M1.CLM_NO
                     and (b.pay_no ,b.corr_seq) in (select bb.pay_no ,max(bb.corr_seq) from clm_gm_paid bb where bb.pay_no =b.pay_no 
 --                    and bb.corr_date <= i_asdate group by bb.pay_no
-                    and trunc(bb.corr_date) between i_datefr and i_dateto  group by bb.pay_no                   
+                    and nvl(trunc(bb.corr_date),rec_pay_date) between i_datefr and i_dateto  group by bb.pay_no                   
                     )
                     and pay_amt <> 0 and rownum=1;
                 exception
@@ -6344,15 +6345,15 @@ BEGIN
                 BEGIN
                     select  sum(pay_amt) into v_sumpaid
                     from clm_gm_paid a
-                    where pay_no = M_PAYNO
+                    where pay_no = M_PAYNO and clm_no = M1.clm_no
                     and corr_seq in (select max(aa.corr_seq) from clm_gm_paid aa where aa.pay_no =a.pay_no 
 --                    and aa.corr_date <= i_asdate group by aa.pay_no
-                    and trunc(aa.corr_date) between i_datefr and i_dateto  group by aa.pay_no 
+                    and nvl(trunc(aa.corr_date),rec_pay_date) between i_datefr and i_dateto  group by aa.pay_no 
                     )    ;
 
                     select sum(payee_amt) into v_sumpayee
                     from clm_gm_payee a
-                    where pay_no =M_PAYNO  and payee_code is not null 
+                    where pay_no =M_PAYNO  and clm_no = M1.clm_no and payee_code is not null 
                     and nvl(payee_amt,0) >0  ;
                                                             
                 EXCEPTION
@@ -6363,6 +6364,8 @@ BEGIN
                         v_sumpaid :=0;
                         v_sumpayee := 0;
                 END;
+--                dbms_output.put_line('v_sumpayee='||v_sumpayee||' v_sumpaid='||v_sumpaid);
+                
                 if (v_sumpayee - v_sumpaid >0) and v_sumpaid <> 0 then  -- case Advance 
                     v_chkrec2 := true;
                 end if ;
@@ -6373,7 +6376,7 @@ BEGIN
                     select  pay_no, fleet_seq ,dis_code ,bene_code ,clm_pd_flag CLM_TYPE ,loss_date ,date_paid pay_date ,nvl(pay_amt,0) pay_amt
                     ,nvl(rec_amt,0) rec_amt 
                     from clm_gm_paid a
-                    where pay_no = M_PAYNO
+                    where pay_no = M_PAYNO and clm_no = M1.clm_no
                     and corr_seq in (select max(aa.corr_seq) from clm_gm_paid aa where aa.pay_no =a.pay_no 
 --                    and aa.corr_date <= i_asdate group by aa.pay_no
                     and trunc(aa.corr_date) between i_datefr and i_dateto  group by aa.pay_no 
@@ -6460,8 +6463,8 @@ BEGIN
                     V_CLAIMAMT , V_TRANSACTIONSTATUS , V_REFERENCENUMBER ,V_RECORD_DATE , i_datefr, i_dateto , i_asdate ,v_record_date ,i_user)          ;
                 END LOOP; -- C_paid
                                  
-        --        dbms_output.put_line(v_cnt||' clm_no: '||M1.clm_no||' poltype: '||v_poltype||' subclass:'||V_SUBCLASS
-        --        ||' clmtype:'||V_CLAIMTYPE||' prem:'||v_premcode||' lossdate:'||V_LOSSDATE);   
+--                dbms_output.put_line(v_cnt||' clm_no: '||M1.clm_no||' poltype: '||v_poltype||' subclass:'||V_SUBCLASS
+--                ||' clmtype:'||V_CLAIMTYPE||' prem:'||v_premcode||' lossdate:'||V_LOSSDATE);   
                 
                 IF p_oic_paph_clm.hasINS_data(V_CLAIMNUMBER) THEN
                     V_TRANSACTIONSTATUS2 := 'U';        
@@ -6486,7 +6489,7 @@ BEGIN
                 begin
                     select trunc(pay_date) into V_CHEQUEDATE
                     from mis_clmgm_paid a
-                    where pay_no = M_PAYNO
+                    where pay_no = M_PAYNO and clm_no = M1.clm_no
                     and (a.pay_no,a.corr_seq) in (select aa.pay_no ,max(aa.corr_seq) from mis_clmgm_paid aa where aa.pay_no = a.pay_no group by aa.pay_no );
 
                     if V_CHEQUEDATE is null then
@@ -6503,14 +6506,14 @@ BEGIN
                 FOR c_payee in (
                     select pay_no ,pay_seq ,payee_code ,payee_amt ,settle
                     from clm_gm_payee a
-                    where pay_no = M_PAYNO and payee_code is not null 
+                    where pay_no = M_PAYNO and clm_no = M1.clm_no and payee_code is not null 
                     and nvl(payee_amt,0) >0 
                 ) LOOP
                     if c_payee.settle is null then
                         begin
                             select settle into m_settle
                             from mis_clmgm_paid      
-                            where pay_no = M_PAYNO and pay_total >0 and rownum=1;                  
+                            where pay_no = M_PAYNO  and clm_no = M1.clm_no and pay_total >0 and rownum=1;                  
                         exception
                             when no_data_found then
                                 m_settle:= null;
@@ -6526,6 +6529,7 @@ BEGIN
 --                    V_CLAIMPAIDSEQ :=c_payee.pay_seq;
                     V_CHEQUENO := null;
                     
+--                    dbms_output.put_line('c_payee.payee_amt='||c_payee.payee_amt||' v_sumpaid='||v_sumpaid);
                     if V_CLAIMPAIDSEQ >1 then
                         V_PAYEEAMT := c_payee.payee_amt;                                                
                     else
@@ -6533,7 +6537,7 @@ BEGIN
                     end if;                    
                     
                     if V_PAIDBY = 'K' then
-                        account.p_acc_acr.get_paid_info(M1.pay_no,'0',M1.prod_type,c_payee.payee_code,c_payee.settle,
+                        account.p_acc_acr.get_paid_info(M_PAYNO,'0',M1.prod_type,c_payee.payee_code,c_payee.settle,
                                                       ACR_PAID_TYPE, ACR_PAID_DATE, ACR_BANK_CODE, ACR_BRANCH_CODE, ACR_CHEQUE_NO);
                         V_CHEQUENO := ACR_CHEQUE_NO;                              
                         IF V_CHEQUENO is null THEN
@@ -6546,6 +6550,7 @@ BEGIN
                     if V_PAYEEAMT = 0 then
                         V_PAYEEAMT := M1.tot_paid;    
                     end if;
+--                    dbms_output.put_line('clm='||M1.clm_no||' payno='||M_PAYNO||' V_CLAIMPAIDSEQ='||V_CLAIMPAIDSEQ||' V_PAYEEAMT='||V_PAYEEAMT||' M1.tot_paid='||M1.tot_paid);
                                                  
                     INSERT INTO OIC_PAPH_PAYMENT
                     ( COMPANYCODE ,  MAINCLASS  ,  SUBCLASS  ,  CLAIMNUMBER ,  CLAIMPAIDSEQ ,CHEQUEDATE  ,  POLICYNUMBER   ,  
