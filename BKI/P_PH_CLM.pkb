@@ -43,6 +43,23 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
             return null;        
     END GET_CLMSTS_DESCR; 
 
+    FUNCTION GET_ADMISS_DESCR(v_code IN VARCHAR2) RETURN VARCHAR2 IS
+        v_ret   VARCHAR2(250);
+    BEGIN
+        select remark into v_ret
+        from clm_constant a
+        where key like 'PHADMTYPE%'
+        and key = v_code
+        and rownum=1;
+        
+        return v_ret;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            return null;
+        WHEN OTHERS THEN
+            return null;        
+    END GET_ADMISS_DESCR; 
+    
     FUNCTION GET_BENE_DESCR(v_benecode IN VARCHAR2 ,v_lang IN VARCHAR2) RETURN VARCHAR2 IS
         v_ret   VARCHAR2(250);
     BEGIN
@@ -57,7 +74,40 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
         WHEN OTHERS THEN
             return null;
     END GET_BENE_DESCR;
-    
+
+    FUNCTION GET_HOSPITAL_NAME(v_code IN VARCHAR2) RETURN VARCHAR2 IS
+        v_ret   VARCHAR2(250);
+    BEGIN
+        select distinct name_t  into v_ret
+        from med_hospital_list
+        where hosp_id = v_code
+        and rownum =1 ;        
+        
+        return v_ret;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            return null;
+        WHEN OTHERS THEN
+            return null;        
+    END GET_HOSPITAL_NAME; 
+
+    FUNCTION GET_ICD10_DESCR(v_code IN VARCHAR2  ,v_lang IN VARCHAR2) RETURN VARCHAR2 IS
+        v_ret   VARCHAR2(250);
+    BEGIN
+ 
+        select dis_text   into v_ret
+        from dis_code_std
+        where th_eng = nvl(v_lang ,'T' )  and dis_code = v_code
+         ;            
+        
+        return v_ret;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            return null;
+        WHEN OTHERS THEN
+            return null;        
+    END GET_ICD10_DESCR; 
+            
     FUNCTION MAPP_BENECODE(v_bill IN VARCHAR2 ,v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2) RETURN VARCHAR2 IS
         o_type  varchar2(5);
         ret_bene    varchar2(10);
