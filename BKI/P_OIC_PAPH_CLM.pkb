@@ -5496,7 +5496,7 @@ BEGIN
             and nvl(cc.close_date ,trunc(cc.corr_date))  <= i_asdate)            
 --        and b.corr_date <= i_asdate
         and a.channel <> '9'
-        and pol_yr > 2010 
+        and pol_yr > 2011 
 --        and a.clm_no = i_clmno
 --        and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'EC')
 --        and rownum < 50
@@ -6069,7 +6069,7 @@ BEGIN
         and trunc(b.corr_date) <=  i_asdate
 --        and a.clm_no = i_clmno
         and a.channel <> '9'    
-        and pol_yr > 2010     
+        and pol_yr > 2011    
         order by a.clm_no
     )LOOP
         v_cnt := v_cnt+1;
@@ -6328,7 +6328,8 @@ BEGIN
                     where clm_no = M1.CLM_NO
                     and (b.pay_no ,b.corr_seq) in (select bb.pay_no ,max(bb.corr_seq) from clm_gm_paid bb where bb.pay_no =b.pay_no 
 --                    and bb.corr_date <= i_asdate group by bb.pay_no
-                    and nvl(trunc(bb.corr_date),rec_pay_date) between i_datefr and i_dateto  group by bb.pay_no                   
+--                    and nvl(trunc(bb.corr_date),rec_pay_date) between i_datefr and i_dateto  group by bb.pay_no    
+                    and  trunc(nvl(bb.date_paid,bb.corr_date))  between i_datefr and i_dateto  group by bb.pay_no                                      
                     )
                     and pay_amt <> 0 and rownum=1;
                 exception
@@ -6348,7 +6349,8 @@ BEGIN
                     where pay_no = M_PAYNO and clm_no = M1.clm_no
                     and corr_seq in (select max(aa.corr_seq) from clm_gm_paid aa where aa.pay_no =a.pay_no 
 --                    and aa.corr_date <= i_asdate group by aa.pay_no
-                    and nvl(trunc(aa.corr_date),rec_pay_date) between i_datefr and i_dateto  group by aa.pay_no 
+--                    and nvl(trunc(aa.corr_date),rec_pay_date) between i_datefr and i_dateto  group by aa.pay_no 
+                    and  trunc(nvl(aa.date_paid,aa.corr_date))  between i_datefr and i_dateto  group by aa.pay_no 
                     )    ;
 
                     select sum(payee_amt) into v_sumpayee
@@ -6379,7 +6381,8 @@ BEGIN
                     where pay_no = M_PAYNO and clm_no = M1.clm_no
                     and corr_seq in (select max(aa.corr_seq) from clm_gm_paid aa where aa.pay_no =a.pay_no 
 --                    and aa.corr_date <= i_asdate group by aa.pay_no
-                    and trunc(aa.corr_date) between i_datefr and i_dateto  group by aa.pay_no 
+--                    and trunc(aa.corr_date) between i_datefr and i_dateto  group by aa.pay_no 
+                    and  trunc(nvl(aa.date_paid,aa.corr_date))  between i_datefr and i_dateto  group by aa.pay_no 
                     )
                     and ( nvl(pay_amt,0) > 0 or nvl(rec_amt,0) > 0 )
                     order by pay_no 
