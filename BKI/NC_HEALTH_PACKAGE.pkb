@@ -2984,12 +2984,36 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
     
     FUNCTION GEN_CLMNO(v_PROD_TYPE IN VARCHAR2 ,v_CHANNEL IN VARCHAR2) RETURN VARCHAR2 IS
         v_clmno  VARCHAR2(20);
+        v_current_year  VARCHAR2(4);
     BEGIN    
+
+
             BEGIN
-                select TO_CHAR(TO_NUMBER(RUN_NO) + 1) into v_clmno
-                from clm_control_std a
-                where key = 'CMSC'||TO_CHAR(SYSDATE  ,'YYYY')||'01'||v_PROD_TYPE||v_CHANNEL
-                FOR UPDATE OF KEY ,RUN_NO;
+                select remark current_year into V_CURRENT_YEAR
+                from clm_constant a
+                where key = 'FIXCLMYEAR'
+                and nvl(eff_date,trunc(sysdate)) <= trunc(sysdate)
+                and nvl(exp_date,trunc(sysdate+1))  >  trunc(sysdate);
+            EXCEPTION
+                WHEN  NO_DATA_FOUND THEN
+                    V_CURRENT_YEAR := TO_CHAR(SYSDATE  ,'YYYY');            
+                WHEN  OTHERS THEN
+                    V_CURRENT_YEAR := TO_CHAR(SYSDATE  ,'YYYY');
+            END;     
+                
+            BEGIN
+              
+               if V_CURRENT_YEAR >='2017' then
+                    select substr(run_no ,1,7)||TO_CHAR(TO_NUMBER(substr(run_no ,8)) + 1) runno into v_clmno
+                    from clm_control_std a
+                    where key = 'CMSC'||V_CURRENT_YEAR||'01'||v_PROD_TYPE||v_CHANNEL
+                    FOR UPDATE OF KEY ,RUN_NO;
+                else
+                    select TO_CHAR(TO_NUMBER(RUN_NO) + 1) into v_clmno
+                    from clm_control_std a
+                    where key = 'CMSC'||V_CURRENT_YEAR||'01'||v_PROD_TYPE||v_CHANNEL
+                    FOR UPDATE OF KEY ,RUN_NO;                
+                end if;
             EXCEPTION
                 WHEN  NO_DATA_FOUND THEN
                     v_clmno := null;            
@@ -3001,7 +3025,61 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
             BEGIN
                 update clm_control_std a
                 set run_no = v_clmno
-                where key = 'CMSC'||TO_CHAR(SYSDATE  ,'YYYY')||'01'||v_PROD_TYPE||v_CHANNEL ;
+                where key = 'CMSC'||V_CURRENT_YEAR||'01'||v_PROD_TYPE||v_CHANNEL ;
+            EXCEPTION
+                WHEN  OTHERS THEN
+                    ROLLBACK;
+                    v_clmno := null;
+            END;  
+            COMMIT;
+            end if;    
+            Return v_clmno;
+    END;    --End GEN_CLMNO
+
+    FUNCTION GEN_CLMNO(v_PROD_TYPE IN VARCHAR2 ,v_CHANNEL IN VARCHAR2 ,v_Branch IN VARCHAR2) RETURN VARCHAR2 IS
+        v_clmno  VARCHAR2(20);
+        v_current_year  VARCHAR2(4);
+    BEGIN    
+
+
+            BEGIN
+                select remark current_year into V_CURRENT_YEAR
+                from clm_constant a
+                where key = 'FIXCLMYEAR'
+                and nvl(eff_date,trunc(sysdate)) <= trunc(sysdate)
+                and nvl(exp_date,trunc(sysdate+1))  >  trunc(sysdate);
+            EXCEPTION
+                WHEN  NO_DATA_FOUND THEN
+                    V_CURRENT_YEAR := TO_CHAR(SYSDATE  ,'YYYY');            
+                WHEN  OTHERS THEN
+                    V_CURRENT_YEAR := TO_CHAR(SYSDATE  ,'YYYY');
+            END;     
+                
+            BEGIN
+              
+               if V_CURRENT_YEAR >='2017' then
+                    select substr(run_no ,1,7)||TO_CHAR(TO_NUMBER(substr(run_no ,8)) + 1) runno into v_clmno
+                    from clm_control_std a
+                    where key = 'CMSC'||V_CURRENT_YEAR||nvl(v_Branch,'01')||v_PROD_TYPE||v_CHANNEL
+                    FOR UPDATE OF KEY ,RUN_NO;
+                else
+                    select TO_CHAR(TO_NUMBER(RUN_NO) + 1) into v_clmno
+                    from clm_control_std a
+                    where key = 'CMSC'||V_CURRENT_YEAR||nvl(v_Branch,'01')||v_PROD_TYPE||v_CHANNEL
+                    FOR UPDATE OF KEY ,RUN_NO;                
+                end if;
+            EXCEPTION
+                WHEN  NO_DATA_FOUND THEN
+                    v_clmno := null;            
+                WHEN  OTHERS THEN
+                    v_clmno := null;
+            END;       
+                    
+           if v_clmno is not null  then  
+            BEGIN
+                update clm_control_std a
+                set run_no = v_clmno
+                where key = 'CMSC'||V_CURRENT_YEAR||nvl(v_Branch,'01')||v_PROD_TYPE||v_CHANNEL ;
             EXCEPTION
                 WHEN  OTHERS THEN
                     ROLLBACK;
@@ -10998,7 +11076,10 @@ PROCEDURE GET_HISTORY_CLM2(P_POL_NO IN VARCHAR2,
                 CLM_STS, REMARK, CLM_PLACE, CLM_PLACE_AMP, CLM_PLACE_JW, CATAS_CODE, 
                 PI_CLUB, CARR_AGENT, CONSIGN, NAT_CLM_FLAG, ARRV_DATE, DEL_DATE, 
                 TIME_BAR  ,TRN_SEQ ,RECORD_DATE ,SUB_CAUSE_CODE ,PART ,PAID_REMARK ,BKI_CLM_STAFF,
-                CARD_ID_TYPE ,CARD_ID_NO ,CARD_OTHER_TYPE ,CARD_OTHER_NO ,CARD_UPDATEDATE
+                CARD_ID_TYPE ,CARD_ID_NO ,CARD_OTHER_TYPE ,CARD_OTHER_NO ,CARD_UPDATEDATE ,
+                OIC_PROD_TYPE ,OIC_FLAG_POL ,CLAIM_NUMBER   ,CLAIM_RUN  ,
+                ADMISSION_TYPE ,CLM_TYPE ,ICD10_2 ,ICD10_3 ,ICD10_4 ,
+                CLAIM_STATUS ,APPROVE_STATUS
             ) 
             (
                 SELECT A.STS_KEY, A.CLM_NO, A.REG_NO, A.POL_NO, A.POL_RUN, A.END_NO, A.END_SEQ, A.RECPT_SEQ, 
@@ -11013,7 +11094,10 @@ PROCEDURE GET_HISTORY_CLM2(P_POL_NO IN VARCHAR2,
                 A.CLM_STS, A.REMARK, A.CLM_PLACE, A.CLM_PLACE_AMP, A.CLM_PLACE_JW, A.CATAS_CODE, 
                 A.PI_CLUB, A.CARR_AGENT, A.CONSIGN, A.NAT_CLM_FLAG, A.ARRV_DATE, A.DEL_DATE, 
                 A.TIME_BAR ,v_trn_Seq+1 ,sysdate ,A.SUB_CAUSE_CODE ,to_lob(A.PART) ,A.PAID_REMARK ,A.BKI_CLM_STAFF,
-                A.CARD_ID_TYPE ,A.CARD_ID_NO ,A.CARD_OTHER_TYPE ,A.CARD_OTHER_NO ,A.CARD_UPDATEDATE
+                A.CARD_ID_TYPE ,A.CARD_ID_NO ,A.CARD_OTHER_TYPE ,A.CARD_OTHER_NO ,A.CARD_UPDATEDATE ,
+                 A.OIC_PROD_TYPE , A.OIC_FLAG_POL , A.CLAIM_NUMBER   , A.CLAIM_RUN  ,
+                 A.ADMISSION_TYPE , A.CLM_TYPE , A.ICD10_2 , A.ICD10_3 , A.ICD10_4 ,
+                 A.CLAIM_STATUS ,A.APPROVE_STATUS
                 FROM NC_MAS A
                 WHERE A.STS_KEY = vSTS_KEY 
             );
