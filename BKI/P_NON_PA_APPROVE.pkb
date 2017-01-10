@@ -2401,8 +2401,8 @@ BEGIN
             v_chk_adv := false; 
             for p3 in (
             select payee_code ,payee_seq pay_seq ,payee_amt ,'' prem_offset ,'' payee_offset ,'' payee_offset2 
-            ,salvage_flag ,deduct_flag ,salvage_amt ,deduct_amt ,payee_type
-            ,bank_code ,bank_br_code ,acc_no ,acc_name ,CONVERT_PAYMENT_METHOD(settle) settle ,curr_code
+            ,salvage_flag ,deduct_flag ,recovery_flag ,salvage_amt ,deduct_amt ,recovery_amt ,payee_type
+            ,bank_code ,bank_br_code ,acc_no ,acc_name ,P_NON_PA_APPROVE.CONVERT_PAYMENT_METHOD(settle) settle ,curr_code
             ,GRP_PAYEE_FLAG ,EMAIL ,SMS ,AGENT_EMAIL ,AGENT_SMS
             ,SPECIAL_FLAG ,SPECIAL_REMARK
             from nc_payee b
@@ -2472,6 +2472,7 @@ BEGIN
                 v_DEDUCT_AMT := 0; 
                 V_REC_TOTAL := 0;
                 V_SAL_TOTAL := 0; 
+                V_REC_TOTAL := 0;
                  
                 CNT_P := CNT_P +1;
                 v_ADV_AMT := 0; 
@@ -2482,6 +2483,7 @@ BEGIN
                 V_SUM_SAL := 0;
                 V_SUM_PAY := 0;
                 V_SUM_DEC := 0;
+                V_SUM_REC := 0;
 
                 Begin 
                     select sum(payee_amt)
@@ -2516,29 +2518,35 @@ BEGIN
                 end loop;   -- p_cms    
                                         
                 IF p3.salvage_flag = '1' THEN --P
-                    --v_DEDUCT_AMT := p_cms.deduct_amt;    
-                    V_REC_TOTAL := V_SUM_REC;
-                    V_SAL_TOTAL := V_SUM_SAL;  
+--                    V_SAL_TOTAL := V_SUM_SAL;  
+                    V_SAL_TOTAL := p3.salvage_amt;  
                 ELSIF p3.salvage_flag = '2' THEN --M     
-                    --v_DEDUCT_AMT := p_cms.deduct_amt * -1;    
-                    V_REC_TOTAL := V_SUM_REC * -1;   
-                    V_SAL_TOTAL := V_SUM_SAL * -1;  
+                    V_SAL_TOTAL := p3.salvage_amt * -1;  
                 ELSE
-                    V_REC_TOTAL := 0;
                     V_SAL_TOTAL :=0;
                 END IF;       
-                                             
+
+                IF p3.recovery_flag = '1' THEN --P 
+--                    V_REC_TOTAL := V_SUM_REC;
+                    V_REC_TOTAL := p3.recovery_amt;
+                ELSIF p3.recovery_flag = '2' THEN --M     
+                    V_REC_TOTAL := p3.recovery_amt * -1;   
+                ELSE
+                    V_REC_TOTAL := 0;
+                END IF;    
+                                                             
                 IF p3.deduct_flag = '1' THEN --P
-                    v_DEDUCT_AMT := V_SUM_DEC;    
+--                    v_DEDUCT_AMT := V_SUM_DEC;    
+                    v_DEDUCT_AMT := p3.deduct_amt ;    
                 ELSIF p3.deduct_flag = '2' THEN --M
-                    v_DEDUCT_AMT := V_SUM_DEC * -1;                    
+                    v_DEDUCT_AMT := p3.deduct_amt * -1;                    
                 ELSE       
                     v_DEDUCT_AMT := 0;                      
-                END IF;        
+                END IF;    
                                 
                 if v_chk_adv = false then
                     IF p3.payee_type = '01' THEN
-                        v_ADV_AMT := V_SUM_PAYEE - (V_SUM_PAY - V_SUM_SAL - V_SUM_DEC);
+                        v_ADV_AMT := V_SUM_PAYEE - (V_SUM_PAY - V_SUM_SAL - V_SUM_DEC- V_SUM_REC);
                         if v_ADV_AMT <> 0 then
                             v_chk_adv := true;
                         end if;
@@ -2641,36 +2649,6 @@ BEGIN
                 dbms_output.put_line('pass post acc payee tmp ! '||p3.payee_code);              
             end loop;   -- end loop payee  P3
             COMMIT; -- post ACC_CLM_TEMP b4 call post GL  
-              
---            p_acc_claim.post_gl ( c_rec.prod_grp /* p_prod_grp in acr_tmp.prod_grp%type */,  
---                                      
---            c_rec.prod_type /* p_prod_type in acr_tmp.prod_type%type */,  
---                                      
---            p1.pay_no /* p_number in varchar2 */,  -- payment no or batch no  
---                                      
---            'P' /* p_flag in varchar2 */,   -- 'P' = Payment, 'B' = Batch  
---                                      
---            V_RESULT3 /* p_err  out varchar2 */);  -- return null if no error  
---              
---            if v_result3 is not null then /* CLR_ACC_TMP; */ P_RST:= v_result3||' in p_acc_claim.post_gl'; return false; end if;       
---                        
---            dbms_output.put_line('pass Post ACR');                      
---                                                           
---            p_acc_claim.get_acr_voucher ( c_rec.prod_grp /* p_prod_grp in acr_tmp.prod_grp%type */,  
---              
---            c_rec.prod_type /* p_prod_type in acr_tmp.prod_type%type */,  
---              
---            p1.pay_no /* p_number in varchar2 */,   -- payment no or batch no  
---              
---            'P' /* p_flag in varchar2 */,  -- 'P' = Payment, 'B' = Batch  
---              
---            V_VOUNO /* p_vou_no out acr_mas.setup_vou_no%type */,  
---              
---            V_VOUDATE /* p_vou_date out acr_mas.setup_vou_date%type */);  
---              
---            IF V_VOUNO is null THEN  
---                P_RST:= ' p_acc_claim.post_gl have any Problem '; return false;  
---            END IF;  
                         
             begin
             null; 
@@ -2900,7 +2878,7 @@ BEGIN
             
             for p3 in (
             select payee_code ,payee_seq pay_seq ,payee_amt ,'' prem_offset ,'' payee_offset ,'' payee_offset2 
-            ,salvage_flag ,deduct_flag ,salvage_amt ,deduct_amt ,payee_type
+            ,salvage_flag ,deduct_flag ,recovery_flag ,salvage_amt ,deduct_amt ,recovery_amt ,payee_type
             ,bank_code ,bank_br_code ,acc_no ,acc_name ,CONVERT_PAYMENT_METHOD(settle) settle ,curr_code
             ,GRP_PAYEE_FLAG ,EMAIL ,SMS ,AGENT_EMAIL ,AGENT_SMS
             ,SPECIAL_FLAG ,SPECIAL_REMARK            
@@ -2971,6 +2949,7 @@ BEGIN
                 v_DEDUCT_AMT := 0; 
                 V_REC_TOTAL := 0;
                 V_SAL_TOTAL := 0; 
+                V_REC_TOTAL := 0;
                  
                 CNT_P := CNT_P +1;
                 v_ADV_AMT := 0; 
@@ -2981,6 +2960,7 @@ BEGIN
                 V_SUM_SAL := 0;
                 V_SUM_PAY := 0;
                 V_SUM_DEC := 0;
+                V_SUM_REC := 0;
 
                 Begin 
                     select sum(payee_amt)
@@ -3015,29 +2995,35 @@ BEGIN
                 end loop;   -- p_cms    
                                         
                 IF p3.salvage_flag = '1' THEN --P
-                    --v_DEDUCT_AMT := p_cms.deduct_amt;    
-                    V_REC_TOTAL := V_SUM_REC;
-                    V_SAL_TOTAL := V_SUM_SAL;  
+--                    V_SAL_TOTAL := V_SUM_SAL;  
+                    V_SAL_TOTAL := p3.salvage_amt;  
                 ELSIF p3.salvage_flag = '2' THEN --M     
-                    --v_DEDUCT_AMT := p_cms.deduct_amt * -1;    
-                    V_REC_TOTAL := V_SUM_REC * -1;   
-                    V_SAL_TOTAL := V_SUM_SAL * -1;  
+                    V_SAL_TOTAL := p3.salvage_amt * -1;  
                 ELSE
-                    V_REC_TOTAL := 0;
                     V_SAL_TOTAL :=0;
                 END IF;       
-                                             
+
+                IF p3.recovery_flag = '1' THEN --P 
+--                    V_REC_TOTAL := V_SUM_REC;
+                    V_REC_TOTAL := p3.recovery_amt;
+                ELSIF p3.recovery_flag = '2' THEN --M     
+                    V_REC_TOTAL := p3.recovery_amt * -1;   
+                ELSE
+                    V_REC_TOTAL := 0;
+                END IF;    
+                                                             
                 IF p3.deduct_flag = '1' THEN --P
-                    v_DEDUCT_AMT := V_SUM_DEC;    
+--                    v_DEDUCT_AMT := V_SUM_DEC;    
+                    v_DEDUCT_AMT := p3.deduct_amt ;    
                 ELSIF p3.deduct_flag = '2' THEN --M
-                    v_DEDUCT_AMT := V_SUM_DEC * -1;                    
+                    v_DEDUCT_AMT := p3.deduct_amt * -1;                    
                 ELSE       
                     v_DEDUCT_AMT := 0;                      
-                END IF;        
+                END IF;    
                                 
                 if v_chk_adv = false then
                     IF p3.payee_type = '01' THEN
-                        v_ADV_AMT := V_SUM_PAYEE - (V_SUM_PAY - V_SUM_SAL - V_SUM_DEC);
+                        v_ADV_AMT := V_SUM_PAYEE - (V_SUM_PAY - V_SUM_SAL - V_SUM_DEC - V_SUM_REC);
                         if v_ADV_AMT <> 0 then
                             v_chk_adv := true;
                         end if;
@@ -3400,7 +3386,7 @@ BEGIN
               
             for p3 in (
             select payee_code ,payee_seq pay_seq ,payee_amt ,'' prem_offset ,'' payee_offset ,'' payee_offset2 
-            ,salvage_flag ,deduct_flag ,salvage_amt ,deduct_amt ,payee_type
+            ,salvage_flag ,deduct_flag ,recovery_flag ,salvage_amt ,deduct_amt ,recovery_amt ,payee_type
             ,bank_code ,bank_br_code ,acc_no ,acc_name ,CONVERT_PAYMENT_METHOD(settle) settle ,curr_code
             ,GRP_PAYEE_FLAG ,EMAIL ,SMS ,AGENT_EMAIL ,AGENT_SMS
             ,SPECIAL_FLAG ,SPECIAL_REMARK            
@@ -3471,6 +3457,7 @@ BEGIN
                 v_DEDUCT_AMT := 0; 
                 V_REC_TOTAL := 0;
                 V_SAL_TOTAL := 0; 
+                V_REC_TOTAL := 0;
                  
                 CNT_P := CNT_P +1;
                 v_ADV_AMT := 0; 
@@ -3481,6 +3468,7 @@ BEGIN
                 V_SUM_SAL := 0;
                 V_SUM_PAY := 0;
                 V_SUM_DEC := 0;
+                V_SUM_REC := 0;
 
                 Begin 
                     select sum(payee_amt)
@@ -3515,29 +3503,35 @@ BEGIN
                 end loop;   -- p_cms    
                                         
                 IF p3.salvage_flag = '1' THEN --P
-                    --v_DEDUCT_AMT := p_cms.deduct_amt;    
-                    V_REC_TOTAL := V_SUM_REC;
-                    V_SAL_TOTAL := V_SUM_SAL;  
+--                    V_SAL_TOTAL := V_SUM_SAL;  
+                    V_SAL_TOTAL := p3.salvage_amt;  
                 ELSIF p3.salvage_flag = '2' THEN --M     
-                    --v_DEDUCT_AMT := p_cms.deduct_amt * -1;    
-                    V_REC_TOTAL := V_SUM_REC * -1;   
-                    V_SAL_TOTAL := V_SUM_SAL * -1;  
+                    V_SAL_TOTAL := p3.salvage_amt * -1;  
                 ELSE
-                    V_REC_TOTAL := 0;
                     V_SAL_TOTAL :=0;
                 END IF;       
-                                             
+
+                IF p3.recovery_flag = '1' THEN --P 
+--                    V_REC_TOTAL := V_SUM_REC;
+                    V_REC_TOTAL := p3.recovery_amt;
+                ELSIF p3.recovery_flag = '2' THEN --M     
+                    V_REC_TOTAL := p3.recovery_amt * -1;   
+                ELSE
+                    V_REC_TOTAL := 0;
+                END IF;    
+                                                             
                 IF p3.deduct_flag = '1' THEN --P
-                    v_DEDUCT_AMT := V_SUM_DEC;    
+--                    v_DEDUCT_AMT := V_SUM_DEC;    
+                    v_DEDUCT_AMT := p3.deduct_amt ;    
                 ELSIF p3.deduct_flag = '2' THEN --M
-                    v_DEDUCT_AMT := V_SUM_DEC * -1;                    
+                    v_DEDUCT_AMT := p3.deduct_amt * -1;                    
                 ELSE       
                     v_DEDUCT_AMT := 0;                      
                 END IF;        
                                 
                 if v_chk_adv = false then
                     IF p3.payee_type = '01' THEN
-                        v_ADV_AMT := V_SUM_PAYEE - (V_SUM_PAY - V_SUM_SAL - V_SUM_DEC);
+                        v_ADV_AMT := V_SUM_PAYEE - (V_SUM_PAY - V_SUM_SAL - V_SUM_DEC - V_SUM_REC);
                         if v_ADV_AMT <> 0 then
                             v_chk_adv := true;
                         end if;
