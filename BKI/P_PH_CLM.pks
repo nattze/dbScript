@@ -10,6 +10,8 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
    1.0        18/11/2016      2702       1. Created this package.
 ******************************************************************************/
     TYPE v_curr IS REF CURSOR;    
+
+    FUNCTION GEN_NOTEKEY RETURN NUMBER;    
     
     FUNCTION GET_CLMTYPE_DESCR(v_code IN VARCHAR2) RETURN VARCHAR2; 
     
@@ -22,6 +24,10 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
     FUNCTION GET_HOSPITAL_NAME(v_code IN VARCHAR2) RETURN VARCHAR2;
     
     FUNCTION GET_ICD10_DESCR(v_code IN VARCHAR2  ,v_lang IN VARCHAR2) RETURN VARCHAR2; --v_lang : T ,E
+    
+    FUNCTION GET_PAIDBY_DESCR(v_code IN VARCHAR2) RETURN VARCHAR2;
+    
+    FUNCTION GET_BANK_BRNAME(v_bank IN VARCHAR2 ,v_branch IN VARCHAR2) RETURN VARCHAR2;
 
     FUNCTION MAPP_BENECODE(v_bill IN VARCHAR2 ,v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2) RETURN VARCHAR2 ; -- Return null = Not found or Error
     
@@ -48,7 +54,40 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
 
     FUNCTION GET_LIST_BILLSTD (vName IN VARCHAR2 ,O_BILLSTD_LIST Out P_PH_CLM.v_curr ) RETURN VARCHAR2 ;
     -- ดึง standard billing เตรียมแสดงใน DropdownList -- Return null = success ,not null = show er
-                
+
+    FUNCTION GET_LIST_PAIDBY (O_PAIDBY Out P_PH_CLM.v_curr ) RETURN VARCHAR2 ;
+    -- ดึง ประเภทการจ่าย Payee เตรียมแสดงใน DropdownList -- Return null = success ,not null = show er         
+    
+    FUNCTION GET_SPECIAL_FLAG (O_SPECIAL Out P_PH_CLM.v_curr ) RETURN VARCHAR2 ;
+    -- ดึง Special Flag เตรียมแสดงใน DropdownList -- Return null = success ,not null = show er           
+
+    FUNCTION GET_INVALID_PAYEE (O_INV_PAYEE Out P_PH_CLM.v_curr ) RETURN VARCHAR2 ;
+    -- ดึง Invalid Payee Type เตรียมแสดงใน DropdownList -- Return null = success ,not null = show er           
+
+    FUNCTION SAVE_CLAIM_STATUS(v_action IN VARCHAR2 ,v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN VARCHAR2 ;
+    -- update claim_status ตาม action แต่ละส่วน
+    /*
+        v_action  :
+        claim_info_res  หน้า KeyIn tab ClaimInfo
+        billing     หน้า KeyIn tab Billing
+        benefit     หน้า KeyIn tab Benefit
+        ri_reserved     หน้า KeyIn tab ReInsurance
+    */
+
+    FUNCTION getRI_PAID(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2  ,v_amt IN NUMBER ,O_RI OUT P_PH_CLM.v_curr) RETURN VARCHAR2 ;
+
+    FUNCTION validate_RI_RES(v_clmno IN VARCHAR2) RETURN VARCHAR2 ;
+    -- return Null คือผ่าน ,not null คือ มีข้อผิดพลาด
+    
+    FUNCTION GET_MAPPING_ACTION(v_code IN VARCHAR2 ,v_mode IN VARCHAR2) RETURN VARCHAR2 ;
+    -- ดึง status claim ที่ mapping กับ Action มาใช้ // mode D = clm status detail ,O = nonpa status
+    
+    FUNCTION IS_BILLING_STEP(v_clmno IN VARCHAR2 ,v_rst OUT VARCHAR2)  RETURN VARCHAR2 ;
+    -- เช็คว่า อยู่ในสถานะ Billing ยังไม่ได้บันทึกผลประโยชน์ 0 = false ,1 = true 
+
+    FUNCTION IS_CLOSED_CLAIM(v_clmno IN VARCHAR2)  RETURN VARCHAR2 ;
+    -- เช็คว่า อยู่ในสถานะ Billing ยังไม่ได้บันทึกผลประโยชน์ 0 = false ,1 = true 
+        
 END P_PH_CLM; 
 
 /
