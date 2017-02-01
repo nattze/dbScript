@@ -91,6 +91,23 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
             return null;
     END GET_BENE_DESCR;
 
+    FUNCTION GET_APPRVSTS_DESCR(v_code IN VARCHAR2) RETURN VARCHAR2 IS
+        v_ret   VARCHAR2(250);
+    BEGIN
+        select descr into v_ret
+        from clm_constant a
+        where key like 'PHSTSAPPRV%'
+        and key = v_code
+        and rownum=1;
+        
+        return v_ret;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            return null;
+        WHEN OTHERS THEN
+            return null;        
+    END GET_APPRVSTS_DESCR; 
+    
     FUNCTION GET_HOSPITAL_NAME(v_code IN VARCHAR2) RETURN VARCHAR2 IS
         v_ret   VARCHAR2(250);
     BEGIN
@@ -165,7 +182,36 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
             return null;        
     END GET_BANK_BRNAME;     
         
-                
+    FUNCTION GET_BENE_TYPE(v_code IN VARCHAR2) RETURN VARCHAR2 IS
+        v_type    varchar2(5);
+    BEGIN
+        select type into v_type
+        from medical_ben_std 
+        where bene_code = v_code and th_eng='T'
+        ;
+        return v_type;
+    EXCEPTION
+        when no_data_found then return 'X' ;
+        when others then return 'X' ;
+    END GET_BENE_TYPE;
+
+    FUNCTION GET_BENETYPE_DESCR(v_code IN VARCHAR2) RETURN VARCHAR2 IS
+        v_ret   VARCHAR2(250);
+    BEGIN
+        select remark2 into v_ret
+        from clm_constant a
+        where key like 'PHBENETYPE%'
+        and remark = v_code
+        and rownum=1;
+        
+        return v_ret;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            return null;
+        WHEN OTHERS THEN
+            return null;        
+    END GET_BENETYPE_DESCR; 
+                    
     FUNCTION MAPP_BENECODE(v_bill IN VARCHAR2 ,v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2) RETURN VARCHAR2 IS
         o_type  varchar2(5);
         ret_bene    varchar2(10);
@@ -225,11 +271,21 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
          if o_type ='HG' then
             begin
                 select count(*)  into cnt_rec
+                from (
+                select pd_flag bene_type ,bene_code ,p_ph_clm.get_bene_descr(a.bene_code ,'T') bene_descr ,rider ,agr_flag ,max_day ,max_amt ,sub_agr_amt
                 from pa_gm_ben a
                 where pol_no =v_polno and pol_run =v_polrun
                 and plan=v_plan
                 and pd_flag like nvl( v_type ,'%' )
-                and bene_code like nvl( v_benecode ,'%' );            
+                and bene_code like nvl( v_benecode ,'%' )
+                UNION
+                select clm_pd_flag bene_type ,bene_code ,p_ph_clm.get_bene_descr(x.bene_code ,'T') bene_descr ,rider ,'M' agr_flag ,null max_day ,null max_amt ,null sub_agr_amt
+                from medical_ben_std x
+                where bene_code in ('001','002','003','004','005','006','007','008','009','010','011','012','013')
+                and th_eng ='T'                
+                and clm_pd_flag like nvl( v_type ,'%' )
+                and bene_code like nvl( v_benecode ,'%' )
+                );            
             exception
                 when no_data_found then
                     cnt_rec := 0;
@@ -244,16 +300,33 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
                 where pol_no =v_polno and pol_run =v_polrun
                 and plan=v_plan
                 and pd_flag like nvl( v_type ,'%' )
-                and bene_code like nvl( v_benecode ,'%' );
+                and bene_code like nvl( v_benecode ,'%' )
+                UNION
+                select clm_pd_flag bene_type ,bene_code ,p_ph_clm.get_bene_descr(x.bene_code ,'T') bene_descr ,rider ,'M' agr_flag ,null max_day ,null max_amt ,null sub_agr_amt
+                from medical_ben_std x
+                where bene_code in ('001','002','003','004','005','006','007','008','009','010','011','012','013')
+                and th_eng ='T'                
+                and clm_pd_flag like nvl( v_type ,'%' )
+                and bene_code like nvl( v_benecode ,'%' ) ;
              end if;   
          elsif o_type = 'HI' then
             begin
                 select  count(*)  into cnt_rec
+                from(
+                select pd_flag bene_type ,bene_code ,p_ph_clm.get_bene_descr(a.bene_code ,'T') bene_descr ,rider ,agr_flag ,max_day ,max_amt ,sub_agr_amt
                 from pa_ph_ben a
                 where pol_no =v_polno and pol_run =v_polrun
                 and plan=v_plan
                 and pd_flag like nvl( v_type ,'%' )
-                and bene_code like nvl( v_benecode ,'%' );            
+                and bene_code like nvl( v_benecode ,'%' )
+                UNION
+                select clm_pd_flag bene_type ,bene_code ,p_ph_clm.get_bene_descr(x.bene_code ,'T') bene_descr ,rider ,'M' agr_flag ,null max_day ,null max_amt ,null sub_agr_amt
+                from medical_ben_std x
+                where bene_code in ('001','002','003','004','005','006','007','008','009','010','011','012','013')
+                and th_eng ='T'                
+                and clm_pd_flag like nvl( v_type ,'%' )
+                and bene_code like nvl( v_benecode ,'%' )              
+                );            
             exception
                 when no_data_found then
                     cnt_rec := 0;
@@ -267,6 +340,13 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
                 where pol_no =v_polno and pol_run =v_polrun
                 and plan=v_plan
                 and pd_flag like nvl( v_type ,'%' )
+                and bene_code like nvl( v_benecode ,'%' )
+                UNION
+                select clm_pd_flag bene_type ,bene_code ,p_ph_clm.get_bene_descr(x.bene_code ,'T') bene_descr ,rider ,'M' agr_flag ,null max_day ,null max_amt ,null sub_agr_amt
+                from medical_ben_std x
+                where bene_code in ('001','002','003','004','005','006','007','008','009','010','011','012','013')
+                and th_eng ='T'                
+                and clm_pd_flag like nvl( v_type ,'%' )
                 and bene_code like nvl( v_benecode ,'%' );
              end if;                   
          else
@@ -291,6 +371,167 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
     END GET_PH_BENEFIT;
     
     
+
+    FUNCTION GET_WAITING_PERIOD(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_fleet IN NUMBER  
+    ,O_Wait Out P_PH_CLM.v_curr) RETURN VARCHAR2 IS
+        v_ret   varchar2(250);
+        cnt_rec number(10);    
+        p_period  number(5):=90;
+        p_prodtype varchar2(10);
+        p_fr    date;
+        p_to    date;
+    BEGIN
+            begin
+                select prod_type
+                into p_prodtype
+                from mis_mas
+                where pol_no = v_polno
+                and pol_run = v_polrun and rownum=1; 
+            exception 
+                when no_data_found then
+                    p_prodtype := null;
+                when others then
+                    p_prodtype := null;
+            end;
+            
+            if p_prodtype is not null then
+                if p_prodtype in ('009' ,'073') then
+                    p_period := 30;
+                elsif p_prodtype in ('077','049','026') then
+                    p_period := 90;
+                else
+                    p_period := 0;    
+                end if;
+            end if;
+            
+            begin
+                select min(fr_date) ,min(fr_date)+p_period
+                into p_fr ,p_to
+                from pa_medical_det
+                where pol_no = v_polno
+                and pol_run = v_polrun
+                and fleet_seq = v_fleet; 
+            exception 
+                when no_data_found then
+                    p_fr := null; p_to := null;
+                when others then
+                    p_fr := null; p_to := null;
+            end;
+
+            if p_fr is not null then
+            OPEN O_Wait For
+                select p_period W_PERIOD ,p_fr W_FROM ,p_to W_TO 
+                from dual a;
+             end if;                   
+       
+         
+             if cnt_rec = 0 then
+                v_ret := 'not found ';
+                OPEN O_Wait For
+                    select '' W_PERIOD ,'' W_FROM ,'' W_TO 
+                    from dual a;
+             end if;
+             
+             return v_ret;                  
+    EXCEPTION
+        WHEN OTHERS THEN
+            v_ret := 'error:'||sqlerrm;
+                OPEN O_Wait For
+                    select '' W_PERIOD ,'' W_FROM ,'' W_TO 
+                    from dual a;        
+            return v_ret;    
+    END GET_WAITING_PERIOD;
+
+    FUNCTION GET_ONECLAIM_HISTORY(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_fleet IN NUMBER) RETURN  VARCHAR2 IS
+        v_ret   VARCHAR2(30);
+    BEGIN
+ 
+        select min(clm_no) into v_ret
+        from nc_mas a
+        where a.prod_grp = '0' and a.prod_type in (select cgp.prod_type from clm_grp_prod cgp where sysid='GM')
+        and pol_no = v_polno
+        and pol_run = v_polrun and fleet_seq  = v_fleet
+         ;            
+        
+        return v_ret;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            return null;
+        WHEN OTHERS THEN
+            return null;        
+    END GET_ONECLAIM_HISTORY; 
+
+    FUNCTION GET_MAJOR_SUMINS(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN NUMBER) RETURN  NUMBER IS 
+        v_ret   number(20):=0;
+        o_type  varchar2(5);
+        sum_amt number(20);
+    BEGIN
+         misc.healthutil.get_pa_health_type(v_polno ,v_polrun ,o_type);  
+             
+         if o_type ='HG' then
+            begin
+                select nvl(max(sub_agr_amt) ,0)  into sum_amt
+                from pa_gm_ben a
+                where pol_no =v_polno and pol_run =v_polrun
+                and plan=v_plan;            
+            exception
+                when no_data_found then
+                    sum_amt := 0;
+                when others then
+                    sum_amt := 0;
+            end;
+            
+            if sum_amt = 0 then
+                begin
+                    select nvl(max(max_amt) ,0)  into sum_amt
+                    from pa_gm_ben a
+                    where pol_no =v_polno and pol_run =v_polrun
+                    and plan=v_plan;            
+                exception
+                    when no_data_found then
+                        sum_amt := 0;
+                    when others then
+                        sum_amt := 0;
+                end;
+             end if;   
+         elsif o_type = 'HI' then
+            begin
+                select  nvl(max(sub_agr_amt) ,0)  into sum_amt
+                from pa_ph_ben a
+                where pol_no =v_polno and pol_run =v_polrun
+                and plan=v_plan;            
+            exception
+                when no_data_found then
+                    sum_amt := 0;
+                when others then
+                    sum_amt := 0;
+            end;     
+            if sum_amt =0 then
+                begin
+                    select  nvl(max(max_amt) ,0)   into sum_amt
+                    from pa_ph_ben a
+                    where pol_no =v_polno and pol_run =v_polrun
+                    and plan=v_plan;            
+                exception
+                    when no_data_found then
+                        sum_amt := 0;
+                    when others then
+                        sum_amt := 0;
+                end;                 
+            end if;                   
+         else
+            sum_amt := 0;            
+         end if;
+         
+         v_ret := sum_amt;
+                 
+        return v_ret;
+    EXCEPTION
+        WHEN OTHERS THEN
+            v_ret := 0;
+            return v_ret;
+    END GET_MAJOR_SUMINS;
+        
     FUNCTION GET_LIST_CLMTYPE(O_CLMTYPE_LIST Out P_PH_CLM.v_curr) RETURN VARCHAR2 IS
         v_ret   varchar2(250);
         cnt_rec number(10);    
@@ -374,6 +615,49 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
                 from dual;            
             return v_ret;    
     END GET_LIST_CLMSTS;
+
+
+    FUNCTION GET_LIST_APPRVSTS(O_APPRVSTS_LIST Out P_PH_CLM.v_curr) RETURN VARCHAR2 IS
+        v_ret   varchar2(250);
+        cnt_rec number(10);    
+    BEGIN
+            begin
+                select count(*)  into cnt_rec
+                from clm_constant a
+                where key like 'PHSTSAPPRV%' 
+                and nvl(exp_date ,trunc(sysdate)+1) > trunc(sysdate); 
+            exception 
+                when no_data_found then
+                    cnt_rec := 0; 
+                when others then
+                    cnt_rec := 0; 
+            end;
+
+            if cnt_rec >0 then
+            OPEN O_APPRVSTS_LIST For
+                select key VALUE ,descr TEXT
+                from clm_constant a
+                where key like 'PHSTSAPPRV%'
+                and nvl(exp_date ,trunc(sysdate)+1) > trunc(sysdate);
+             end if;                   
+       
+         
+             if cnt_rec = 0 then
+                v_ret := 'not found list';
+                open O_APPRVSTS_LIST for
+                    select '' VALUE ,'' TEXT 
+                    from dual;   
+             end if;
+             
+             return v_ret;                  
+    EXCEPTION
+        WHEN OTHERS THEN
+            v_ret := 'error:'||sqlerrm;
+            open O_APPRVSTS_LIST for
+                select '' VALUE ,'' TEXT 
+                from dual;            
+            return v_ret;    
+    END GET_LIST_APPRVSTS;
 
     FUNCTION GET_LIST_BENETYPE(O_BENETYPE_LIST Out P_PH_CLM.v_curr) RETURN VARCHAR2 IS
         v_ret   varchar2(250);
@@ -604,7 +888,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
             benefit     หน้า KeyIn tab Benefit
             ri_reserved     หน้า KeyIn tab ReInsurance
         */    
-        v_ret   VARCHAR2(250);
+        v_ret   VARCHAR2(250):='';
         vsts_key    NUMBER;
         v_rst   VARCHAR2(250);  
         save_Detail_Status VARCHAR2(25);
@@ -639,12 +923,13 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
         if v_action = 'claim_info_res' then
             if P_PH_CLM.IS_BILLING_STEP(v_clmno ,v_rst) = '0' then -- ไม่ได้อยู่ในขั้น billing 
                
-                save_Detail_Status := P_PH_CLM.GET_MAPPING_ACTION('benefit' ,'D');
-                save_NC_Status  := P_PH_CLM.GET_MAPPING_ACTION('benefit' ,'O');
+                save_Detail_Status := P_PH_CLM.GET_MAPPING_ACTION('benefit' ,'D'); --Status Detail
+                save_NC_Status  := P_PH_CLM.GET_MAPPING_ACTION('benefit' ,'O'); -- Status Original
+            else
+                save_Detail_Status := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'D');
+                save_NC_Status  := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'O');            
             end if;
-            
-            save_Detail_Status := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'D');
-            save_NC_Status  := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'O');
+           
         elsif v_action = 'billing' then    
             save_Detail_Status := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'D');
             save_NC_Status  := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'O');
@@ -654,6 +939,18 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
         elsif v_action = 'ri_reserved' then    
             save_Detail_Status := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'D');
             save_NC_Status  := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'O');
+        elsif v_action = 'claim_info_paid' then    
+            save_Detail_Status := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'D');
+            save_NC_Status  := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'O');            
+        elsif v_action = 'payment' then    
+            save_Detail_Status := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'D');
+            save_NC_Status  := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'O');    
+        elsif v_action = 'payee' then    
+            save_Detail_Status := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'D');
+            save_NC_Status  := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'O');    
+        elsif v_action = 'ri_paid' then    
+            save_Detail_Status := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'D');
+            save_NC_Status  := P_PH_CLM.GET_MAPPING_ACTION(v_action ,'O');                            
         end if;
         
         dbms_output.put_line('save_NC_Status='||save_NC_Status||' save_Detail_Status='||save_Detail_Status);
@@ -662,6 +959,10 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
         WHERE CLM_NO = v_clmno;
         
         COMMIT;
+        
+        if v_action in ( 'payment' ,'payee' ) then -- check for Update Status Payment and Claim
+            null;
+        end if;
         
         return v_ret;
     EXCEPTION    
@@ -677,11 +978,11 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
 
         ri_mas_shr  number(5,2);
         ri_max_rec  number(2);
-        v_tot_res   number(10,4);
-        v_tot_paid   number(10,4):=v_amt;
+        v_tot_res   number(12,4);
+        v_tot_paid   number(12,4):=v_amt;
   
-        v_riamt number(10,4);
-        v_sumri number(10,4);
+        v_riamt number(12,4);
+        v_sumri number(12,4);
         v_has_res   boolean:=true;
         r_cnt   number;        
     BEGIN
@@ -699,6 +1000,20 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
             when others then
                 ri_mas_shr :=0;
         end;  
+        
+        begin 
+            select count(ri_share)
+            into ri_max_rec
+            from nc_ri_reserved a
+            where  clm_no= v_clmno
+            and trn_seq = (select max(trn_seq) from nc_ri_reserved where clm_no = a.clm_no) 
+            ;
+        exception
+            when no_data_found then
+                ri_max_rec :=0;
+            when others then
+                ri_max_rec :=0;
+        end;         
             
         if ri_mas_shr = 100 then
             mySID := nc_health_package.gen_sid();
@@ -773,7 +1088,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
     FUNCTION validate_RI_RES(v_clmno IN VARCHAR2) RETURN VARCHAR2 IS
         v_ret VARCHAR2(250):='';
         ri_mas_shr  number(5,2);
-        ri_res_sum  number(5,2);
+        ri_res_sum  number(12,2);
     BEGIN
         begin 
             select nvl(sum(ri_share),0) ,nvl(sum(ri_res_amt),0) 
@@ -805,6 +1120,58 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
         v_ret := 'error: '||sqlerrm;
         return v_ret;       
     END validate_RI_RES;
+            
+
+    FUNCTION validate_RI_PAID(v_clmno IN VARCHAR2  ,v_payno IN VARCHAR2) RETURN VARCHAR2 IS
+        v_ret VARCHAR2(250):='';
+        ri_mas_shr  number(5,2);
+        ri_res_sum  number(12,2);
+        v_maxpayno varchar2(20);
+    BEGIN
+        if v_payno is null then
+            begin
+                select max(pay_no) into v_maxpayno
+                from nc_payment a
+                where prod_grp = '0'
+                and a.clm_no = v_clmno
+                ;
+
+            exception
+             when no_data_found then
+                 v_maxpayno := null;
+            when others then
+                v_maxpayno := null;
+            end;        
+        else
+            v_maxpayno := v_payno;
+        end if;
+        
+        begin 
+            select nvl(sum(ri_share),0)
+            into ri_mas_shr 
+            from nc_ri_paid a
+            where  clm_no= v_clmno and pay_no = v_maxpayno
+            and trn_seq = (select max(trn_seq) from nc_ri_paid aa where aa.pay_no = a.pay_no) 
+            ;
+        exception
+            when no_data_found then
+                ri_mas_shr :=0;
+                ri_res_sum := 0;
+            when others then
+                ri_mas_shr :=0;
+                ri_res_sum := 0;
+        end;          
+        --dbms_output.put_line('ri_mas_shr= '||ri_mas_shr||' ri_res_sum='||ri_res_sum);
+        if ri_mas_shr <> 100 then
+            v_ret := 'RI Reserve <> 100% ';   
+        end if;
+        
+        return v_ret;        
+    EXCEPTION    
+        WHEN OTHERS THEN 
+        v_ret := 'error: '||sqlerrm;
+        return v_ret;       
+    END validate_RI_PAID;
             
     FUNCTION GET_MAPPING_ACTION(v_code IN VARCHAR2 ,v_mode IN VARCHAR2) RETURN VARCHAR2 IS
         v_ret   VARCHAR2(250);
@@ -881,7 +1248,877 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
         WHEN OTHERS THEN
             return v_ret;   
     END IS_CLOSED_CLAIM;  
+
+    FUNCTION UPD_PAYMENTAPPRV(v_key IN number ,v_clmno IN varchar2 ,v_payno IN varchar2 ,v_sts IN varchar2 
+    ,v_apprv_flag IN varchar2 ,v_user IN varchar2 ,v_amd_user IN varchar2 ,v_apprv_user IN varchar2 ,v_res_amt IN NUMBER ,v_accum_amt IN NUMBER ,v_remark IN VARCHAR2 ,v_rst OUT VARCHAR2) RETURN VARCHAR2 IS
+     v_max_seq number:=1;
+     m_prodgrp varchar2(10);
+     m_prodtype varchar2(10);
+     m_curr_code varchar2(10);
+     m_curr_rate number(5,2);
+     dummy_payno varchar2(20);
+     v_apprv_date date;
+    BEGIN
+        if v_accum_amt <= 0 then
+            if v_sts in ('PHSTSAPPRV02' ,'PHSTSAPPRV05') then 
+                v_rst := 'Cannot send amount 0 for approve payment ';
+                return '0';
+            end if;
+        end if;
+     
+        if v_sts in ('PHSTSAPPRV03') then
+        v_apprv_date := sysdate;
+        else
+        v_apprv_date := null;
+        end if;
+        BEGIN
+            select nvl(max(trn_seq),0) + 1 into v_max_seq
+            from nc_payment_apprv a
+            where sts_key = v_key and pay_no = v_payno
+            and type = '01' and sub_type = '01' ;
+        exception
+            when no_data_found then
+                v_max_seq := 1;
+            when others then
+                v_max_seq := 1;
+        END;
+
+        FOR X1 in (
+        select prod_grp ,prod_type ,curr_code ,curr_rate
+        from nc_mas a
+        where sts_key = v_key 
+        ) 
+        LOOP 
+        m_prodgrp := x1.prod_grp ;
+        m_prodtype := x1.prod_type ;
+        --m_curr_code := x1.curr_code;
+        --m_curr_rate := x1.curr_rate; 
+        END LOOP;
+        
+        BEGIN
+            select nvl(curr_code,'BHT') ,nvl(curr_rate,1)  into m_curr_code ,m_curr_rate
+            from nc_payee a
+            where clm_no = v_clmno and pay_no = v_payno
+            and a.trn_seq =  (select max(b.trn_seq) from nc_payee b where b.prod_grp ='0' and  b.clm_no = a.clm_no and b.pay_no = a.pay_no) 
+            and rownum =1;
+        exception
+            when no_data_found then
+                m_curr_code := 'BHT';
+                m_curr_rate := 1;
+            when others then
+                m_curr_code := 'BHT';
+                m_curr_rate := 1;
+        END;        
+        
+        nc_health_package.save_ncmas_history(v_key ,v_rst); -- keep log
+        
+        if v_rst is not null then
+            return '0';
+        end if;
+         
+        INSERT into nc_payment_apprv(clm_no ,pay_no ,clm_seq ,trn_seq ,Pay_sts ,pay_amt ,Trn_amt ,Curr_code ,Curr_rate 
+        ,Sts_date ,Amd_date ,Clm_men ,Amd_user, APPROVE_ID ,approve_date , Prod_grp ,Prod_type ,SUBSYSID ,Sts_key ,Sub_type ,Type ,apprv_flag ,remark) 
+        VALUES (v_clmno , v_payno ,1 ,v_max_seq, v_sts ,v_res_amt ,v_accum_amt,
+        m_curr_code, m_curr_rate ,sysdate ,sysdate ,v_user ,v_amd_user ,v_apprv_user ,v_apprv_date
+        ,m_prodgrp,m_prodtype, 'PH' ,v_key ,'01' ,'01' ,v_apprv_flag ,v_remark) ; 
+        
+        UPDATE NC_MAS
+        SET APPROVE_STATUS = v_sts
+        WHERE CLM_NO = v_clmno;
+         
+        COMMIT;
+         
+        --EMAIL_NOTICE_APPRV(v_clmno ,v_payno ,v_sts);
+         
+        return '1';
+     
+    EXCEPTION
+     WHEN OTHERS THEN
+     v_rst := 'error insert nc_payment_apprv:'||sqlerrm; 
+     ROLLBACK;
+     return '0'; 
+    END UPD_PAYMENTAPPRV;
+
+    FUNCTION IS_ADVANCE_POLICY(v_polno IN VARCHAR2 ,v_polrun IN NUMBER) RETURN VARCHAR2 IS -- 0=false ,1=true
+        v_ret   VARCHAR2(1):='0';
+        v_pol     VARCHAR2(25);
+    BEGIN
+
+        select remark||remark2 into v_pol
+        from clm_constant
+        where key like 'PHPOLADV%' 
+        and nvl (exp_date, trunc (sysdate)) >= trunc (sysdate)
+        and remark = v_polno and remark2 = v_polrun;        
+        
+        if v_pol is null then
+            v_ret := '0';
+        else
+           v_ret := '1';          
+        end if;
+        
+        return v_ret;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            return v_ret;
+        WHEN OTHERS THEN
+            return v_ret;   
+    END IS_ADVANCE_POLICY;          
+
+    FUNCTION CAN_SEND_APPROVE(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2  ,o_rst OUT varchar2) RETURN VARCHAR2 IS
+     v_f1 varchar2(20):=null;
+     v_return varchar2(10);
+    BEGIN
+     begin
+         select pay_sts into v_f1
+         from nc_payment_apprv xxx
+         where 
+         xxx.clm_no = v_clmno and pay_no = v_payno and 
+         xxx.pay_sts in ('PHSTSAPPRV02','PHSTSAPPRV05') and 
+         type = '01' and sub_type = '01' and 
+         xxx.trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = xxx.sts_key and b.pay_no = xxx.pay_no
+         and type = '01' and sub_type = '01' );
+         o_rst := 'งานอยู่ระหว่างรอการอนุมัติ' ; 
+         v_return := 'N'; 
+     exception
+         when no_data_found then
+             v_f1 := null;
+             v_return := 'Y';
+        when others then
+             dbms_output.put_line('error'||sqlerrm);
+             o_rst := 'error'||sqlerrm ; 
+             v_return := 'N';
+     end;
+     
+     if v_f1 is null then
+         begin
+             select pay_sts into v_f1
+             from nc_payment_apprv xxx
+             where 
+             xxx.clm_no = v_clmno and pay_no = v_payno and 
+             xxx.pay_sts in ('PHSTSAPPRV03','PHSTSAPPRV11','PHSTSAPPRV12') and 
+             type = '01' and sub_type = '01' and 
+             xxx.trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = xxx.sts_key and b.pay_no = xxx.pay_no
+             and type = '01' and sub_type = '01' );
+             o_rst := 'งานอนุมัติไปแล้ว' ;              
+             v_return := 'N';
+         exception
+             when no_data_found then
+                 v_f1 := null;
+                 v_return := 'Y';
+             when others then
+                 dbms_output.put_line('error'||sqlerrm);
+                 o_rst := 'error'||sqlerrm ; 
+                 v_return := 'N';
+         end; 
+     end if;
+     
+    -- o_rst := null;
+     return v_return;
+    END CAN_SEND_APPROVE; 
+
+    FUNCTION CAN_GO_APPROVE(i_clmno IN varchar2 ,i_payno IN varchar2 ,i_userid IN varchar2 ,i_status IN varchar2 ,i_sys IN VARCHAR2 ,o_rst OUT varchar2) RETURN VARCHAR2 IS
+        v_return varchar2(1):='Y';
+        v_apprv_id varchar2(10);
+        v_sts varchar2(20);
+        v_found varchar2(20);
+        v_apprv_amt    NUMBER;
              
+        c1   NMTR_PACKAGE.v_ref_cursor2;  
+        TYPE t_data1 IS RECORD
+        (
+        SUBSYSID varchar2(5)  ,
+        USER_ID  varchar2(5) ,
+        NAME varchar2(200) ,
+        MIN_LIMIT number,
+        MAX_LIMIT number,
+        APPROVE_FLAG varchar2(1)
+        ); 
+        j_rec1 t_data1;       
+    BEGIN
+
+         BEGIN
+             select key into v_found
+             from clm_constant a
+             where key like 'PHSTSAPPRV%'
+             and key = i_status
+             and (remark2 = 'APPRV')
+             ;
+         EXCEPTION
+             WHEN NO_DATA_FOUND THEN
+                v_found := null;
+             WHEN OTHERS THEN
+                v_found := null;
+         END; 
+         
+         IF v_found is not null THEN
+             o_rst := 'เคลมนี้อนุมัติไปแล้ว !';
+             v_return := 'N';
+         END IF;
+         
+         IF v_return = 'Y' THEN
+         
+            BEGIN
+                 select key into v_found
+                 from clm_constant a
+                 where key like 'PHSTSAPPRV%'
+                 and key = i_status
+                 and (remark2 is null)
+                 ;
+            EXCEPTION
+             WHEN NO_DATA_FOUND THEN
+                v_found := null;
+             WHEN OTHERS THEN
+                v_found := null;
+            END; 
+
+             IF v_found is not null THEN
+                 ALLCLM.P_NON_PA_APPROVE.GET_APPROVE_USER(i_clmno ,i_payno ,v_apprv_id ,v_sts );
+                 IF v_apprv_id <> i_userid THEN
+                     o_rst := 'งานนี้เป็นของรหัส '||v_apprv_id ||' เป็นผู้อนุมัติ !';
+                     v_return :=  'N'; 
+                 ELSE
+                    o_rst := null;
+                    v_return :=  'Y';    
+                    return v_return;                 
+                 END IF;
+             END IF;                             
+
+         END IF;
+         
+         IF v_return ='Y' THEN -- Check Limit
+            v_apprv_amt := P_PH_CLM.GET_APPROVE_AMT(i_clmno ,i_payno);
+            NMTR_PACKAGE.NC_WAIT_FOR_APPROVE2 (i_userid , i_sys ,v_apprv_amt,
+                                                  c1 );            
+            v_return :=  'N'; 
+            o_rst := 'รหัส '||i_userid||' ไม่มีสิทธิอนุมัติ !';                                      
+            LOOP
+            FETCH  c1 INTO j_rec1;
+            EXIT WHEN c1%NOTFOUND;
+                dbms_output.put_line('User==>'|| 
+                 j_rec1.user_id||
+                 ':'||
+                 j_rec1.NAME||
+                 'MIN:'||
+                  j_rec1.MIN_LIMIT||
+                  '    MAX:'||
+                   j_rec1.MAX_LIMIT||
+                   '       FLAG:'||
+                    j_rec1.APPROVE_FLAG
+                );    
+                if j_rec1.APPROVE_FLAG = 'Y' and j_rec1.user_id = i_userid then
+                    dbms_output.put_line('Yes!!!');
+                    o_rst := null;
+                    v_return :=  'Y'; 
+                end if;
+            end loop;                                                          
+         END IF;         
+         
+    -- o_rst := null;
+        return v_return;
+    END CAN_GO_APPROVE;
+
+    FUNCTION GET_APPROVE_AMT(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN NUMBER IS
+        v_ret   NUMBER:=9999999999;
+    BEGIN
+        select nvl(sum(payee_amt),9999999999) into v_ret
+        from nc_payee a
+        where payee_code is not null
+        and prod_grp ='0'
+        and clm_no =v_clmno and pay_no = v_payno
+        and a.trn_seq = (select max(b.trn_seq) from nc_payee b where b.prod_grp ='0' and  b.clm_no = a.clm_no and b.pay_no = a.pay_no) ;    
+        
+        return v_ret;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            return v_ret;
+        WHEN OTHERS THEN
+            return v_ret;
+    END GET_APPROVE_AMT;
+
+    FUNCTION IS_NEW_PAYMENT(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2  ,o_rst OUT varchar2) RETURN VARCHAR2 IS
+     v_paysts varchar2(20):=null;
+     v_maxpayno    varchar2(20):=null;
+     v_sum_payment number:=0;
+     v_sum_payee number:=0;
+     v_return varchar2(10):='Y';
+    BEGIN
+        begin
+            select max(pay_no) into v_maxpayno
+            from nc_payment a
+            where prod_grp = '0'
+            and a.clm_no = v_clmno
+            ;
+
+        exception
+         when no_data_found then
+             v_maxpayno := null;
+        when others then
+            v_maxpayno := null;
+        end;
+
+        begin
+            select max(payee_amt) into v_sum_payee
+            from nc_payee a
+            where prod_grp = '0'
+            and clm_no = v_clmno and pay_no = v_maxpayno
+            and a.trn_seq in (select max(bb.trn_seq) from nc_payee bb where bb.pay_no = a.pay_no)
+            ;
+
+        exception
+         when no_data_found then
+             v_sum_payee := 0;
+        when others then
+            v_sum_payee := 0;
+        end;
+                    
+        begin
+            select nvl(sum(pay_amt),0) ,max(status) into v_sum_payment ,v_paysts
+            from nc_payment a
+            where prod_grp = '0'
+            and type = 'PAPH' 
+            and a.trn_seq in (select max(bb.trn_seq) from nc_payment bb where bb.clm_no = a.clm_no and  bb.pay_no = a.pay_no)
+            and a.clm_no = v_clmno and a.pay_no = v_maxpayno
+            ;
+            
+            if v_paysts = 'NCPAYMENTSTS04' and v_sum_payment = 0 and v_sum_payee = 0  then -- Cancel Payment
+                o_rst := 'last payno was canceled';
+                v_return := 'Y';                
+            elsif  v_sum_payment > 0 then
+                o_rst := 'payment > 0';
+                v_return := 'N';        
+            elsif    v_sum_payee > 0 then
+                o_rst := 'payee > 0';
+                v_return := 'N';   
+            else
+                o_rst := 'not found status or payment';
+                v_return := 'Y';                  
+            end if;
+            
+        exception
+            when no_data_found then
+                o_rst := 'not found payment';
+                v_return := 'Y';  
+            when others then
+                o_rst := 'not found payment';
+                v_return := 'Y';  
+        end;
+        
+        return v_return;
+    END IS_NEW_PAYMENT; 
+
+    FUNCTION GEN_RI_PAID(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2 ,v_amt IN NUMBER  ,o_rst OUT varchar2) RETURN VARCHAR2 IS
+
+         v_return varchar2(10):='Y';
+         v_date date:=sysdate;
+         v_status   varchar2(20);
+        ri_mas_shr  number(5,2);
+        ri_max_rec  number(2);
+        v_tot_res   number(12,4);
+        v_tot_paid   number(12,4):=v_amt;
+  
+        v_riamt number(12,4);
+        v_sumri number(12,4);  
+        r_cnt   number;        
+    BEGIN
+        begin
+            select count(*) into ri_max_rec
+            from nc_ri_paid a
+            where prod_grp = '0'
+            and clm_no = v_clmno and pay_no = v_payno 
+            and trn_seq in (select max(aa.trn_seq) from nc_ri_paid aa where aa.pay_no = a.pay_no )
+            ;
+
+        exception
+         when no_data_found then
+             ri_max_rec := 0;
+        when others then
+            ri_max_rec := 0;
+        end;
+        
+        if ri_max_rec = 0  then
+            o_rst := 'ไม่พบข้อมูล RI Paid';
+            return 'N';
+        end if;
+        
+        begin
+            v_status := P_PH_CLM.GET_MAPPING_ACTION('benefit' ,'O');
+            
+            r_cnt :=0;
+            v_sumri :=0;        
+            for x in (
+                select sts_key, clm_no, pay_no, prod_grp, prod_type, type, ri_code, ri_br_code, ri_type, ri_lf_flag, ri_sub_type, ri_share
+                , trn_seq, ri_sts_date, ri_amd_date, ri_pay_amt, ri_trn_amt, lett_type, sub_type
+                ,status ,lett_no ,lett_prt
+                from nc_ri_paid a
+                where prod_grp = '0'
+                and clm_no = v_clmno and pay_no = v_payno 
+                and trn_seq in (select max(aa.trn_seq) from nc_ri_paid aa where aa.pay_no = a.pay_no )            
+            )loop
+                v_riamt :=0;
+                r_cnt := r_cnt+1;
+                if r_cnt = ri_max_rec then
+                    v_riamt := v_tot_paid-v_sumri;
+                else
+                    v_riamt := v_tot_paid * (x.ri_share/100);    
+                end if;
+                v_riamt := trunc(v_riamt ,2);
+                v_sumri := v_sumri + v_riamt;
+                
+                Insert into NC_RI_PAID
+                   (STS_KEY, CLM_NO, PAY_NO, PROD_GRP, PROD_TYPE, TYPE, RI_CODE, RI_BR_CODE, RI_TYPE, RI_LF_FLAG, RI_SUB_TYPE, RI_SHARE
+                   , TRN_SEQ, RI_STS_DATE, RI_AMD_DATE, RI_PAY_AMT, RI_TRN_AMT, LETT_TYPE, SUB_TYPE
+                   ,STATUS ,LETT_NO ,LETT_PRT)
+                 Values
+                   (x.STS_KEY, x.CLM_NO, x.PAY_NO, x.PROD_GRP, x.PROD_TYPE, x.TYPE, x.RI_CODE, x.RI_BR_CODE, x.RI_TYPE, x.RI_LF_FLAG, x.RI_SUB_TYPE, x.RI_SHARE
+                   , x.TRN_SEQ+1, x.RI_STS_DATE, v_date , v_riamt , v_riamt , x.LETT_TYPE, x.SUB_TYPE
+                   ,v_status ,x.LETT_NO ,x.LETT_PRT);            
+                   
+            end loop  ;  
+        exception
+            when others then
+                o_rst := 'error insert nc_ri_paid';
+                v_return := 'N';  
+        end;
+        
+        return v_return;
+    END GEN_RI_PAID; 
+
+    FUNCTION  get_SUM_RES(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN NUMBER IS
+        v_ret NUMBER(12,2);
+        sum_res  number(12,2);
+        --ri_res_sum  number(12,2);
+        v_maxpayno varchar2(20);
+    BEGIN
+        
+        begin 
+            select nvl(sum(res_amt),0)
+            into sum_res 
+            from nc_reserved a
+            where  clm_no= v_clmno 
+            and trn_seq = (select max(trn_seq) from nc_reserved aa where aa.clm_no = a.clm_no) 
+            ;
+        exception
+            when no_data_found then
+                sum_res :=0;
+            when others then
+                sum_res :=0;
+        end;          
+        v_ret := sum_res;
+        return v_ret;        
+    EXCEPTION    
+        WHEN OTHERS THEN 
+        v_ret := 0;
+        return v_ret;       
+    END get_SUM_RES;
+
+    FUNCTION  get_SUM_RIPAID(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN NUMBER IS
+        v_ret NUMBER(12,2);
+        ri_pay  number(12,2);
+        --ri_res_sum  number(12,2);
+        v_maxpayno varchar2(20);
+    BEGIN
+        if v_payno is null then
+            begin
+                select max(pay_no) into v_maxpayno
+                from nc_payment a
+                where prod_grp = '0'
+                and a.clm_no = v_clmno
+                ;
+
+            exception
+             when no_data_found then
+                 v_maxpayno := null;
+            when others then
+                v_maxpayno := null;
+            end;        
+        else
+            v_maxpayno := v_payno;
+        end if;
+        
+        begin 
+            select nvl(sum(ri_pay_amt),0)
+            into ri_pay 
+            from nc_ri_paid a
+            where  clm_no= v_clmno and pay_no = v_maxpayno
+            and trn_seq = (select max(trn_seq) from nc_ri_paid aa where aa.pay_no = a.pay_no) 
+            ;
+        exception
+            when no_data_found then
+                ri_pay :=0;
+            when others then
+                ri_pay :=0;
+        end;          
+        v_ret := ri_pay;
+        return v_ret;        
+    EXCEPTION    
+        WHEN OTHERS THEN 
+        v_ret := 0;
+        return v_ret;       
+    END get_SUM_RIPAID;
+
+    FUNCTION  get_SUM_PAID(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN NUMBER IS
+        v_ret NUMBER(12,2);
+        sum_pay  number(12,2);
+        --ri_res_sum  number(12,2);
+        v_maxpayno varchar2(20);
+    BEGIN
+        if v_payno is null then
+            begin
+                select max(pay_no) into v_maxpayno
+                from nc_payment a
+                where prod_grp = '0'
+                and a.clm_no = v_clmno
+                ;
+
+            exception
+             when no_data_found then
+                 v_maxpayno := null;
+            when others then
+                v_maxpayno := null;
+            end;        
+        else
+            v_maxpayno := v_payno;
+        end if;
+        
+        begin 
+            select nvl(sum(pay_amt),0)
+            into sum_pay 
+            from nc_payment a
+            where  clm_no= v_clmno and pay_no = v_maxpayno
+            and trn_seq = (select max(trn_seq) from nc_payment aa where aa.pay_no = a.pay_no) 
+            ;
+        exception
+            when no_data_found then
+                sum_pay :=0;
+            when others then
+                sum_pay :=0;
+        end;          
+        v_ret := sum_pay;
+        return v_ret;        
+    EXCEPTION    
+        WHEN OTHERS THEN 
+        v_ret := 0;
+        return v_ret;       
+    END get_SUM_PAID;
+                        
+
+    FUNCTION  get_PAYEENAME(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN VARCHAR2 IS
+        v_ret VARCHAR2(250);
+        sum_pay  number(12,2);
+        --ri_res_sum  number(12,2);
+        v_maxpayno varchar2(20);
+    BEGIN
+        if v_payno is null then
+            begin
+                select max(pay_no) into v_maxpayno
+                from nc_payment a
+                where prod_grp = '0'
+                and a.clm_no = v_clmno
+                ;
+
+            exception
+             when no_data_found then
+                 v_maxpayno := null;
+            when others then
+                v_maxpayno := null;
+            end;        
+        else
+            v_maxpayno := v_payno;
+        end if;
+        
+        begin 
+            select payee_name
+            into v_ret 
+            from nc_payee a
+            where  clm_no= v_clmno and pay_no = v_maxpayno
+            and trn_seq = (select max(trn_seq) from nc_payee aa where aa.pay_no = a.pay_no) 
+            and rownum=1
+            ;
+        exception
+            when no_data_found then
+                v_ret :=null;
+            when others then
+                v_ret :=null;
+        end;          
+
+        return v_ret;        
+    EXCEPTION    
+        WHEN OTHERS THEN 
+        v_ret :=null;
+        return v_ret;       
+    END get_PAYEENAME;
+                        
+
+    FUNCTION UPD_PAYMENT_STS(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2  ,v_status IN VARCHAR2 ,o_rst OUT varchar2) RETURN VARCHAR2 IS
+        chk_sts varchar2(20);
+        v_return varchar2(2):='Y';
+    BEGIN
+        begin
+            select key into chk_sts
+            from clm_constant
+            where key = v_status ;
+        exception
+         when no_data_found then
+             chk_sts := null;
+        when others then
+            chk_sts := null;
+        end;
+        
+        if chk_sts is null  then
+            o_rst := 'ไม่พบ '||v_status||' ในระบบ';
+            return 'N';
+        end if;
+        
+        begin
+            update nc_payment a
+            set status = v_status
+            where prod_grp = '0'
+            and a.clm_no = v_clmno and pay_no = v_payno
+            and a.trn_seq in (select max(bb.trn_seq) from nc_payment bb where bb.pay_no = a.pay_no)  ;
+            
+            commit;
+        exception
+            when others then
+                rollback;
+                o_rst := 'error update nc_payment';
+                v_return := 'N';  
+        end;
+        
+        
+        return v_return;
+    END UPD_PAYMENT_STS; 
+
+    FUNCTION CAN_UPDATE_PAYMENT(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2  ,o_rst OUT varchar2) RETURN VARCHAR2 IS
+        v_sumres    number;
+        v_return varchar2(10):='Y';
+        v_maxpayno varchar2(20);
+    BEGIN
+        if v_payno is null then
+            begin
+                select max(pay_no) into v_maxpayno
+                from nc_payment a
+                where prod_grp = '0'
+                and a.clm_no = v_clmno
+                ;
+
+            exception
+             when no_data_found then
+                 v_maxpayno := null;
+            when others then
+                v_maxpayno := null;
+            end;        
+        else
+            v_maxpayno := v_payno;
+        end if;
+        v_return := P_PH_CLM.CAN_SEND_APPROVE(v_clmno ,v_maxpayno ,o_rst) ;
+        
+        if v_return = 'Y' then -- เช็ค Claim Status เพิ่ม 
+            begin
+                select sum(res_amt) into v_sumres
+                from nc_reserved a
+                where a.clm_no =v_clmno
+                and a.prod_grp = '0' --and a.prod_type in (select cgp.prod_type from clm_grp_prod cgp where sysid='GM')
+                and a.trn_seq in (select max(bb.trn_seq) from nc_reserved bb where bb.clm_no = a.clm_no);      
+
+            exception
+             when no_data_found then
+                 v_sumres := 0;
+            when others then
+                v_sumres := 0;
+            end;        
+            
+            if v_sumres <= 0 then
+                o_rst := 'ยอด Reserved <= 0';
+                v_return := 'N';
+            end if ;
+        end if;
+        
+        return v_return;
+    END CAN_UPDATE_PAYMENT; 
+
+    FUNCTION GET_CLAIM_STATUS(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2 ,v_mode IN VARCHAR2 ) RETURN VARCHAR2 IS
+        v_return varchar2(20);
+    BEGIN
+        if nvl(v_mode,'C') = 'C' then
+            begin
+                select claim_status into v_return
+                from nc_mas a
+                where a.clm_no =v_clmno
+                and a.prod_grp = '0'   ;    
+
+            exception
+             when no_data_found then
+                 v_return := null;
+            when others then
+                v_return := null;
+            end;              
+        else
+            begin
+                select approve_status into v_return
+                from nc_mas a
+                where a.clm_no =v_clmno
+                and a.prod_grp = '0'   ;    
+
+            exception
+             when no_data_found then
+                 v_return := null;
+            when others then
+                v_return := null;
+            end;               
+        end if;
+  
+                    
+        return v_return;
+    END GET_CLAIM_STATUS; 
+
+    FUNCTION GET_USER_LIST (v_user IN VARCHAR2 ,O_USER Out P_PH_CLM.v_curr ) RETURN VARCHAR2 IS  
+        v_ret varchar2(250);
+        cnt_rec number(10);
+    BEGIN
+        begin
+        select nvl(count(*),0) into cnt_rec
+        from bkiuser a
+        where dept_id = '22'
+        and div_id = '03'
+        and user_id like nvl(UPPER(v_user),'%')
+        and termination_flag is null ;
+        exception
+            when no_data_found then
+                cnt_rec := 0;
+            when others then
+                cnt_rec := 0;
+        end;
+        
+        if cnt_rec >0 then
+           OPEN O_USER  FOR 
+                select user_id VALUE , 'คุณ '||name_t TEXT
+                from bkiuser a
+                where dept_id = '22'
+                and div_id = '03'
+                and user_id like nvl(UPPER(v_user),'%')
+                and termination_flag is null 
+                order by team_id desc ,user_id ;            
+        else
+            v_ret := 'Not found User';
+            OPEN O_USER  FOR SELECT '' VALUE ,'' TEXT   FROM DUAL;
+            return v_ret;             
+        end if;
+   
+                 
+        return v_ret;       
+
+    EXCEPTION
+           when no_data_found then 
+            v_ret := 'Not found ';
+            OPEN O_USER  FOR SELECT '' VALUE ,'' TEXT   FROM DUAL;
+            return v_ret;           
+   
+           when others then 
+            v_ret := 'error: '||sqlerrm;
+            OPEN O_USER  FOR SELECT '' VALUE ,'' TEXT   FROM DUAL;
+            return v_ret;  
+                      
+    END GET_USER_LIST;   
+
+   FUNCTION GET_PAID_TO(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2 ) RETURN VARCHAR2 IS
+        v_return varchar2(20);
+        v_type  varchar2(20);
+    BEGIN
+        begin
+            select clm_type into v_type
+            from nc_mas a
+            where a.clm_no =v_clmno
+            and a.prod_grp = '0'   ;    
+            if v_type = 'PHCLMTYPE02' then -- Credit
+                v_return := 'H';
+            else
+                v_return := null;
+            end if;
+        exception
+         when no_data_found then
+             v_type := null;
+        when others then
+            v_type := null;
+        end;              
+                    
+        return v_return;
+    END GET_PAID_TO; 
+
+
+   PROCEDURE GET_HOSP_PAYEE(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2 ,o_payee_code OUT VARCHAR2 ,o_payee_seq OUT VARCHAR2) IS
+        --v_paye varchar2(20);
+        v_type  varchar2(20);
+        --v_seq    varchar2(5);
+    BEGIN
+        begin
+            select hpt_code into v_type 
+            from nc_mas a
+            where a.clm_no =v_clmno
+            and a.prod_grp = '0'   ;    
+
+        exception
+         when no_data_found then
+             v_type := null;
+        when others then
+            v_type := null;
+        end;            
+        
+        if v_type is not null then
+        begin
+            select payee_code ,hosp_seq into o_payee_code ,o_payee_seq
+            from med_hospital_list a
+            where a.hosp_id =v_type and rownum=1;    
+
+        exception
+         when no_data_found then
+             o_payee_code := null;
+        when others then
+            o_payee_code := null;
+        end;           
+        end if;  
+                    
+    END GET_HOSP_PAYEE; 
+
+    PROCEDURE GET_PAYEE_ACC(v_clmno IN VARCHAR2 ,v_payee IN VARCHAR2 
+    ,O_ACC_NO  OUT VARCHAR2, O_ACC_NAME_TH OUT VARCHAR2,  O_ACC_NAME_EN  OUT VARCHAR2, O_BANK_CODE  OUT VARCHAR2, O_BANK_BR_CODE  OUT VARCHAR2, O_DEPOSIT OUT VARCHAR2 ) IS
+    
+    BEGIN
+      --== = get new ACC_NO ==
+      account.p_actr_package.p_get_payee_acc(v_payee,
+                                             'A', /* fix A = ACR type */
+                                             O_ACC_NO,
+                                             O_ACC_NAME_TH,
+                                             O_ACC_NAME_EN,
+                                             O_BANK_CODE,
+                                             O_BANK_BR_CODE,
+                                             O_DEPOSIT);
+      if O_ACC_NAME_TH is null then
+          O_ACC_NAME_TH := O_ACC_NAME_EN;    
+      end if;   
+      -- == == = = = = = = =  = =    
+    EXCEPTION
+        WHEN OTHERS THEN
+        O_ACC_NO  := null; O_ACC_NAME_TH := null;  O_ACC_NAME_EN  := null; O_BANK_CODE  := null; O_BANK_BR_CODE  := null; O_DEPOSIT := null; 
+    END GET_PAYEE_ACC ;
+    
+    PROCEDURE GET_PAYEE_DETAIL(v_clmno IN VARCHAR2 ,v_payee IN VARCHAR2 ,v_payee_seq IN VARCHAR2 
+     , o_contact_name OUT VARCHAR2 , o_addr1 OUT VARCHAR2  , o_addr2 OUT VARCHAR2  , o_mobile OUT VARCHAR2  , o_email OUT VARCHAR2
+     ,o_agent_mobile  OUT VARCHAR2 ,o_agent_email  OUT VARCHAR2) IS
+     
+    BEGIN
+        NC_HEALTH_PAID.GET_HOSPITAL_CONTACT(v_payee ,v_payee_seq ,null , o_contact_name ,o_addr1  ,o_addr2  , o_mobile ,o_email);
+        --:clm_gm_payee.CUST_MAIL := NC_HEALTH_PAID.GET_ORG_CUSTOMER_EMAIL(:clm_gm_payee.CLM_NO);
+        if o_email is null then o_email := NC_HEALTH_PAID.GET_ORG_CUSTOMER_EMAIL(v_clmno); end if;
+
+        IF NC_HEALTH_PAID.IS_AGENT_CHANNEL(v_clmno ,v_payee) THEN
+            NC_HEALTH_PAID.GET_AGENT_CONTACT (v_clmno , o_contact_name ,o_addr1  ,o_addr2 
+            , o_agent_mobile ,o_agent_email );           
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN     
+        o_contact_name := null;  o_addr1 := null;  o_addr2 := null;  o_mobile := null;  o_email := null; o_agent_mobile := null; o_agent_email := null;
+     END GET_PAYEE_DETAIL ;
+                                             
 END P_PH_CLM;
 
 /
