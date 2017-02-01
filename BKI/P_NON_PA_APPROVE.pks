@@ -137,6 +137,8 @@ FUNCTION SET_SETTLEDATE(vClmNo in varchar2 ,vPayNo in varchar2 ,vClmUser in varc
 /*  vApproveDate สำหรับกรณีเรียกซ่อมงานที่ไม่ได้ stamp nc_payment.settle_date*/
  
 FUNCTION IS_APPROVED(vClmNo in varchar2 ,vPayNo in varchar2 ) RETURN VARCHAR2 ; 
+
+FUNCTION IS_VP_UP(i_user in varchar2 ) RETURN VARCHAR2 ; -- Y ,N
  
 END P_NON_PA_APPROVE;
 /
