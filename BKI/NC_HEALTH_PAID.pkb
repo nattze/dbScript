@@ -1773,29 +1773,29 @@ BEGIN
           INSERT INTO NC_PAYMENT
            (CLM_NO, PAY_NO, CLM_SEQ, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, 
            STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, APPROVE_ID, APPROVE_DATE, PROD_GRP, PROD_TYPE, 
-           SUBSYSID, STS_KEY, TYPE, SUB_TYPE, APPRV_FLAG ,SETTLE_DATE )
+           SUBSYSID, STS_KEY, TYPE, SUB_TYPE, APPRV_FLAG ,SETTLE_DATE ,PREM_CODE ,PREM_SEQ )
           VALUES
            (c1.clm_no ,c1.pay_no ,c1.CLM_SEQ ,c1.trn_seq+1 ,'NCPAYSTS05' , c1.PAY_AMT, c1.TRN_AMT, c1.CURR_CODE, c1.CURR_RATE, 
            c1.STS_DATE, sysdate, c1.CLM_MEN, v_clm_user , c1.APPROVE_ID ,sysdate , c1.PROD_GRP, c1.PROD_TYPE, 
-           c1.SUBSYSID, c1.STS_KEY, c1.TYPE, c1.SUB_TYPE, c1.APPRV_FLAG ,sysdate);
+           c1.SUBSYSID, c1.STS_KEY, c1.TYPE, c1.SUB_TYPE, c1.APPRV_FLAG ,sysdate ,'0000' ,1);
 
           INSERT INTO NC_PAYMENT
            (CLM_NO, PAY_NO, CLM_SEQ, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, 
            STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, APPROVE_ID, APPROVE_DATE, PROD_GRP, PROD_TYPE, 
-           SUBSYSID, STS_KEY, TYPE, SUB_TYPE, APPRV_FLAG ,SETTLE_DATE )
+           SUBSYSID, STS_KEY, TYPE, SUB_TYPE, APPRV_FLAG ,SETTLE_DATE  ,PREM_CODE ,PREM_SEQ)
           VALUES
            (c1.clm_no ,c1.pay_no ,c1.CLM_SEQ ,c1.trn_seq+2 ,'NCPAYSTS09' , c1.PAY_AMT, c1.TRN_AMT, c1.CURR_CODE, c1.CURR_RATE, 
            c1.STS_DATE, sysdate, c1.CLM_MEN, v_clm_user , c1.APPROVE_ID ,sysdate , c1.PROD_GRP, c1.PROD_TYPE, 
-           c1.SUBSYSID, c1.STS_KEY, c1.TYPE, c1.SUB_TYPE, c1.APPRV_FLAG ,sysdate);
+           c1.SUBSYSID, c1.STS_KEY, c1.TYPE, c1.SUB_TYPE, c1.APPRV_FLAG ,sysdate ,'0000' ,1);
 
           INSERT INTO NC_PAYMENT
            (CLM_NO, PAY_NO, CLM_SEQ, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, 
            STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, APPROVE_ID, APPROVE_DATE, PROD_GRP, PROD_TYPE, 
-           SUBSYSID, STS_KEY, TYPE, SUB_TYPE, APPRV_FLAG ,SETTLE_DATE )
+           SUBSYSID, STS_KEY, TYPE, SUB_TYPE, APPRV_FLAG ,SETTLE_DATE  ,PREM_CODE ,PREM_SEQ )
           VALUES
            (c1.clm_no ,c1.pay_no ,c1.CLM_SEQ ,c1.trn_seq+3 ,'NCPAYSTS10' , c1.PAY_AMT, c1.TRN_AMT, c1.CURR_CODE, c1.CURR_RATE, 
            c1.STS_DATE, sysdate, c1.CLM_MEN, v_clm_user , c1.APPROVE_ID ,sysdate , c1.PROD_GRP, c1.PROD_TYPE, 
-           c1.SUBSYSID, c1.STS_KEY, c1.TYPE, c1.SUB_TYPE, c1.APPRV_FLAG ,sysdate);           
+           c1.SUBSYSID, c1.STS_KEY, c1.TYPE, c1.SUB_TYPE, c1.APPRV_FLAG ,sysdate ,'0000' ,1);    
     
                                       
                 chk_success := true;
@@ -1824,6 +1824,10 @@ FUNCTION UPDATE_STATUS_ACR(v_payno in varchar2 ,v_clm_user in varchar2 ) RETURN 
     chk_success boolean:=false;
     v_stskey number(20);
     v_chk_med    varchar2(20):=null;
+    v_chk_ncapprv   varchar2(20):=null;
+    v_trn_seq2 number:=0;
+    v_apprvid varchar2(20);
+    v_apprvdate date;    
 BEGIN
     BEGIN    
         select sts_key into v_stskey
@@ -1839,9 +1843,8 @@ BEGIN
       --display_proc(sqlerrm);
     END;    
 
-
     BEGIN
-        select max(sts_seq) + 1 into v_sts_seq
+        select nvl(max(sts_seq)+1,1) into v_sts_seq
         from nc_status a
         where sts_key = v_stskey and STS_TYPE = 'NCPAYSTS' ;
     exception
@@ -1852,7 +1855,7 @@ BEGIN
     END;    
 
     BEGIN
-        select max(sts_seq) + 1 into v_sts_seq_m
+        select nvl(max(sts_seq)+1,1) into v_sts_seq_m
         from nc_status a
         where sts_key = v_stskey and STS_TYPE = 'MEDSTS' ;
     exception
@@ -1875,7 +1878,7 @@ BEGIN
      
 /**/
     BEGIN
-        select max(trn_seq) + 1 into v_trn_seq
+        select nvl(max(trn_seq)+1,1) into v_trn_seq
         from nc_payment a
         where sts_key = v_stskey and pay_no = v_payno ;
     exception
@@ -1884,7 +1887,30 @@ BEGIN
     when others then
         v_trn_seq    := 1;
     END;
-    
+
+    -- Module for new PH system Approve+Post ACR
+    BEGIN
+        select nvl(max(trn_seq)+1,1) into v_trn_seq2
+        from nc_payment_apprv a
+        where sts_key = v_stskey and pay_no = v_payno ;
+    exception
+    when no_data_found then
+        v_trn_seq2    := 1;
+    when others then
+        v_trn_seq2    := 1;
+    END;    
+
+    BEGIN --    Check Has NC_PAYMENT_APPRV ? 
+        select clm_no into v_chk_ncapprv
+        from nc_payment_apprv a
+        where pay_no = v_payno and rownum =1;
+    exception
+    when no_data_found then
+        v_chk_ncapprv    := null;
+    when others then
+        v_chk_ncapprv    := null;
+    END;    
+        
     BEGIN
        
       INSERT INTO NC_STATUS -- Post acc clm temp
@@ -1892,7 +1918,7 @@ BEGIN
       VALUES
        (v_stskey ,v_sts_seq+0 ,'NCPAYSTS', 'NCPAYSTS11' ,'Post ACC CLM Temp by NC_HEALTH_PAID' , v_clm_user ,sysdate);     
 
-        if v_chk_med is not null then
+        if v_chk_med is not null and v_chk_ncapprv is null then
           INSERT INTO NC_STATUS -- update for MED STS
            (STS_KEY, STS_SEQ, STS_TYPE, STS_SUB_TYPE, REMARK, CUSER, CDATE)
           VALUES
@@ -1910,22 +1936,26 @@ BEGIN
     begin
         FOR C1 in (
             select clm_no ,pay_no ,clm_seq ,trn_seq ,PAY_STS ,approve_id ,pay_amt ,trn_amt ,curr_code ,curr_rate 
-            ,sts_date ,clm_men ,prod_grp ,prod_type ,subsysid ,STS_KEY ,print_type ,type ,sub_type ,apprv_flag
+            ,sts_date ,clm_men ,prod_grp ,prod_type ,subsysid ,STS_KEY ,print_type ,type ,sub_type ,apprv_flag ,APPROVE_DATE
             from nc_payment a
             where sts_key = v_stskey and pay_no = v_payno
-            and trn_seq = (select max(b.trn_seq) from nc_payment b where b.sts_key = a.sts_key and b.pay_no = a.pay_no)             
+            and trn_seq = (select max(b.trn_seq) from nc_payment b where b.sts_key = a.sts_key and b.pay_no = a.pay_no and b.type='01')  
+            and a.type='01'           
         )            
         LOOP                
 
           INSERT INTO NC_PAYMENT
            (CLM_NO, PAY_NO, CLM_SEQ, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, 
            STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, APPROVE_ID, APPROVE_DATE, PROD_GRP, PROD_TYPE, 
-           SUBSYSID, STS_KEY, TYPE, SUB_TYPE, APPRV_FLAG ,SETTLE_DATE )
+           SUBSYSID, STS_KEY, TYPE, SUB_TYPE, APPRV_FLAG ,SETTLE_DATE , PREM_CODE ,PREM_SEQ)
           VALUES
            (c1.clm_no ,c1.pay_no ,c1.CLM_SEQ ,c1.trn_seq+1 ,'NCPAYSTS11' , c1.PAY_AMT, c1.TRN_AMT, c1.CURR_CODE, c1.CURR_RATE, 
-           c1.STS_DATE, sysdate, c1.CLM_MEN, v_clm_user , c1.APPROVE_ID ,sysdate , c1.PROD_GRP, c1.PROD_TYPE, 
-           c1.SUBSYSID, c1.STS_KEY, c1.TYPE, c1.SUB_TYPE, c1.APPRV_FLAG ,sysdate);           
-                                      
+           c1.STS_DATE, sysdate, c1.CLM_MEN, v_clm_user , c1.APPROVE_ID ,c1.APPROVE_DATE , c1.PROD_GRP, c1.PROD_TYPE, 
+           c1.SUBSYSID, c1.STS_KEY, '01','01', 'Y' ,sysdate ,'0000' ,1);      
+
+                v_apprvid := C1.APPROVE_ID;
+                v_apprvdate := c1.APPROVE_DATE;
+                                                      
                 chk_success := true;
             END LOOP;    
     exception
@@ -1936,7 +1966,45 @@ BEGIN
             chk_success := false;
             return ('error update NC_PAYMENT :'||sqlerrm);
     end;        
-    
+
+    IF v_chk_ncapprv is not null THEN
+        begin
+            FOR C1 in (
+                select clm_no ,pay_no ,clm_seq ,trn_seq ,PAY_STS ,approve_id ,pay_amt ,trn_amt ,curr_code ,curr_rate 
+                ,sts_date ,clm_men ,prod_grp ,prod_type ,subsysid ,STS_KEY ,print_type ,type ,sub_type ,apprv_flag ,approve_date
+                from nc_payment_apprv a
+                where sts_key = v_stskey and pay_no = v_payno
+                and trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = a.sts_key and b.pay_no = a.pay_no)             
+            )            
+            LOOP                
+
+              INSERT INTO NC_PAYMENT_APPRV
+               (CLM_NO, PAY_NO, CLM_SEQ, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, 
+               STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, APPROVE_ID, APPROVE_DATE, PROD_GRP, PROD_TYPE, 
+               SUBSYSID, STS_KEY, TYPE, SUB_TYPE, APPRV_FLAG ,SETTLE_DATE ,remark )
+              VALUES
+               (c1.clm_no ,c1.pay_no ,c1.CLM_SEQ ,c1.trn_seq+1 ,'PHSTSAPPRV11' , c1.PAY_AMT, c1.TRN_AMT, c1.CURR_CODE, c1.CURR_RATE, 
+               c1.STS_DATE, sysdate, c1.CLM_MEN, v_clm_user , v_apprvid ,v_apprvdate , c1.PROD_GRP, c1.PROD_TYPE, 
+               c1.SUBSYSID, c1.STS_KEY, c1.TYPE, c1.SUB_TYPE, 'Y' ,sysdate ,'Post ACC CLM Temp by NC_HEALTH_PAID' );           
+                                          
+                    chk_success := true;
+            END LOOP;   
+            
+            UPDATE NC_MAS
+            set 
+--            claim_status = 'PHCLMSTS06' ,
+            approve_status = 'PHSTSAPPRV11'
+            where STS_KEY =v_stskey ;            
+        exception
+            when no_data_found then
+                null;
+            when others then
+                rollback;
+                chk_success := false;
+                return ('error update NC_PAYMENT_APPRV :'||sqlerrm);
+        end;         
+    END IF;
+        
     IF chk_success THEN 
         COMMIT;return null ; 
     END IF;
@@ -1952,14 +2020,23 @@ FUNCTION UPDATE_STATUS_AFTER_POST(v_payno in varchar2 ,v_clm_user in varchar2  ,
     chk_success boolean:=false;
     v_stskey number(20);
     v_chk_med    varchar2(20):=null;
-    p_status    varchar2(10);
+    p_status    varchar2(20);
     p_remark    varchar2(200);
+    
+    v_stskey2 number(20);
+    p_status2    varchar2(20);
+    v_trn_seq2 number:=0;
+    v_chk_ncapprv    varchar2(20):=null;
+    v_apprvid varchar2(20);
+    v_apprvdate date;
 BEGIN
     if nvl(v_success ,'N') = 'Y' then
         p_status := 'NCPAYSTS12';
+        p_status2 := 'PHSTSAPPRV12';
         p_remark := 'Post ACR by NC_HEALTH_PAID';
     elsif nvl(v_success ,'N') = 'N' then
         p_status := 'NCPAYSTS80';
+        p_status2 := 'PHSTSAPPRV80';
         p_remark := 'Post ACR Error: '||v_note;
     end if;
 
@@ -1979,7 +2056,8 @@ BEGIN
 
 
     BEGIN
-        select max(sts_seq) + 1 into v_sts_seq
+        --max(sts_seq) + 1 
+        select nvl(max(sts_seq)+1,1)into v_sts_seq
         from nc_status a
         where sts_key = v_stskey and STS_TYPE = 'NCPAYSTS' ;
     exception
@@ -1990,7 +2068,8 @@ BEGIN
     END;    
 
     BEGIN
-        select max(sts_seq) + 1 into v_sts_seq_m
+        --  max(sts_seq) + 1
+        select nvl(max(sts_seq)+1,1) into v_sts_seq_m 
         from nc_status a
         where sts_key = v_stskey and STS_TYPE = 'MEDSTS' ;
     exception
@@ -2015,14 +2094,14 @@ BEGIN
     BEGIN
         select max(trn_seq) + 1 into v_trn_seq
         from nc_payment a
-        where sts_key = v_stskey and pay_no = v_payno ;
+        where sts_key = v_stskey and pay_no = v_payno  ;
     exception
     when no_data_found then
         v_trn_seq    := 1;
     when others then
         v_trn_seq    := 1;
     END;
-    
+        
     BEGIN
        
       INSERT INTO NC_STATUS -- Post acc clm temp
@@ -2045,24 +2124,107 @@ BEGIN
         return 'error Update STATUS :'||sqlerrm ;
     END;  
     
+    -- Module for new PH system Approve+Post ACR
+    BEGIN
+        select nvl(max(trn_seq)+1,1) into v_trn_seq2
+        from nc_payment_apprv a
+        where sts_key = v_stskey and pay_no = v_payno ;
+    exception
+    when no_data_found then
+        v_trn_seq2    := 1;
+    when others then
+        v_trn_seq2    := 1;
+    END;    
+
+    BEGIN --    Check Has NC_PAYMENT_APPRV ? 
+        select clm_no into v_chk_ncapprv
+        from nc_payment_apprv a
+        where pay_no = v_payno and rownum =1;
+    exception
+    when no_data_found then
+        v_chk_ncapprv    := null;
+    when others then
+        v_chk_ncapprv    := null;
+    END;    
+    
+    IF v_chk_ncapprv is not null THEN
+        begin
+            FOR C1 in (
+                select clm_no ,pay_no ,clm_seq ,trn_seq ,PAY_STS ,approve_id ,pay_amt ,trn_amt ,curr_code ,curr_rate 
+                ,sts_date ,clm_men ,prod_grp ,prod_type ,subsysid ,STS_KEY ,print_type ,type ,sub_type ,apprv_flag ,approve_date
+                from nc_payment_apprv a
+                where sts_key = v_stskey and pay_no = v_payno
+                and trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = a.sts_key and b.pay_no = a.pay_no)             
+            )            
+            LOOP                
+                v_apprvid := C1.APPROVE_ID;
+                v_apprvdate := c1.APPROVE_DATE;
+                if v_apprvdate is null then -- case Approve from CLNMC924
+                    for x in (
+                        select approve_id ,approve_date
+                        from nc_payment a
+                        where sts_key = v_stskey and pay_no = v_payno
+                        and trn_seq = (select max(b.trn_seq) from nc_payment b where b.sts_key = a.sts_key and b.pay_no = a.pay_no and b.type='01') 
+                        and a.type='01'            
+                    )            
+                    loop  
+                        v_apprvid := x.approve_id;
+                        v_apprvdate := x.approve_date;
+                    end loop;                
+                end if;
+                
+              INSERT INTO NC_PAYMENT_APPRV
+               (CLM_NO, PAY_NO, CLM_SEQ, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, 
+               STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, APPROVE_ID, APPROVE_DATE, PROD_GRP, PROD_TYPE, 
+               SUBSYSID, STS_KEY, TYPE, SUB_TYPE, APPRV_FLAG ,SETTLE_DATE ,remark )
+              VALUES
+               (c1.clm_no ,c1.pay_no ,c1.CLM_SEQ ,c1.trn_seq+1 ,P_STATUS2 , c1.PAY_AMT, c1.TRN_AMT, c1.CURR_CODE, c1.CURR_RATE, 
+               c1.STS_DATE, sysdate, c1.CLM_MEN, v_clm_user , c1.APPROVE_ID ,c1.APPROVE_DATE , c1.PROD_GRP, c1.PROD_TYPE, 
+               c1.SUBSYSID, c1.STS_KEY, c1.TYPE, c1.SUB_TYPE, c1.APPRV_FLAG ,sysdate ,p_remark);           
+                                          
+                    chk_success := true;
+            END LOOP;    
+
+            UPDATE NC_MAS
+            set 
+            claim_status = 'PHCLMSTS06' ,
+            approve_status = P_STATUS2
+            where STS_KEY =v_stskey ;  
+                        
+        exception
+            when no_data_found then
+                null;
+            when others then
+                rollback;
+                chk_success := false;
+                return ('error update NC_PAYMENT_APPRV :'||sqlerrm);
+        end;         
+    END IF;
+
     begin
         FOR C1 in (
             select clm_no ,pay_no ,clm_seq ,trn_seq ,PAY_STS ,approve_id ,pay_amt ,trn_amt ,curr_code ,curr_rate 
-            ,sts_date ,clm_men ,prod_grp ,prod_type ,subsysid ,STS_KEY ,print_type ,type ,sub_type ,apprv_flag
+            ,sts_date ,clm_men ,prod_grp ,prod_type ,subsysid ,STS_KEY ,print_type ,type ,sub_type ,apprv_flag ,APPROVE_DATE
             from nc_payment a
             where sts_key = v_stskey and pay_no = v_payno
-            and trn_seq = (select max(b.trn_seq) from nc_payment b where b.sts_key = a.sts_key and b.pay_no = a.pay_no)             
+            and trn_seq = (select max(b.trn_seq) from nc_payment b where b.sts_key = a.sts_key and b.pay_no = a.pay_no 
+            and b.type='01'
+            )       and a.type='01'      
         )            
         LOOP                
-
+          IF v_chk_ncapprv  is null THEN
+                v_apprvid := C1.APPROVE_ID;
+                v_apprvdate := c1.APPROVE_DATE;          
+          END IF;
+          
           INSERT INTO NC_PAYMENT
            (CLM_NO, PAY_NO, CLM_SEQ, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, 
            STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, APPROVE_ID, APPROVE_DATE, PROD_GRP, PROD_TYPE, 
-           SUBSYSID, STS_KEY, TYPE, SUB_TYPE, APPRV_FLAG ,SETTLE_DATE )
+           SUBSYSID, STS_KEY, TYPE, SUB_TYPE, APPRV_FLAG ,SETTLE_DATE  ,PREM_CODE ,PREM_SEQ)
           VALUES
            (c1.clm_no ,c1.pay_no ,c1.CLM_SEQ ,c1.trn_seq+1 ,P_STATUS , c1.PAY_AMT, c1.TRN_AMT, c1.CURR_CODE, c1.CURR_RATE, 
-           c1.STS_DATE, sysdate, c1.CLM_MEN, v_clm_user , c1.APPROVE_ID ,sysdate , c1.PROD_GRP, c1.PROD_TYPE, 
-           c1.SUBSYSID, c1.STS_KEY, c1.TYPE, c1.SUB_TYPE, c1.APPRV_FLAG ,sysdate);           
+           c1.STS_DATE, sysdate, c1.CLM_MEN, v_clm_user , v_apprvid ,v_apprvdate , c1.PROD_GRP, c1.PROD_TYPE, 
+           c1.SUBSYSID, c1.STS_KEY, '01', '01','Y' ,sysdate ,'0000' ,1);      
                                       
                 chk_success := true;
         END LOOP;    
@@ -2073,8 +2235,8 @@ BEGIN
             rollback;
             chk_success := false;
             return ('error update NC_PAYMENT :'||sqlerrm);
-    end;        
-    
+    end;   
+        
     IF chk_success THEN 
         COMMIT;return null ; 
     END IF;
@@ -8011,4 +8173,3 @@ END GET_PRODUCT;
 
 END NC_HEALTH_PAID;
 /
-
