@@ -10,7 +10,9 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
    1.0        18/11/2016      2702       1. Created this package.
 ******************************************************************************/
     TYPE v_curr IS REF CURSOR;    
-
+    
+    FUNCTION PH_SIGNIN(v_user IN VARCHAR2 ,v_pass IN VARCHAR2) RETURN VARCHAR2 ; --Y ,N
+    
     FUNCTION GEN_NOTEKEY RETURN NUMBER;    
     
     FUNCTION GET_CLMTYPE_DESCR(v_code IN VARCHAR2) RETURN VARCHAR2; 
@@ -40,6 +42,9 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
            
     FUNCTION GET_PH_BENEFIT(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2 ,v_type IN VARCHAR2 ,v_benecode IN VARCHAR2 
     ,O_Benefit Out P_PH_CLM.v_curr) RETURN VARCHAR2 ; -- Return null = success ,not null = show error
+    
+    FUNCTION GET_PH_BENEFIT_4search(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2 ,v_type IN VARCHAR2 ,v_benecode IN VARCHAR2 
+    ,O_Benefit Out P_PH_CLM.v_curr) RETURN VARCHAR2 ; -- Return null = success ,not null = show error    
     
     FUNCTION GET_WAITING_PERIOD(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_fleet IN NUMBER  
     ,O_Wait Out P_PH_CLM.v_curr) RETURN VARCHAR2; -- Return null = success ,not null = show error
@@ -130,6 +135,8 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
     FUNCTION get_SUM_RIPAID(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN NUMBER ;
     
     FUNCTION get_SUM_PAID(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN NUMBER ;
+    
+    FUNCTION get_SUM_PAYEE(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN NUMBER ;
     
     FUNCTION get_PAYEENAME(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN VARCHAR2 ;
     -- ดึงข้อมูล nc_payee.payee_name
