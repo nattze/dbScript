@@ -1328,10 +1328,10 @@ BEGIN
        
                 
             INSERT into nc_payment(clm_no ,pay_no ,clm_seq ,trn_seq ,Pay_sts ,pay_amt ,Trn_amt ,Curr_code ,Curr_rate 
-            ,Sts_date ,Amd_date ,Clm_men ,Amd_user, APPROVE_ID ,approve_date , Prod_grp ,Prod_type ,SUBSYSID ,Sts_key ,Sub_type ,Type ,apprv_flag)        
+            ,Sts_date ,Amd_date ,Clm_men ,Amd_user, APPROVE_ID ,approve_date , Prod_grp ,Prod_type ,SUBSYSID ,Sts_key ,Sub_type ,Type ,apprv_flag ,PREM_CODE ,PREM_SEQ )        
              VALUES (v_clmno , v_payno ,1 ,v_max_seq, v_sts ,v_res_amt ,v_res_amt,
           'BHT',    1 ,sysdate ,sysdate  ,v_user ,v_amd_user ,v_apprv_user ,v_apprv_date
-      ,m_prodgrp,m_prodtype, GET_PRODUCTID(v_clmno)  ,v_key ,'01' ,'01' ,v_apprv_flag) ; 
+      ,m_prodgrp,m_prodtype, GET_PRODUCTID(v_clmno)  ,v_key ,'01' ,'01' ,v_apprv_flag  ,'0000' ,1);
        
         if v_sts in ('NCPAYSTS04') then
             EMAIL_DISAPPRV_LETTER( v_clmno ,v_payno ,v_send ,v_apprv_user) ;
@@ -1655,8 +1655,8 @@ Insert into PCM.ACC_CLM_PAYEE_TMP
 
 
 Insert into ALLCLM.NC_PAYMENT
-   (CLM_NO, PAY_NO, CLM_SEQ, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, PROD_GRP, PROD_TYPE, SUBSYSID, STS_KEY, TYPE, SUB_TYPE)
-   (SELECT n_clmno, n_payno , CLM_SEQ, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, PROD_GRP, PROD_TYPE, SUBSYSID, n_stskey, TYPE, SUB_TYPE
+   (CLM_NO, PAY_NO, CLM_SEQ, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, PROD_GRP, PROD_TYPE, SUBSYSID, STS_KEY, TYPE, SUB_TYPE  ,PREM_CODE ,PREM_SEQ )
+   (SELECT n_clmno, n_payno , CLM_SEQ, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, PROD_GRP, PROD_TYPE, SUBSYSID, n_stskey, TYPE, SUB_TYPE  ,nvl(PREM_CODE,'0000') ,nvl(PREM_SEQ ,1)
    FROM NC_PAYMENT WHERE CLM_NO = v_clmno);
 
 
