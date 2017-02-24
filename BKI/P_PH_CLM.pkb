@@ -259,8 +259,23 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
     FUNCTION MAPP_BENECODE(v_bill IN VARCHAR2 ,v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2) RETURN VARCHAR2 IS
         o_type  varchar2(5);
         ret_bene    varchar2(10);
+        is_opd  varchar2(5):='%';
+        bill_descr  varchar2(200);
     BEGIN
          misc.healthutil.get_pa_health_type(v_polno ,v_polrun ,o_type);  
+         
+         begin
+            select descr_th into bill_descr
+            from nc_billing_std          
+            where code = v_bill and descr_th like '%ป่วยนอก%' ;  
+            if bill_descr is not null then is_opd := 'O'; end if;
+        exception
+            when no_data_found then
+                bill_descr := null;
+            when others then
+                bill_descr := null;
+        end;
+         
              
          if o_type ='HG' then
             begin
@@ -273,7 +288,8 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
                     from nc_billing_mapp x
                     where x.cancel is null 
                     and x.bill_code = v_bill
-                ) and rownum=1;            
+                ) and pd_flag like is_opd
+                and rownum=1;            
             exception
                 when no_data_found then
                     ret_bene := null;
@@ -291,7 +307,76 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
                     from nc_billing_mapp x
                     where x.cancel is null 
                     and x.bill_code = v_bill
-                ) and rownum=1;            
+                )  and pd_flag like is_opd
+                and rownum=1;            
+            exception
+                when no_data_found then
+                    ret_bene := null;
+                when others then
+                    ret_bene := null;
+            end;         
+         else
+            ret_bene := null;
+         end if;
+           
+        return ret_bene;
+    END MAPP_BENECODE;
+    
+
+    FUNCTION MAPP_BENECODE(v_bill IN VARCHAR2 ,v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2 ,v_flag IN VARCHAR2) RETURN VARCHAR2 IS
+        o_type  varchar2(5);
+        ret_bene    varchar2(10);
+        is_opd  varchar2(5):='%';
+        bill_descr  varchar2(200);
+    BEGIN
+         misc.healthutil.get_pa_health_type(v_polno ,v_polrun ,o_type);  
+         
+         begin
+            select descr_th into bill_descr
+            from nc_billing_std          
+            where code = v_bill and descr_th like '%ป่วยนอก%' ;  
+            if bill_descr is not null then is_opd := 'O'; end if;
+        exception
+            when no_data_found then
+                bill_descr := null;
+            when others then
+                bill_descr := null;
+        end;
+        
+        if v_flag = 'PHADMTYPE01' then   is_opd := 'O'; end if;
+             
+         if o_type ='HG' then
+            begin
+                select a.bene_code  into ret_bene
+                from pa_gm_ben a
+                where pol_no =v_polno and pol_run =v_polrun
+                and plan=v_plan
+                and a.bene_code in (
+                    select x.bene_code
+                    from nc_billing_mapp x
+                    where x.cancel is null 
+                    and x.bill_code = v_bill
+                ) and pd_flag like is_opd
+                and rownum=1;            
+            exception
+                when no_data_found then
+                    ret_bene := null;
+                when others then
+                    ret_bene := null;
+            end;
+         elsif o_type = 'HI' then
+            begin
+                select a.bene_code  into ret_bene
+                from pa_ph_ben a
+                where pol_no =v_polno and pol_run =v_polrun
+                and plan=v_plan
+                and a.bene_code in (
+                    select x.bene_code
+                    from nc_billing_mapp x
+                    where x.cancel is null 
+                    and x.bill_code = v_bill
+                )  and pd_flag like is_opd
+                and rownum=1;            
             exception
                 when no_data_found then
                     ret_bene := null;
@@ -1653,6 +1738,42 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
         return v_return;
     END CAN_GO_APPROVE;
 
+    FUNCTION CAN_GO_RESERVED(v_clmno IN VARCHAR2  ,o_rst OUT varchar2) RETURN VARCHAR2 IS
+     v_return varchar2(10):='Y';
+     v_maxpayno varchar2(20);
+     v_apprv_sts varchar2(20);
+     v_clm_sts varchar2(20);
+    BEGIN            
+        begin
+            select max(pay_no) into v_maxpayno
+            from nc_payment a
+            where prod_grp = '0'
+            and a.clm_no = v_clmno
+            ;
+
+        exception
+         when no_data_found then
+             v_maxpayno := null;
+        when others then
+            v_maxpayno := null;
+        end;                 
+        
+        v_apprv_sts := p_ph_clm.get_claim_status(v_clmno ,v_maxpayno ,'A');   
+        v_clm_sts := p_ph_clm.get_claim_status(v_clmno ,v_maxpayno ,'C');  
+        
+        if  v_clm_sts in ('PHCLMSTS03','PHCLMSTS06','PHCLMSTS30','PHCLMSTS31') then
+            o_rst := 'เคลม '||v_clmno||' อยู่ในสถานะ '||p_ph_clm.GET_CLMSTS_DESCR(v_clm_sts)||' ไม่สามารถแก้ไข reserved ได้!';
+            return 'N';
+        end if;     
+        if  v_apprv_sts in ('PHSTSAPPRV02','PHSTSAPPRV03','PHSTSAPPRV05','PHSTSAPPRV06','PHSTSAPPRV11' ,'PHSTSAPPRV12') then
+            o_rst := 'เคลม '||v_clmno||' อยู่ในสถานะ '||p_ph_clm.GET_APPRVSTS_DESCR(v_apprv_sts)||' ไม่สามารถแก้ไข reserved ได้!';
+            return 'N';
+        end if;             
+       --p_ph_clm.CAN_SEND_APPROVE     
+
+        return v_return;
+    END CAN_GO_RESERVED; 
+
     FUNCTION GET_APPROVE_AMT(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN NUMBER IS
         v_ret   NUMBER:=9999999999;
     BEGIN
@@ -2286,7 +2407,10 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
     PROCEDURE GET_PAYEE_DETAIL(v_clmno IN VARCHAR2 ,v_payee IN VARCHAR2 ,v_payee_seq IN VARCHAR2 
      , o_contact_name OUT VARCHAR2 , o_addr1 OUT VARCHAR2  , o_addr2 OUT VARCHAR2  , o_mobile OUT VARCHAR2  , o_email OUT VARCHAR2
      ,o_agent_mobile  OUT VARCHAR2 ,o_agent_email  OUT VARCHAR2) IS
-     
+        v_polno varchar2(20);
+        v_polrun    number(20);
+        v_fleet number(10);
+        v_id    varchar2(20);  
     BEGIN
         NC_HEALTH_PAID.GET_HOSPITAL_CONTACT(v_payee ,v_payee_seq ,null , o_contact_name ,o_addr1  ,o_addr2  , o_mobile ,o_email);
         --:clm_gm_payee.CUST_MAIL := NC_HEALTH_PAID.GET_ORG_CUSTOMER_EMAIL(:clm_gm_payee.CLM_NO);
@@ -2296,11 +2420,74 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
             NC_HEALTH_PAID.GET_AGENT_CONTACT (v_clmno , o_contact_name ,o_addr1  ,o_addr2 
             , o_agent_mobile ,o_agent_email );           
         END IF;
+        
+        if o_email is null then -- find BKI Email 
+            begin
+                select pol_no ,pol_run ,fleet_seq into v_polno ,v_polrun ,v_fleet
+                from nc_mas a
+                where clm_no = v_clmno;    
+                
+                if p_ph_clm.is_bkipolicy(v_polno ,v_polrun) then
+                    begin
+                        select substr(id_no,1,instr(id_no ,'-')-1)  into v_id
+                        from pa_medical_det
+                        where pol_no = v_polno and pol_run=v_polrun
+                        and fleet_seq = v_fleet and rownum=1;  
+                        
+                        O_EMAIL := P_PH_CLM.GET_BKISTAFF_EMAIL(V_ID);
+                    exception
+                     when no_data_found then
+                         v_id := null;
+                    when others then
+                        v_id := null;
+                    end;        
+                end if;                
+            exception
+             when no_data_found then
+                 v_polno := null; v_polrun := null; v_fleet  := null;
+            when others then
+                v_polno := null; v_polrun := null; v_fleet  := null;
+            end;                
+        end if;
     EXCEPTION
         WHEN OTHERS THEN     
         o_contact_name := null;  o_addr1 := null;  o_addr2 := null;  o_mobile := null;  o_email := null; o_agent_mobile := null; o_agent_email := null;
-     END GET_PAYEE_DETAIL ;
-                                             
+    END GET_PAYEE_DETAIL ;
+    
+    FUNCTION IS_BKIPOLICY (vPolNo IN VARCHAR2 ,vPolRun IN NUMBER ) RETURN BOOLEAN IS
+        v_ret   boolean:=false;
+        v_code  varchar2(30);
+    BEGIN
+        select key into v_code
+        from clm_constant 
+        where key like 'PHBKIPOL%'
+        and remark = vPolno
+        and remark2 = vPolrun;
+        
+        return true;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+        return false;
+        WHEN OTHERS THEN   
+        return false;  
+    END IS_BKIPOLICY ;      
+    
+    FUNCTION GET_BKISTAFF_EMAIL (vUser IN VARCHAR2 ) RETURN VARCHAR2 IS
+    
+        v_email  varchar2(150);
+    BEGIN
+        select email into v_email
+        from bkiuser 
+        where user_id = vUser;
+        
+        return v_email;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+        return null;
+        WHEN OTHERS THEN   
+        return null;  
+    END GET_BKISTAFF_EMAIL ;         
+                                            
 END P_PH_CLM;
 
 /

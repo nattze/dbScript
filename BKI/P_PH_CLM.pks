@@ -35,6 +35,8 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
 
     FUNCTION MAPP_BENECODE(v_bill IN VARCHAR2 ,v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2) RETURN VARCHAR2 ; -- Return null = Not found or Error
 
+    FUNCTION MAPP_BENECODE(v_bill IN VARCHAR2 ,v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2 ,v_flag IN VARCHAR2) RETURN VARCHAR2 ; -- Return null = Not found or Error
+
     FUNCTION GET_BENE_TYPE(v_code IN VARCHAR2) RETURN VARCHAR2 ;
     -- ดึงประเภทผลประโยชน์ เช่น Doctor Visit ,ทันตกรรม
 
@@ -123,7 +125,9 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
     FUNCTION CAN_SEND_APPROVE(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2  ,o_rst OUT varchar2) RETURN VARCHAR2 ;  --Y ,N
 
     FUNCTION CAN_GO_APPROVE(i_clmno IN varchar2 ,i_payno IN varchar2 ,i_userid IN varchar2 ,i_status IN varchar2 ,i_sys IN VARCHAR2 ,o_rst OUT varchar2) RETURN VARCHAR2 ;  --Y ,N 
-  
+    
+    FUNCTION CAN_GO_RESERVED(v_clmno IN VARCHAR2  ,o_rst OUT varchar2) RETURN VARCHAR2 ;  --Y ,N
+    
     FUNCTION GET_APPROVE_AMT(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN NUMBER;
     
     FUNCTION IS_NEW_PAYMENT(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2  ,o_rst OUT varchar2) RETURN VARCHAR2 ;  --Y ,N   
@@ -160,7 +164,11 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
     PROCEDURE GET_PAYEE_DETAIL(v_clmno IN VARCHAR2 ,v_payee IN VARCHAR2 ,v_payee_seq IN VARCHAR2 
      , o_contact_name OUT VARCHAR2 , o_addr1 OUT VARCHAR2  , o_addr2 OUT VARCHAR2  , o_mobile OUT VARCHAR2  , o_email OUT VARCHAR2
      ,o_agent_mobile  OUT VARCHAR2 ,o_agent_email  OUT VARCHAR2);  
-       
+    
+    FUNCTION IS_BKIPOLICY (vPolNo IN VARCHAR2 ,vPolRun IN NUMBER ) RETURN BOOLEAN ;   
+    
+    FUNCTION GET_BKISTAFF_EMAIL (vUser IN VARCHAR2 ) RETURN VARCHAR2 ;  
+    
 END P_PH_CLM; 
 
 /
