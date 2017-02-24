@@ -1768,6 +1768,8 @@ FUNCTION  VALIDATE_CONVERT924(vClmNo in varchar2 ,vPayNo in varchar2 ,P_RST OUT 
  
  v_chk Varchar2(1):='N'; 
  v_payeeamt number;
+ v_key  number:=0;
+ v_apprvsts varchar2(20);
  --v_pay_no varchar2(20); 
 BEGIN 
     
@@ -1800,14 +1802,57 @@ BEGIN
             v_payeeamt :=0;
         when others then
             v_payeeamt :=0;
-    end;      
+    end;         
     
     if v_payeeamt <=0 then
          P_RST := vClmNo||': Not found Payee Amt ' ; 
         v_chk := 'N';
         return v_chk;     
     end if;
-     
+
+--    BEGIN
+--        select nvl(max(trn_seq),0) into v_key
+--        from nc_payment a
+--        where  pay_no = vPayNo 
+--        and type='01'
+--        ;
+--    exception
+--    when no_data_found then
+--        v_key    := 0;
+--    when others then
+--        v_key    := 0;
+--    END; 
+--    
+--    if v_key > 0 then
+--         P_RST := vClmNo||': เคย Convert เข้า CLNMC924 แล้ว สามารถตรวจสอบที่ CLNMC924 ได้เลย' ; 
+--        v_chk := 'N';
+--        return v_chk;     
+--    end if;       
+
+    BEGIN
+        select pay_sts into v_apprvsts
+        from nc_payment a
+        where  pay_no = vPayNo 
+        and type='01'
+        and trn_seq in (select max(aa.trn_seq) from nc_payment aa where aa.pay_no = a.pay_no)
+        ;
+    exception
+    when no_data_found then
+        v_apprvsts    := null;
+    when others then
+        v_apprvsts    := null;
+    END; 
+
+    if v_apprvsts in ('NCPAYSTS02' ,'NCPAYSTS07' ) then
+         P_RST := vClmNo||': อยู่ระหว่างรออนุมัติแล้ว ไม่สามารถ Convert ได้' ; 
+        v_chk := 'N';
+        return v_chk;     
+    elsif v_apprvsts in ('NCPAYSTS03' ,'NCPAYSTS11' ,'NCPAYSTS12' ) then
+         P_RST := vClmNo||': อนุมัติแล้ว ไม่สามารถ Convert ได้' ; 
+        v_chk := 'N';
+        return v_chk;        
+    end if;       
+             
     v_chk:= 'Y'; 
     return v_chk; 
 END VALIDATE_CONVERT924; 
@@ -1822,6 +1867,18 @@ FUNCTION  CONVERT924(vClmNo in varchar2 ,vPayNo in varchar2 ,vUser in varchar2 ,
     v_sts varchar2(10) :='NCPAYSTS01';
     v_user varchar2(10);
 BEGIN 
+
+    BEGIN
+        select nvl(max(trn_seq)+1,1) into v_max_seq
+        from nc_payment a
+        where pay_no = vPayNo ;
+    exception
+    when no_data_found then
+        v_max_seq    := 1;
+    when others then
+        v_max_seq    := 1;
+    END;
+    
     for x in ( select sts_key ,clm_men ,a.clm_no ,b.pay_no ,b.payee_amt ,a.prod_type ,a.prod_grp
         from mis_clm_mas a ,clm_gm_payee b
         where a.clm_no = vClmNo
