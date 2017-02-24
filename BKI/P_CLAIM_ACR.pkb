@@ -3813,10 +3813,10 @@ END;
 
         if v_dbins='UATBKIIN' then
             v_link := 'http://bkinetdv/Non_pa_claim/Call_Crystal_Report.aspx?'; 
-            v_url := v_link||'user_id='||v_clmmen||'&report_name=CLNMC010_UAT'||'&IN_CLM_NO='||P_clm_no||'&IN_PAY_NO='||P_pay_no;
+            v_url := v_link||'user_id='||v_clmmen||chr(38)||'report_name=CLNMC010_UAT'||chr(38)||'IN_CLM_NO='||P_clm_no||chr(38)||'IN_PAY_NO='||P_pay_no;
         else 
             v_link := 'http://bkiintra.bki.co.th/Non_pa_claim/Call_Crystal_Report.aspx?'; 
-            v_url := v_link||'user_id='||v_clmmen||'&report_name=CLNMC010'||'&IN_CLM_NO='||P_clm_no||'&IN_PAY_NO='||P_pay_no;
+            v_url := v_link||'user_id='||v_clmmen||chr(38)||'report_name=CLNMC010'||chr(38)||'IN_CLM_NO='||P_clm_no||chr(38)||'IN_PAY_NO='||P_pay_no;
         end if; 
      
     END IF;
