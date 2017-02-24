@@ -663,15 +663,16 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
         v_pos_grp   varchar2(5);    
         v_dept_id   varchar2(5);  
         chk_inbkiuser   varchar2(10);
-        chk_inclmuser   varchar2(10);
+        chk_inclmuser   varchar2(10); 
         v_sys   varchar2(10); -- -- MISC     , MTR   (for table CLM_USER_STD.SYSID)
-        o_msg   varchar2(250);
-        dumm_prog   varchar2(20);
+        o_msg   varchar2(250); 
+        dumm_prog   varchar2(20); 
+        v_jobdesc   varchar2(150);
     BEGIN
         --dbms_output.put_line('==== assign ROLE : '||v_role||' ======');            
         begin
-            select user_id ,dept_id , position_grp_id ,(select abb_name_eng from position_grp_std where position_grp_id =a.position_grp_id ) c 
-            into chk_inbkiuser ,v_dept_id ,v_pos_grp ,v_pos
+            select user_id ,dept_id , position_grp_id ,(select abb_name_eng from position_grp_std where position_grp_id =a.position_grp_id ) c ,job_desc
+            into chk_inbkiuser ,v_dept_id ,v_pos_grp ,v_pos ,v_jobdesc
             from bkiuser a
             where user_id =v_user ;
         exception
@@ -767,31 +768,52 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
         --dbms_output.put_line('==== assign Menu Access : '||v_role||' ======');
         cnt := 0;
         for y in (
-            select menuid ,ins ,upd ,del ,sel ,remark
+            select menuid ,ins ,upd ,del ,sel ,remark ,job_desc
             from idm_mapping_rolemenu_auth a
             where roleid = v_role
         )loop
             cnt := cnt+1;
-
-            begin
-                select program into dumm_prog
-                from user_access
-                where program = y.menuid
-                and userid =v_user
-                and rownum=1;  
-                      
-            exception
-                when no_data_found then
-                    dumm_prog := null;
-                when others then
-                    dumm_prog := null;
-            end;
-            
-            if dumm_prog is null then
-                Insert into ACCOUNT.USER_ACCESS (USERID, PROGRAM, TRN_DATE, INS, UPD, DEL ,SEL ,REMARK)
-                Values  ( v_user , y.menuid, sysdate,y.ins , y.upd , y.del ,y.sel ,y.remark );              
-            end if;            
-  
+            if y.job_desc is not null then
+                if upper(y.job_desc) = upper(v_jobdesc) then  -- Check Job desc for UNW Role Care Station 
+                    begin
+                        select program into dumm_prog
+                        from user_access
+                        where program = y.menuid
+                        and userid =v_user
+                        and rownum=1;  
+                              
+                    exception
+                        when no_data_found then
+                            dumm_prog := null;
+                        when others then
+                            dumm_prog := null;
+                    end;
+                    
+                    if dumm_prog is null then
+                        Insert into ACCOUNT.USER_ACCESS (USERID, PROGRAM, TRN_DATE, INS, UPD, DEL ,SEL ,REMARK)
+                        Values  ( v_user , y.menuid, sysdate,y.ins , y.upd , y.del ,y.sel ,y.remark );              
+                    end if;                  
+                end if;
+            else
+                begin
+                    select program into dumm_prog
+                    from user_access
+                    where program = y.menuid
+                    and userid =v_user
+                    and rownum=1;  
+                          
+                exception
+                    when no_data_found then
+                        dumm_prog := null;
+                    when others then
+                        dumm_prog := null;
+                end;
+                
+                if dumm_prog is null then
+                    Insert into ACCOUNT.USER_ACCESS (USERID, PROGRAM, TRN_DATE, INS, UPD, DEL ,SEL ,REMARK)
+                    Values  ( v_user , y.menuid, sysdate,y.ins , y.upd , y.del ,y.sel ,y.remark );              
+                end if;               
+            end if;  
             --dbms_output.put_line('no: '||cnt||' menu: '||y.menuid||'  '||'Menu Access');
         end loop;
 
