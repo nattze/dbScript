@@ -1395,6 +1395,14 @@ PROCEDURE EMAIL_NOTICE_APPRV(i_clm IN VARCHAR2 ,i_pay IN VARCHAR2 ,i_sts IN VARC
  
  v_cnt1 number:=0;
 BEGIN
+
+--=== Adjust Send Email only Send /Disapprove
+    if P_NON_PA_APPROVE.IS_SWITCH_ON('NONPASWITCH01') then
+        if i_sts in  ('NONPASTSAPPRV03' ,'NONPASTSAPPRV06' ) then -- สถานะงานถูกอนุมัติ ไม่ต้อง send Email
+            return;
+        end if;
+    end if;
+--=== .Adjust Send Email only Send /Disapprove
  
  FOR X in (
  select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail 
@@ -1466,7 +1474,7 @@ BEGIN
  else
  x_subject := 'เรื่องขออนุมัติการจ่ายค่าสินไหม '||v_whatsys; 
  end if;
- 
+
  x_body := '<HTML>'|| 
  '<HEAD>'|| 
  '<TITLE>Approval Non PA Claim Payment</TITLE>'|| 
@@ -4491,6 +4499,7 @@ BEGIN
                 V_SUM_SAL := 0;
                 V_SUM_PAY := 0;
                 V_SUM_DEC := 0;
+                V_SUM_REC := 0;
 
                 Begin 
                     select sum(payee_amt)
@@ -6053,6 +6062,67 @@ EXCEPTION
     WHEN OTHERS THEN
     return  'N';
 END IS_VP_UP;
+
+FUNCTION IS_AVP_UP(i_user in varchar2 ) RETURN VARCHAR2  IS -- Y ,N
+    v_pl    varchar2(20);
+BEGIN
+    select pl_code into v_pl
+    from bkiuser
+    where user_id = i_user;
+    
+    if to_number(v_pl) >31 then
+        return 'Y';
+    end if;
+    
+    return 'N';
+EXCEPTION 
+    WHEN NO_DATA_FOUND THEN
+    return  'N';
+    WHEN OTHERS THEN
+    return  'N';
+END IS_AVP_UP;
+
+FUNCTION IS_SWITCH_ON(i_switch in varchar2) RETURN BOOLEAN IS
+    v_sw    varchar2(10);
+BEGIN
+    select remark into v_sw
+    from clm_constant a
+    where key = i_switch;
+    
+    if upper(v_sw) = 'ON' then
+        return true;
+    else
+        return false;
+    end if;
+EXCEPTION 
+    WHEN NO_DATA_FOUND THEN
+    return false;
+    WHEN OTHERS THEN
+    return false;
+END IS_SWITCH_ON;
+
+FUNCTION IS_URGENT_CLM(vClmNo in varchar2 ,vPayNo in varchar2) RETURN VARCHAR2 IS -- Y ,N
+    v_dumm  varchar2(20);
+BEGIN
+    if NOT P_NON_PA_APPROVE.IS_SWITCH_ON('NONPASWITCH01') then
+        return 'N';
+    end if;
+    
+    select payee_code into v_dumm
+    from nc_payee a
+    where prod_grp <>'0' 
+    and clm_no = vClmNo and pay_no =vPayNo 
+    and trn_seq in (select max(aa.trn_seq) from nc_payee aa where aa.pay_no = a.pay_no )
+    and nvl(urgent_flag,'N') = 'Y'
+    and rownum=1;
+    
+    return 'Y';
+EXCEPTION 
+    WHEN NO_DATA_FOUND THEN
+    return  'N';
+    WHEN OTHERS THEN
+    return  'N';
+END IS_URGENT_CLM;
 
 END P_NON_PA_APPROVE;
 /

@@ -139,6 +139,12 @@ FUNCTION SET_SETTLEDATE(vClmNo in varchar2 ,vPayNo in varchar2 ,vClmUser in varc
 FUNCTION IS_APPROVED(vClmNo in varchar2 ,vPayNo in varchar2 ) RETURN VARCHAR2 ; 
 
 FUNCTION IS_VP_UP(i_user in varchar2 ) RETURN VARCHAR2 ; -- Y ,N
+
+FUNCTION IS_AVP_UP(i_user in varchar2 ) RETURN VARCHAR2 ; -- Y ,N
+
+FUNCTION IS_SWITCH_ON(i_switch in varchar2) RETURN BOOLEAN;
+
+FUNCTION IS_URGENT_CLM(vClmNo in varchar2 ,vPayNo in varchar2) RETURN VARCHAR2 ; -- Y ,N
  
 END P_NON_PA_APPROVE;
 /
