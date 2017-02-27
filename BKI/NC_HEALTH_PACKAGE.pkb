@@ -1102,6 +1102,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
         P_V1     cur_typ;  
         P_X1     cur_typ;            
     BEGIN
+        
         new_flag := vFlag ;
         IF vFlag= 'M' THEN
             p_acc_package.read_pol(vPOLICY ,v_polno ,v_polrun);
@@ -1130,7 +1131,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                     ' and to_date('''|| v_lossdate||''' ,''DD/MM/RRRR'')  between fr_date and to_date ' ||
                     ' and recpt_seq = '||x_recpt_seq||
                     ' and fleet_seq = '||x_fleet_seq ||
-                    'and cancel is null group by pol_no ,pol_run ,recpt_seq ,fleet_seq  ,id ,title ,name ,surname ,fr_date ,to_date' ;
+                    ' and cancel is null  group by pol_no ,pol_run ,recpt_seq ,fleet_seq  ,id ,title ,name ,surname ,fr_date ,to_date' ;
                     dbms_output.put_line('query ระบุ recpt: '||qry_str);       
                 else -- กรณี many Policy 
                     if vFleet > 0  and  vRecpt is null and  HEALTHUTIL.GET_COUNT_NAME(v_polno ,v_polrun ,vFleet) > 1 then -- Dupp Fleet_seq 
@@ -1446,10 +1447,10 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                
             --HEALTHUTIL.get_name_cover(v_polno ,v_polrun ,vFleet ,v_lossdate ,o_name) ;
             if vPolType = 'PI' then -- ถ้าเป็นเดี่ยวแล้วใส่ fleet_seq = 1 ไป จะฉิบหาย
-                dbms_output.put_line('?????? v_polno :'||v_polno||v_polrun||' fleet:'||0||' Tloss_date:'||vLOSS_DATE );
+                dbms_output.put_line(' v_polno :'||v_polno||v_polrun||' fleet:'||0||' Tloss_date:'||vLOSS_DATE );
                 HEALTHUTIL.get_name_cover(v_polno ,v_polrun ,0 ,v_lossdate ,o_name) ;
             else
-                dbms_output.put_line('?????? v_polno :'||v_polno||v_polrun||' fleet:'||vFleet||' Tloss_date:'||vLOSS_DATE );
+                dbms_output.put_line(' v_polno :'||v_polno||v_polrun||' fleet:'||vFleet||' Tloss_date:'||vLOSS_DATE );
                 HEALTHUTIL.get_name_cover(v_polno ,v_polrun ,vFleet ,v_lossdate ,o_name) ;
             end if;                 
             
@@ -1477,7 +1478,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                     ' and to_date('''|| v_lossdate||''' ,''DD/MM/RRRR'')  between fr_date and to_date ' ||
                     ' and recpt_seq = '||x_recpt_seq||
                     ' and fleet_seq = '||x_fleet_seq ||
-                    ' and cancel is null group by pol_no ,pol_run ,recpt_seq ,fleet_seq  ,id ,title ,name ,surname ,fr_date ,to_date' ;
+                    ' and cancel is null and rownum=1 group by pol_no ,pol_run ,recpt_seq ,fleet_seq  ,id ,title ,name ,surname ,fr_date ,to_date' ;
                 else -- กรณี many Policy 
                     qry_str := 'select pol_no ,pol_run ,recpt_seq ,fleet_seq ,min(end_seq) end_seq ,id ,title ,name ,surname ,fr_date ,to_date  '||    
                     '   from mis_pa_prem a  where pol_no ='''||v_polno ||''' '||
