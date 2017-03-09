@@ -4058,7 +4058,7 @@ BEGIN
             group by b.pay_no);  
                              
         --- === End Update MISC ===
-        
+            commit;
         ELSIF v_prod_grp  in ('1' ) THEN -- Fire Product
             --- === Update FIRE ===   
             v_cnt := v_cnt+1;        
@@ -4151,7 +4151,7 @@ BEGIN
                    where clm_no = vClmNo and state_no = vPayNo
                    and state_seq in (select max(aa.state_seq) from fir_ri_paid aa where aa.state_no = a.state_no)
                    );
-   
+            commit;
         --- === End Update FIR ===         
         ELSIF v_prod_grp  in ('2' ) THEN -- Mrn/Hull Product
             IF v_prod_type in ('222') THEN -- Hull Product
@@ -4327,6 +4327,8 @@ BEGIN
                     ) ;                 
             --- === End Update Mrn === 
             END IF;  
+            
+            commit;
         END IF;        
     end loop; --c_rec
     
