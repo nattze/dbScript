@@ -1262,6 +1262,7 @@ BEGIN
     NC_HEALTH_PAID.EMAIL_ALERT_CASH(vClmNo ,vPayNo) ; 
  END IF;
  
+ NC_HEALTH_PAID.FIX_LETTNO(vClmNo ,vPayNo);
  return true;
 EXCEPTION
  WHEN OTHERS THEN
@@ -1595,7 +1596,8 @@ BEGIN
          IF NC_HEALTH_PAID.IS_CASH_PAYMENT(vClmNo ,vPayNo ,'GM') THEN
             NC_HEALTH_PAID.EMAIL_ALERT_CASH(vClmNo ,vPayNo) ; 
          END IF;
-                  
+    
+    NC_HEALTH_PAID.FIX_LETTNO(vClmNo ,vPayNo);              
     return true;
 EXCEPTION
     WHEN OTHERS THEN
@@ -8170,6 +8172,75 @@ EXCEPTION
         rst := '';
         return rst;
 END GET_PRODUCT;
+
+PROCEDURE FIX_LETTNO(vClmNo in varchar2 ,vPayNo in varchar2) IS
+
+    vProd_type  varchar2(20):='';
+    vLETT_PRT  varchar2(20);
+    vLett_no  varchar2(20);
+    is_cashcall boolean:=false;
+    v_polyr varchar2(4);
+    v_clmyr varchar2(4);
+    o_cashcall  varchar2(5);
+    o_line  float;
+BEGIN
+    begin
+        select clm_yr ,pol_yr ,prod_type  into v_clmyr ,v_polyr ,vProd_type
+        from mis_clm_mas
+        where clm_no  =vClmno;
+    exception
+    when no_data_found then
+        v_polyr := to_char(sysdate,'yyyy');
+        v_clmyr := to_char(sysdate,'yyyy');
+        vProd_type := '';
+    when others then
+        v_polyr := to_char(sysdate,'yyyy');
+        v_clmyr := to_char(sysdate,'yyyy');  
+        vProd_type := '';
+    end;       
+          
+    for x in (
+        select a.*
+        from mis_cri_paid a
+        where clm_no = vClmno and pay_no =   vPayNo                                                                                                                                                                                                     
+        and corr_seq = (select max(corr_seq) from mis_cri_paid where pay_no = a.pay_no)
+        order by clm_no ,pay_no ,corr_seq    
+    )loop
+           IF x.RI_TYPE = '1' THEN
+               is_cashcall := false;           
+                              
+               nmtr_package.nc_get_cashcall(v_polyr,v_clmyr,
+                               x.ri_code ,x.ri_br_code ,x.lf_flag ,x.ri_type ,x.ri_sub_type ,
+                               x.pay_amt , 1,
+                               o_cashcall , o_line);
+               
+               IF o_cashcall is not null THEN
+                  vLETT_PRT := 'Y';
+                  vLett_no := NC_HEALTH_PACKAGE.GEN_LETTNO(vProd_type);               
+               ELSE
+                  vLETT_PRT := 'N';             
+               END IF;                               
+            ELSIF x.RI_TYPE = '0' THEN
+                  vLETT_PRT := 'Y';
+                  vLett_no := NC_HEALTH_PACKAGE.GEN_LETTNO(vProd_type);
+            ELSE
+                  vLETT_PRT := 'N';
+            END IF;       
+            
+            if vLETT_PRT = 'Y' and x.lett_no is null then
+                update mis_cri_paid
+                set lett_prt = vLETT_PRT ,lett_no = vLett_no ,lett_type = 'L' 
+                where pay_no = x.pay_no and corr_seq = x.corr_seq
+                and RI_TYPE = x.ri_type and ri_code =x.ri_code and ri_br_code = x.ri_br_code and ri_sub_type = x.ri_sub_type;
+                dbms_output.put_line('update pay_no :'||x.pay_no||' RI_TYPE ='||x.ri_type||' ri_amt='||x.pay_amt||' lett_no='||vLett_no);
+                commit;
+            end if;
+    end loop;
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        rollback;    
+END FIX_LETTNO;
 
 END NC_HEALTH_PAID;
 /

@@ -157,6 +157,8 @@ CREATE OR REPLACE PACKAGE ALLCLM."NC_HEALTH_PAID" IS
 
     FUNCTION GET_PRODUCT(v_clmno in varchar2)    RETURN VARCHAR2;
     
+    PROCEDURE FIX_LETTNO(vClmNo in varchar2 ,vPayNo in varchar2) ;
+    
 END NC_HEALTH_PAID;
 /
 
