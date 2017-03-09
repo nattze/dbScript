@@ -41,6 +41,8 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
     -- ดึงประเภทผลประโยชน์ เช่น Doctor Visit ,ทันตกรรม
 
     FUNCTION GET_BENETYPE_DESCR(v_code IN VARCHAR2) RETURN VARCHAR2;
+    
+    FUNCTION GET_CLMPDFLAG(v_code IN VARCHAR2) RETURN VARCHAR2 ;
            
     FUNCTION GET_PH_BENEFIT(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2 ,v_type IN VARCHAR2 ,v_benecode IN VARCHAR2 
     ,O_Benefit Out P_PH_CLM.v_curr) RETURN VARCHAR2 ; -- Return null = success ,not null = show error
@@ -168,7 +170,9 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
     FUNCTION IS_BKIPOLICY (vPolNo IN VARCHAR2 ,vPolRun IN NUMBER ) RETURN BOOLEAN ;   
     
     FUNCTION GET_BKISTAFF_EMAIL (vUser IN VARCHAR2 ) RETURN VARCHAR2 ;  
-    
+
+    FUNCTION GET_PH_HISTORY(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_fleet IN NUMBER ,v_clmno IN VARCHAR2  
+    ,O_History Out P_PH_CLM.v_curr) RETURN VARCHAR2 ; -- Return null = success ,not null = show error    
 END P_PH_CLM; 
 
 /

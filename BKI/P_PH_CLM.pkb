@@ -89,6 +89,22 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
     FUNCTION GET_CLMSTS_DESCR(v_code IN VARCHAR2) RETURN VARCHAR2 IS
         v_ret   VARCHAR2(250);
     BEGIN
+        IF length(v_code) = 1 THEN
+            if v_code = '0' then
+                return 'Open';
+            elsif v_code = '1' then
+                return 'Open';
+            elsif v_code = '6' then
+                return 'Draft';
+            elsif v_code = '3' then
+                return 'Cwp';
+            elsif v_code = '2' then
+                return 'Close';
+            else
+                return null;
+            end if;
+        END IF;
+        
         select remark into v_ret
         from clm_constant a
         where key like 'PHCLMSTS%'
@@ -255,7 +271,20 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
         WHEN OTHERS THEN
             return null;        
     END GET_BENETYPE_DESCR; 
-                    
+
+    FUNCTION GET_CLMPDFLAG(v_code IN VARCHAR2) RETURN VARCHAR2 IS
+        v_type    varchar2(5);
+    BEGIN
+        select clm_pd_flag into v_type
+        from medical_ben_std 
+        where bene_code = v_code and th_eng='T'
+        ;
+        return v_type;
+    EXCEPTION
+        when no_data_found then return '' ;
+        when others then return '' ;
+    END GET_CLMPDFLAG;
+                        
     FUNCTION MAPP_BENECODE(v_bill IN VARCHAR2 ,v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2) RETURN VARCHAR2 IS
         o_type  varchar2(5);
         ret_bene    varchar2(10);
@@ -2487,7 +2516,130 @@ CREATE OR REPLACE PACKAGE BODY P_PH_CLM AS
         WHEN OTHERS THEN   
         return null;  
     END GET_BKISTAFF_EMAIL ;         
-                                            
+
+    FUNCTION GET_PH_HISTORY(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_fleet IN NUMBER ,v_clmno IN VARCHAR2  
+    ,O_History Out P_PH_CLM.v_curr) RETURN VARCHAR2 IS -- Return null = success ,not null = show error          
+        mySID   NUMBER;
+        v_rst   VARCHAR2(250):=null;
+        cnt_r1  NUMBER:=0;  cnt_r2  NUMBER:=0;
+    BEGIN
+        if v_polno is null or v_polrun is null or v_fleet is null then
+            v_rst := 'กรุณาระบุ policyno ,fleet_seq';           
+        else
+            mySID := nc_health_package.gen_sid();
+            
+            for x in (
+                select  a.clm_no ,np.pay_no,a.pol_no ,a.pol_run ,a.fleet_seq ,a.mas_cus_name ,a.cus_name, a.plan  
+                ,a.hpt_code ,p_ph_clm.get_hospital_name(a.hpt_code) hpt_descr, p_ph_clm.get_clmpdflag(nr.prem_code) clm_pd_flag 
+                ,a.claim_status clm_sts ,p_ph_clm.get_clmsts_descr(a.claim_status) clm_sts_descr
+                , nr.prem_code bene_code ,p_ph_clm.get_bene_descr(nr.prem_code ,'T') bene_descr
+                , a.dis_code ,p_ph_clm.get_icd10_descr(a.dis_code,'T') dis_code_descr 
+                ,a.loss_date ,a.tr_date_fr ,a.tr_date_to ,a.tot_tr_day ipd_day ,a.add_tr_day add_day , np.remark 
+                ,nr.res_amt ,np.pay_amt ,np.recov_amt rec_amt 
+                from nc_mas a ,nc_reserved nr ,nc_payment np 
+                where nr.clm_no = a.clm_no
+                and nr.clm_no = np.clm_no(+)
+                and a.pol_no =v_polno and a.pol_run = v_polrun and a.fleet_seq = v_fleet
+                and nr.trn_seq in (select max(nrr.trn_seq) from nc_reserved nrr where nrr.clm_no = nr.clm_no)
+                and np.trn_seq in (select max(npp.trn_seq) from nc_payment npp where npp.clm_no = np.clm_no and npp.type = 'NCNATTYPECLM101')
+                and np.type = 'NCNATTYPECLM101'
+                and nr.prem_code = np.prem_code
+                and nr.clm_no like nvl(v_clmno,'%')
+                order by a.clm_no ,nr.prem_code             
+            )loop
+                cnt_r1 := cnt_r1+1;
+                INSERT into TMP_PH_HISTORY( 
+                SID ,clm_no ,pay_no ,pol_no ,pol_run ,fleet_seq ,mas_cus_name ,cus_name ,plan  
+                ,hpt_code ,hpt_descr ,clm_pd_flag ,clm_sts ,clm_sts_descr
+                ,bene_code ,bene_descr,dis_code ,dis_code_descr 
+                ,loss_date ,tr_date_fr ,tr_date_to ,ipd_day ,add_day ,remark 
+                ,res_amt ,pay_amt ,rec_amt 
+                )values(
+                mySID ,x.clm_no ,x.pay_no ,x.pol_no ,x.pol_run ,x.fleet_seq ,x.mas_cus_name ,x.cus_name ,x.plan  
+                ,x.hpt_code ,x.hpt_descr ,x.clm_pd_flag ,x.clm_sts ,x.clm_sts_descr
+                ,x.bene_code ,x.bene_descr,x.dis_code ,x.dis_code_descr 
+                ,x.loss_date ,x.tr_date_fr ,x.tr_date_to ,x.ipd_day ,x.add_day ,x.remark 
+                ,x.res_amt ,x.pay_amt ,x.rec_amt 
+                );
+            end loop; --x
+            
+            for y in (
+                SELECT cr.clm_no ,a.pay_no ,c.pol_no ,c.pol_run ,cr.fleet_seq ,c.mas_cus_enq mas_cus_name ,cr.title||' '||cr.name cus_name , a.plan
+                ,cr.hpt_code  ,p_ph_clm.get_hospital_name(a.hpt_code) hpt_descr , a.clm_pd_flag
+                ,c.clm_sts ,p_ph_clm.get_clmsts_descr(c.clm_sts) clm_sts_descr
+                , a.bene_code ,p_ph_clm.get_bene_descr(a.bene_code ,'T') bene_descr
+                , a.dis_code  ,p_ph_clm.get_icd10_descr(a.dis_code,'T') dis_code_descr 
+                ,a.loss_date ,a.loss_date tr_date_fr ,'' tr_date_to ,a.ipd_day ipd_day ,'' add_day , a.remark 
+                ,cr.res_amt ,a.pay_amt ,a.rec_amt 
+                FROM mis_clm_mas c ,clm_medical_res cr , clm_gm_paid a 
+                WHERE a.clm_no = c.clm_no and cr.clm_no = a.clm_no(+) 
+                and a.pay_no = (select max(x.pay_no) from clm_gm_paid x where x.clm_no = a.clm_no)
+                and (pay_no,corr_seq) in (select aa.pay_no ,max(aa.corr_seq) from clm_gm_paid aa where aa.pay_no = a.pay_no group by aa.pay_no)
+                AND cr.fleet_seq = v_fleet
+                AND pol_no = v_polno AND pol_run = v_polrun
+                AND state_seq = (SELECT MAX (state_seq) FROM clm_medical_res b WHERE b.clm_no = cr.clm_no AND b.state_no = cr.state_no)
+                and cr.bene_code = a.bene_code
+                AND cr.clm_no like nvl(v_clmno,'%')
+                and c.clm_no not in (select d.clm_no from nc_mas d where d.clm_no = c.clm_no)
+                order by cr.clm_no ,state_seq ,cr.bene_code           
+            )loop
+                cnt_r2 := cnt_r2+1;
+                INSERT into TMP_PH_HISTORY( 
+                SID ,clm_no ,pay_no ,pol_no ,pol_run ,fleet_seq ,mas_cus_name ,cus_name ,plan  
+                ,hpt_code ,hpt_descr ,clm_pd_flag ,clm_sts ,clm_sts_descr
+                ,bene_code ,bene_descr,dis_code ,dis_code_descr 
+                ,loss_date ,tr_date_fr ,tr_date_to ,ipd_day ,add_day ,remark 
+                ,res_amt ,pay_amt ,rec_amt 
+                )values(
+                mySID ,y.clm_no ,y.pay_no ,y.pol_no ,y.pol_run ,y.fleet_seq ,y.mas_cus_name ,y.cus_name ,y.plan  
+                ,y.hpt_code ,y.hpt_descr ,y.clm_pd_flag ,y.clm_sts ,y.clm_sts_descr
+                ,y.bene_code ,y.bene_descr,y.dis_code ,y.dis_code_descr 
+                ,y.loss_date ,y.tr_date_fr ,y.tr_date_to ,y.ipd_day ,y.add_day ,y.remark 
+                ,y.res_amt ,y.pay_amt ,y.rec_amt 
+                );
+            end loop; --y        
+            
+            if cnt_r1 + cnt_r2 = 0 then --not found claim
+                v_rst := 'ไม่พบประวัติเคลม';
+            end if;      
+        end if;
+        
+        if v_rst is null then -- check error /Not Error        
+            OPEN O_History  FOR 
+                SELECT clm_no ,pay_no ,pol_no ,pol_run ,fleet_seq ,mas_cus_name ,cus_name ,plan  
+                ,hpt_code ,hpt_descr ,clm_pd_flag ,clm_sts ,clm_sts_descr
+                ,bene_code ,bene_descr,dis_code ,dis_code_descr 
+                ,loss_date ,tr_date_fr ,tr_date_to ,ipd_day ,add_day ,remark 
+                ,res_amt ,pay_amt ,rec_amt 
+                FROM TMP_PH_HISTORY
+                WHERE SID = mySID;
+            
+            delete     TMP_PH_HISTORY where SID = mySID;
+            commit;    
+            Return null;          
+        else -- Has Error
+            OPEN O_History  FOR 
+                SELECT '' clm_no ,'' pay_no ,'' pol_no ,'' pol_run ,'' fleet_seq ,'' mas_cus_name ,'' cus_name ,'' plan  
+                ,'' hpt_code ,'' hpt_descr ,'' clm_pd_flag ,'' clm_sts ,'' clm_sts_descr
+                ,'' bene_code ,'' bene_descr,'' dis_code ,'' dis_code_descr 
+                ,'' loss_date ,'' tr_date_fr ,'' tr_date_to ,'' ipd_day ,'' add_day ,'' remark 
+                ,'' res_amt ,'' pay_amt ,'' rec_amt  FROM DUAL;           
+            return v_rst;     
+        end if; -- check error
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            rollback;
+                OPEN O_History  FOR 
+                SELECT '' clm_no ,'' pay_no ,'' pol_no ,'' pol_run ,'' fleet_seq ,'' mas_cus_name ,'' cus_name ,'' plan  
+                ,'' hpt_code ,'' hpt_descr ,'' clm_pd_flag ,'' clm_sts ,'' clm_sts_descr
+                ,'' bene_code ,'' bene_descr,'' dis_code ,'' dis_code_descr 
+                ,'' loss_date ,'' tr_date_fr ,'' tr_date_to ,'' ipd_day ,'' add_day ,'' remark 
+                ,'' res_amt ,'' pay_amt ,'' rec_amt  FROM DUAL;
+            dbms_output.put_line('error :'||sqlerrm);
+            Return 'error: '||sqlerrm;      
+    END GET_PH_HISTORY;
+                                         
 END P_PH_CLM;
 
 /
