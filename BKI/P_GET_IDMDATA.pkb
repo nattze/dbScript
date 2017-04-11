@@ -70,10 +70,12 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_GET_IDMDATA AS
             
             -- call UNW Package for setup UNW Parameter and Menu
             if v_action = 'create' then
+                dbms_output.put_line('offZa');
                 BkiUserUtil.set_user_brn_code(i_userid ,o_err);
                 BkiUserUtil.set_user_email(i_userid ,o_err);
                 BkiUserUtil.set_user_tel_fax(i_userid ,o_err);
-                BkiUserUtil.initial_menu(i_userid ,o_err);            
+--                BkiUserUtil.initial_menu(i_userid ,o_err);            
+                BkiUserUtil.assign_unw_authorize(i_userid ,o_err);
             end if;
             -- End call UNW Package for setup UNW Parameter and Menu
         
