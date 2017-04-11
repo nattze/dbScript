@@ -6072,7 +6072,7 @@ BEGIN
     from bkiuser
     where user_id = i_user;
     
-    if to_number(v_pl) >31 then
+    if to_number(v_pl) >31 or (v_pl in ('07','08','09','10','11')) then
         return 'Y';
     end if;
     
