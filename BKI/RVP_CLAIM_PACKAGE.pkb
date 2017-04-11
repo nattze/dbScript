@@ -470,9 +470,9 @@ BEGIN
         t_cond := t_cond || ' and a.id = '''||i_idcard||''' ';
     end if;
 
-    if i_prefix is not null then
-        t_cond := t_cond || ' and a.title like ''%'||i_prefix||'%'' ';
-    end if;
+--    if i_prefix is not null then
+--        t_cond := t_cond || ' and a.title like ''%'||i_prefix||'%'' ';
+--    end if;
 
     if i_fname is not null then
         t_cond := t_cond || ' and a.name like ''%'||i_fname||'%'' ';
