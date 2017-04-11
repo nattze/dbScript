@@ -32,7 +32,10 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_PH_CONVERT AS
 
     FUNCTION CONV_PH_CWP(v_clmno in varchar2,v_payno in varchar2 ,v_sts in varchar2
     , v_err_message out varchar2) RETURN BOOLEAN ;
-        
+
+    FUNCTION CONV_PH_REOPEN(v_clmno in varchar2,v_payno in varchar2 ,v_sts in varchar2
+    , v_err_message out varchar2) RETURN BOOLEAN ;
+            
     PROCEDURE CONV_TABLE(v_clmno in varchar2,v_payno in varchar2 ,v_prodtype in varchar2
     , v_err_message out varchar2) ;
     

@@ -544,9 +544,32 @@ FUNCTION Validate_main(vClmno IN VARCHAR2 ,vPayno IN VARCHAR2 ,vPolno IN VARCHAR
     RST_get_status VARCHAR2(10);
     RST_RI VARCHAR2(50);
     RST_CLM VARCHAR2(50);
-    
+    O_RST   VARCHAR2(200);
     vStsKey    NUMBER;
+    vProd_type VARCHAR2(10);
+    vSysId  varchar2(10);
 BEGIN
+    vProd_type := NC_CLNMC908.GET_PRODUCT_TYPE(vPayno);
+    
+    begin
+        select sysid into vSysId
+        from clm_grp_prod
+        where prod_type = vProd_type;
+    exception
+        when no_data_found then
+            vSysId := null;
+        when others then
+            vSysId := null;
+    end;
+    --dbms_output.put_line('sysid='||vSysId);
+    if vSysId = 'GM' then
+        IF p_ph_clm.IS_NEW_PHCLM(vClmno  ,O_RST) THEN
+--            dbms_output.put_line('new Claim='||O_RST);
+            vRST := O_RST ; 
+            return false;    
+        END IF;        
+    end if;
+    
     -- validate Reserve , ReInsuance
     if Validate_RI_AND_PAID(vClmno ,vPayno ,GET_PRODUCTID(vClmno) , RST_RI) then
         vRST := null;             
@@ -1272,7 +1295,7 @@ FUNCTION UPDATE_NCPAYMENT(v_key IN number ,v_clmno IN varchar2 ,v_payno IN varch
     v_send  varchar2(10);
     v_apprv_date    date;
 BEGIN
-        if v_sts in ('NCPAYSTS03','NCPAYSTS08','NCPAYSTS04') then
+        if v_sts in ('NCPAYSTS03','NCPAYSTS08','NCPAYSTS04','NCPAYSTS11') then
             v_apprv_date := sysdate;
         else
             v_apprv_date := null;
@@ -1280,7 +1303,7 @@ BEGIN
         BEGIN
             select nvl(max(trn_seq),0) + 1  into v_max_seq 
             from nc_payment a
-            where sts_key = v_key and pay_no = v_payno ;
+            where sts_key = v_key and pay_no = v_payno and type='01';
                         
         exception
         when no_data_found then
@@ -1293,7 +1316,8 @@ BEGIN
             select amd_user into v_send
             from nc_payment a
             where pay_no = v_payno
-            and trn_seq in (select max(aa.trn_seq) from nc_payment aa where aa.pay_no = a.pay_no);
+            and trn_seq in (select max(aa.trn_seq) from nc_payment aa where aa.pay_no = a.pay_no  and type='01')
+            and  type='01';
                         
         exception
         when no_data_found then

@@ -37,6 +37,8 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
 
     FUNCTION MAPP_BENECODE(v_bill IN VARCHAR2 ,v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2 ,v_flag IN VARCHAR2) RETURN VARCHAR2 ; -- Return null = Not found or Error
 
+    FUNCTION CONV_BENEFIT(v_clmno IN VARCHAR2 ,v_user IN VARCHAR2 ,O_RST OUT VARCHAR2) RETURN VARCHAR2 ; -- Y ,N
+    
     FUNCTION GET_BENE_TYPE(v_code IN VARCHAR2) RETURN VARCHAR2 ;
     -- ดึงประเภทผลประโยชน์ เช่น Doctor Visit ,ทันตกรรม
 
@@ -59,6 +61,9 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
     
     FUNCTION GET_LIST_CLMTYPE(O_CLMTYPE_LIST Out P_PH_CLM.v_curr) RETURN VARCHAR2 ; 
     -- ดึง Clm Type เตรียมแสดงใน DropdownList -- Return null = success ,not null = show error
+    
+    FUNCTION GET_LIST_CARDTYPE(O_CARDTYPE_LIST Out P_PH_CLM.v_curr) RETURN VARCHAR2 ; 
+    -- ดึง Card Type เตรียมแสดงใน DropdownList -- Return null = success ,not null = show error    
 
     FUNCTION GET_LIST_CLMSTS(O_CLMSTS_LIST Out P_PH_CLM.v_curr) RETURN VARCHAR2 ; 
     -- ดึง Clm Status เตรียมแสดงใน DropdownList -- Return null = success ,not null = show error    
@@ -98,9 +103,18 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
         billing     หน้า KeyIn tab Billing
         benefit     หน้า KeyIn tab Benefit
         ri_reserved     หน้า KeyIn tab ReInsurance
+        claim_info_paid
+        payment
+        payee
+        ri_paid
+        reopen
+        cancel
+        cwp
     */
 
     FUNCTION getRI_PAID(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2  ,v_amt IN NUMBER ,O_RI OUT P_PH_CLM.v_curr) RETURN VARCHAR2 ;
+
+    FUNCTION getRI_RES(v_clmno IN VARCHAR2 ,v_amt IN NUMBER ,O_RI OUT P_PH_CLM.v_curr) RETURN VARCHAR2 ;
 
     FUNCTION validate_RI_RES(v_clmno IN VARCHAR2) RETURN VARCHAR2 ;
     -- return Null คือผ่าน ,not null คือ มีข้อผิดพลาด
@@ -129,7 +143,9 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
     FUNCTION CAN_GO_APPROVE(i_clmno IN varchar2 ,i_payno IN varchar2 ,i_userid IN varchar2 ,i_status IN varchar2 ,i_sys IN VARCHAR2 ,o_rst OUT varchar2) RETURN VARCHAR2 ;  --Y ,N 
     
     FUNCTION CAN_GO_RESERVED(v_clmno IN VARCHAR2  ,o_rst OUT varchar2) RETURN VARCHAR2 ;  --Y ,N
-    
+ 
+    FUNCTION CAN_SAVE_BILLING(v_clmno IN VARCHAR2  ,o_rst OUT varchar2) RETURN VARCHAR2 ;  --Y ,N
+       
     FUNCTION GET_APPROVE_AMT(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2) RETURN NUMBER;
     
     FUNCTION IS_NEW_PAYMENT(v_clmno IN VARCHAR2 ,v_payno IN VARCHAR2  ,o_rst OUT varchar2) RETURN VARCHAR2 ;  --Y ,N   
@@ -173,6 +189,20 @@ CREATE OR REPLACE PACKAGE P_PH_CLM AS
 
     FUNCTION GET_PH_HISTORY(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_fleet IN NUMBER ,v_clmno IN VARCHAR2  
     ,O_History Out P_PH_CLM.v_curr) RETURN VARCHAR2 ; -- Return null = success ,not null = show error    
+    
+    FUNCTION CAN_GO_CWP(v_clmno IN VARCHAR2  ,o_rst OUT varchar2) RETURN VARCHAR2 ;
+    
+    FUNCTION GET_CWP_LIST (v_type IN VARCHAR2 ,O_LIST Out P_PH_CLM.v_curr ) RETURN VARCHAR2;
+    
+    FUNCTION SET_CWP_CLM(v_clmno IN VARCHAR2  ,v_code IN VARCHAR2  ,v_remark IN VARCHAR2 ,v_user IN VARCHAR2) RETURN VARCHAR2;
+    
+    FUNCTION CAN_REOPEN(v_clmno IN VARCHAR2  ,o_rst OUT varchar2) RETURN VARCHAR2 ;
+    
+    FUNCTION SET_REOPEN(v_clmno IN VARCHAR2  ,v_code IN VARCHAR2  ,v_remark IN VARCHAR2 ,v_user IN VARCHAR2) RETURN VARCHAR2;
+    
+    PROCEDURE GET_APPROVE_USER(i_clmno IN varchar2 ,i_payno IN varchar2 ,o_apprv_id OUT varchar2 ,o_apprv_sts OUT varchar2);
+    
+    FUNCTION IS_NEW_PHCLM(v_clmno IN VARCHAR2 ,O_RST OUT VARCHAR2) RETURN BOOLEAN;
 END P_PH_CLM; 
 
 /

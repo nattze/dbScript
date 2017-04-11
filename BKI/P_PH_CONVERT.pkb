@@ -314,7 +314,10 @@ BEGIN
             for p3 in (
             select payee_code ,payee_seq pay_seq ,payee_amt ,'' prem_offset ,'' payee_offset ,'' payee_offset2 
             ,salvage_flag ,deduct_flag ,recovery_flag ,salvage_amt ,deduct_amt ,recovery_amt ,payee_type
-            ,bank_code ,bank_br_code ,acc_no ,acc_name ,P_NON_PA_APPROVE.CONVERT_PAYMENT_METHOD(settle) settle ,curr_code
+            ,bank_code ,bank_br_code ,acc_no ,acc_name 
+--            ,P_NON_PA_APPROVE.CONVERT_PAYMENT_METHOD(settle) settle 
+            ,settle
+            ,curr_code
             ,GRP_PAYEE_FLAG ,EMAIL ,SMS ,AGENT_EMAIL ,AGENT_SMS
             ,SPECIAL_FLAG ,SPECIAL_REMARK
             from nc_payee b
@@ -715,6 +718,8 @@ FUNCTION UPDATE_STATUS_ACR(v_payno in varchar2 ,v_clm_user in varchar2 ) RETURN 
     v_stskey number(20);
     v_chk_med    varchar2(20):=null;
     v_clmno varchar2(20);
+    dumm_rst    boolean;
+    v_rst2  varchar2(200);
 BEGIN
     BEGIN    
         select sts_key into v_stskey
@@ -763,6 +768,11 @@ BEGIN
                                       
                 chk_success := true;
                 v_clmno := c1.clm_no;
+                
+            dumm_rst := NC_CLNMC908.UPDATE_STATUS(c1.STS_KEY ,'NCPAYSTS' ,'NCPAYSTS11' ,v_clm_user ,'Approved: Claim data Post to ACC Temp wait for AutoPost ACR at Night' ,v_rst2);
+            
+            dumm_rst := NC_CLNMC908.UPDATE_NCPAYMENT(c1.STS_KEY ,c1.clm_no ,c1.pay_no ,'NCPAYSTS11' ,'Approved: Claim data Post to ACC Temp wait for AutoPost ACR at Night' 
+            ,c1.APPRV_FLAG  ,c1.CLM_MEN  ,v_clm_user ,c1.APPROVE_ID ,c1.PAY_AMT ,v_rst2);                
         END LOOP;    
     exception
         when no_data_found then
@@ -793,6 +803,8 @@ FUNCTION UPDATE_STATUS_ERROR(v_payno in varchar2 ,v_clm_user in varchar2 ,v_rst 
     v_stskey number(20);
     v_chk_med    varchar2(20):=null;
     v_clmno varchar2(20);
+    dumm_rst    boolean;
+    v_rst2  varchar2(200);    
 BEGIN
     BEGIN    
         select sts_key into v_stskey
@@ -841,6 +853,11 @@ BEGIN
                                       
                 chk_success := true;
                 v_clmno := c1.clm_no;
+            dumm_rst := NC_CLNMC908.UPDATE_STATUS(c1.STS_KEY ,'NCPAYSTS' ,'NCPAYSTS80' ,v_clm_user ,'' ,v_rst2);
+            
+            dumm_rst := NC_CLNMC908.UPDATE_NCPAYMENT(c1.STS_KEY ,c1.clm_no ,c1.pay_no ,'NCPAYSTS80' ,'' 
+            ,null  ,c1.CLM_MEN  ,v_clm_user ,null ,c1.PAY_AMT ,v_rst2);      
+                            
         END LOOP;    
     exception
         when no_data_found then
@@ -1557,7 +1574,9 @@ BEGIN
     CLM_USER CLM_MEN,CLM_USER CLM_STAFF ,'' PAID_STAFF,'' RECOV_STS,'' POL_COV,p_ph_convert.CONV_CLMSTS(claim_status) CLM_STS
     , END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE,
     trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  
-    ,close_date , '' cwp_remark ,'' fax_clm ,'' invoice ,
+    ,close_date  ,cwp_code , cwp_remark ,cwp_user  ,(select descr from clm_constant x where key like 'CWPPH-TYPE%' and remark = cwp_code) cwp_descr
+     ,(select key from clm_constant x where key like 'CWPPH-TYPE%' and remark = cwp_code) rem_close  
+    ,'' fax_clm ,'' invoice ,
     '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user
     FROM nc_mas where clm_no = v_clmno
     )LOOP 
@@ -1565,6 +1584,7 @@ BEGIN
         set tot_res = Cmas.tot_res ,clm_sts =Cmas.CLM_STS , tot_paid = Cmas.tot_paid , close_date = cmas.close_date ,loss_date = cmas.loss_date
         ,fax_clm_date =cmas.fax_clm_date ,clm_men = cmas.clm_men ,clm_staff =  cmas.amd_user ,remark = cmas.remark 
         ,first_close = decode(first_close ,null ,cmas.close_date ,first_close)
+        ,cwp_remark = Cmas.cwp_remark ,rem_close =Cmas.rem_close ,remark_cwp = Cmas.cwp_descr ,cwp_user = Cmas.cwp_user
         where clm_no = v_clmno;
 
         insert into mis_clm_mas_seq(clm_no,pol_no,pol_run,corr_seq,corr_date,channel,prod_grp,
@@ -1586,6 +1606,145 @@ EXCEPTION
         return false;
 END CONV_PH_CWP;
 
+FUNCTION CONV_PH_REOPEN(v_clmno in varchar2,v_payno in varchar2  ,v_sts in varchar2
+    , v_err_message out varchar2) RETURN BOOLEAN IS 
+    v_claim_status VARCHAR2(20); 
+    v_dummy_clm  VARCHAR2(20);  
+    v_max_corrseq   number(5):=0;
+    vsysdate    date:=sysdate;
+    v_state_no  varchar2(20);
+    v_max_stateseq   number(5):=0;
+    v_polno varchar2(20);
+    v_polrun number;
+    v_fleet number;
+    v_discode   varchar2(20);
+    v_pdflag    varchar2(5);
+    v_clmpdflag varchar2(5);
+    v_lossdate  date;
+    v_hpt_code varchar2(20);
+    v_days  number;
+    cnt_paid    number:=0;
+    v_gmpaid_seq number:=0;
+    v_misclm_seq number:=0;
+    v_payee_seq number:=0;
+    v_cripaid_seq number:=0;
+BEGIN
+    begin -- check mis_clm_mas
+        select clm_no into v_dummy_clm
+        from mis_clm_mas 
+        where clm_no = v_clmno;
+    exception
+        when no_data_found then 
+            v_dummy_clm := null;
+        when others then
+            v_dummy_clm := null;
+    end;  -- check mis_clm_mas
+
+    begin -- max corr_seq
+        select nvl(max(corr_seq)+1,0) into v_max_corrseq
+        from mis_clm_mas_seq 
+        where clm_no = v_clmno;
+    exception
+        when no_data_found then 
+            v_max_corrseq := 0;
+        when others then
+            v_max_corrseq := 0;
+    end;  -- max corr_seq
+        
+--    begin -- max v_gmpaid_seq
+--        select nvl(max(corr_seq)+1,0) into v_gmpaid_seq
+--        from clm_gm_paid 
+--        where clm_no = v_clmno and pay_no = v_payno;
+--    exception
+--        when no_data_found then 
+--            v_gmpaid_seq := 0;
+--        when others then
+--            v_gmpaid_seq := 0;
+--    end;  -- max v_gmpaid_seq    
+--
+--    begin -- max v_misclm_seq
+--        select nvl(max(corr_seq)+1,0) into v_misclm_seq
+--        from mis_clmgm_paid 
+--        where clm_no = v_clmno and pay_no = v_payno;
+--    exception
+--        when no_data_found then 
+--            v_misclm_seq := 0;
+--        when others then
+--            v_misclm_seq := 0;
+--    end;  -- max v_misclm_seq    
+--
+--    begin -- max v_payee_seq
+--        select nvl(max(corr_seq)+1,0) into v_payee_seq
+--        from clm_gm_payee 
+--        where clm_no = v_clmno and pay_no = v_payno;
+--    exception
+--        when no_data_found then 
+--            v_payee_seq := 0;
+--        when others then
+--            v_payee_seq := 0;
+--    end;  -- max v_payee_seq    
+--
+--    begin -- max v_cripaid_seq
+--        select nvl(max(corr_seq)+1,0) into v_cripaid_seq
+--        from mis_cri_paid 
+--        where clm_no = v_clmno and pay_no = v_payno;
+--    exception
+--        when no_data_found then 
+--            v_cripaid_seq := 0;
+--        when others then
+--            v_cripaid_seq := 0;
+--    end;  -- max v_cripaid_seq    
+            
+    begin -- get policy
+        select pol_no ,pol_run ,fleet_seq ,dis_code ,loss_date ,hpt_code ,tot_tr_day  into v_polno ,v_polrun ,v_fleet ,v_discode ,v_lossdate ,v_hpt_code ,v_days
+        from nc_mas 
+        where clm_no = v_clmno;
+    exception
+        when no_data_found then null;
+        when others then null;
+    end;  -- get policy
+          
+    dbms_output.put_line ('v_dummy_clm:'||v_dummy_clm);
+    
+    FOR Cmas IN (
+    select CLM_NO ,POL_NO,  p_ph_clm.get_SUM_RES(clm_no ,null) TOT_RES,p_ph_clm.get_SUM_Paid(clm_no ,null) TOT_PAID
+    , trunc(REG_DATE) reg_date, trunc(CLM_DATE) clm_date, trunc(LOSS_DATE) loss_date, LOSS_TIME, 
+    CLM_USER CLM_MEN,CLM_USER CLM_STAFF ,'' PAID_STAFF,'' RECOV_STS,'' POL_COV,p_ph_convert.CONV_CLMSTS(claim_status) CLM_STS
+    , END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE,
+    trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  
+    ,close_date  ,cwp_code , cwp_remark ,cwp_user  ,(select descr from clm_constant x where key like 'CWPPH-TYPE%' and remark = cwp_code) cwp_descr
+     ,(select key from clm_constant x where key like 'CWPPH-TYPE%' and remark = cwp_code) rem_close  ,reopen_date
+    ,'' fax_clm ,'' invoice ,
+    '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user
+    FROM nc_mas where clm_no = v_clmno
+    )LOOP 
+        update mis_clm_mas
+        set tot_res = Cmas.tot_res ,clm_sts =Cmas.CLM_STS , tot_paid = Cmas.tot_paid , close_date = cmas.close_date ,loss_date = cmas.loss_date
+        ,fax_clm_date =cmas.fax_clm_date ,clm_men = cmas.clm_men ,clm_staff =  cmas.amd_user ,remark = cmas.remark 
+        ,first_close = decode(first_close ,null ,cmas.close_date ,first_close)
+        ,cwp_remark = Cmas.cwp_remark ,rem_close =Cmas.rem_close ,remark_cwp = Cmas.cwp_descr ,cwp_user = Cmas.cwp_user
+        ,reopen_date = Cmas.reopen_date
+        where clm_no = v_clmno;
+
+        insert into mis_clm_mas_seq(clm_no,pol_no,pol_run,corr_seq,corr_date,channel,prod_grp,
+                                 prod_type,clm_date,tot_res,tot_paid,clm_sts,close_date ,reopen_date)
+        values (
+                      Cmas.clm_no,Cmas.pol_no,Cmas.pol_run,v_max_corrseq ,vsysdate, 
+             Cmas.channel , Cmas.Prod_grp, Cmas.Prod_type,Cmas.clm_date, 
+             Cmas.tot_res, Cmas.tot_paid ,Cmas.clm_sts, Cmas.Close_date ,Cmas.reopen_date);        
+                                  
+    END LOOP;
+     
+    COMMIT;
+    return true;
+EXCEPTION
+    WHEN OTHERS THEN
+        v_err_message :=     'CONV_PH_REOPEN error:'||sqlerrm;
+        dbms_output.put_line ('error:'||sqlerrm);
+        rollback;
+        return false;
+END CONV_PH_REOPEN;
+
 PROCEDURE CONV_TABLE(v_clmno in varchar2,v_payno in varchar2 ,v_prodtype in varchar2
     , v_err_message out varchar2) IS
     v_claim_status VARCHAR2(20);
@@ -1604,6 +1763,10 @@ BEGIN
         if not p_ph_convert.CONV_PH_CWP(v_clmno ,v_payno  ,v_claim_status, v_err_message ) then
             null;
         end if;    
+    elsif v_claim_status in ('PHCLMSTS40') then -- CWP Cancel 
+        if not p_ph_convert.CONV_PH_REOPEN(v_clmno ,v_payno  ,v_claim_status, v_err_message ) then
+            null;
+        end if;            
     elsif v_claim_status in ('PHCLMSTS06') then -- Close 
         null;
     end if;
@@ -1646,6 +1809,8 @@ BEGIN
         v_ret := '6' ;
     ELSIF v_code in ('PHCLMSTS06' ) THEN
         v_ret := '2' ;
+    ELSIF v_code in ('PHCLMSTS40' ) THEN
+        v_ret := '4' ;   
     ELSE
         v_ret := '3' ;     
     END IF;
@@ -1709,13 +1874,14 @@ BEGIN
 
     Insert into ALLCLM.NC_PAYMENT
        (CLM_NO, PAY_NO, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, PROD_GRP, PROD_TYPE, STS_KEY, TYPE, SUB_TYPE, PREM_CODE, PREM_SEQ, STATUS, TOT_PAY_AMT
-       ,CLM_SEQ ,SETTLE_DATE,OFFSET_FLAG ,DAYS ,RECOV_AMT ,DAY_ADD ,REMARK)
+       ,CLM_SEQ ,SETTLE_DATE,OFFSET_FLAG ,DAYS ,RECOV_AMT ,DAY_ADD ,REMARK ,subsysid)
        (
         select clm_no, pay_no, trn_seq+1, pay_sts, pay_amt, trn_amt, curr_code, curr_rate, sts_date,v_sysdate, clm_men, amd_user, prod_grp, prod_type, sts_key, type, sub_type, prem_code, prem_seq, status, tot_pay_amt
-        ,clm_seq ,v_sysdate ,offset_flag ,days ,recov_amt ,day_add ,remark
+        ,clm_seq ,v_sysdate ,offset_flag ,days ,recov_amt ,day_add ,remark ,subsysid
         from nc_payment a
-        where  a.trn_seq in (select max(aa.trn_seq) from nc_payment aa where  aa.clm_no =a.clm_no and aa.pay_no = a.pay_no) 
+        where  a.trn_seq in (select max(aa.trn_seq) from nc_payment aa where  aa.clm_no =a.clm_no and aa.pay_no = a.pay_no and aa.type='NCNATTYPECLM101') 
         and a.pay_no = vPayNo
+        and a.type='NCNATTYPECLM101'
         );
             
             
