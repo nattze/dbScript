@@ -978,7 +978,8 @@ BEGIN
               CLM_USER CLM_MEN,CLM_USER CLM_STAFF ,'' PAID_STAFF,'' RECOV_STS,'' POL_COV,p_ph_convert.CONV_CLMSTS(claim_status) CLM_STS, ALC_RE,'' CLM_CURR_CODE,'' CLM_CURR_RATE, '' SHR_TYPE, 
                '' AGENT_SEQ, END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE, '01' CLM_BR_CODE,
                trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  ,close_date , '' cwp_remark ,'' fax_clm ,'' invoice ,
-               '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,FLEET_SEQ ,CLM_TYPE
+               '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,FLEET_SEQ ,CLM_TYPE ,
+               OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS
            from nc_mas
            where clm_no = v_clmno   
         )loop
@@ -1071,7 +1072,7 @@ BEGIN
                AGENT_SEQ, END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE, CLM_BR_CODE,
                FAX_CLM_DATE, IPD_FLAG  ,close_date,cwp_remark 
                ,fax_clm ,invoice ,receipt ,walkin ,deathclm ,clm_type ,
-               RISK_DESCR ,REMARK )
+               RISK_DESCR ,REMARK ,OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_PRINT_STS)
             Values  (
                 Cmas.STS_KEY ,Cmas.CLM_NO,  v_MAIN_CLASS ,  Cmas.POL_NO, Cmas.RECPT_SEQ, Cmas.CLM_YR, v_POL_YR ,v_BR_CODE, Cmas.MAS_CUS_CODE,
                Cmas.MAS_CUS_SEQ, Cmas.MAS_CUS_ENQ, Cmas.CUS_CODE, Cmas.CUS_SEQ, Cmas.CUS_ENQ,v_MAS_SUM_INS, v_RECPT_SUM_INS,
@@ -1081,7 +1082,7 @@ BEGIN
                v_AGENT_SEQ, Cmas.END_SEQ, Cmas.POL_RUN, v_CHANNEL, Cmas.PROD_GRP, Cmas.PROD_TYPE, Cmas.CLM_BR_CODE,
                Cmas.FAX_CLM_DATE, Cmas.IPD_FLAG  ,Cmas.close_date,Cmas.cwp_remark 
                ,o_inc ,o_inv ,o_recpt ,o_ost ,o_dead , Cmas.CLM_TYPE ,
-               Cmas.RISK_DESCR ,Cmas.REMARK                   
+               Cmas.RISK_DESCR ,Cmas.REMARK ,Cmas.OUT_CLM_NO ,Cmas.OUT_OPEN_STS ,Cmas.OUT_PAID_STS ,Cmas.OUT_APPROVE_STS                  
             );     
             
             update nc_mas
@@ -1152,7 +1153,8 @@ BEGIN
               CLM_USER CLM_MEN,CLM_USER CLM_STAFF ,'' PAID_STAFF,'' RECOV_STS,'' POL_COV,p_ph_convert.CONV_CLMSTS(claim_status) CLM_STS, ALC_RE,'' CLM_CURR_CODE,'' CLM_CURR_RATE, '' SHR_TYPE, 
                '' AGENT_SEQ, END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE, '01' CLM_BR_CODE,
                trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  ,close_date , '' cwp_remark ,'' fax_clm ,'' invoice ,
-               '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user  ,clm_type
+               '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user  ,clm_type ,
+               OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS
            from nc_mas
            where clm_no = v_clmno   
         )loop
@@ -1163,6 +1165,7 @@ BEGIN
             set tot_res = Cmas.tot_res ,clm_sts =Cmas.CLM_STS , tot_paid = Cmas.tot_paid , close_date = cmas.close_date ,loss_date = cmas.loss_date
             ,fax_clm_date =cmas.fax_clm_date ,clm_men = cmas.clm_men ,clm_staff =  cmas.amd_user ,remark = cmas.remark 
             ,fax_clm = o_inc ,invoice =o_inv ,receipt =o_recpt ,walkin =o_ost ,deathclm = o_dead ,clm_type = Cmas.CLM_TYPE
+            ,OUT_CLM_NO = Cmas.OUT_CLM_NO ,OUT_OPEN_STS = Cmas.OUT_OPEN_STS ,OUT_PAID_STS = Cmas.OUT_PAID_STS ,OUT_PRINT_STS = Cmas.OUT_APPROVE_STS        
             where clm_no = v_clmno;
 
              insert into mis_clm_mas_seq(clm_no,pol_no,pol_run,corr_seq,corr_date,channel,prod_grp,
@@ -1433,7 +1436,8 @@ BEGIN
                 , END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE,
                 trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  
                 ,close_date , '' cwp_remark ,'' fax_clm ,'' invoice ,
-                '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user ,clm_type
+                '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user ,clm_type ,
+                OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS
                 FROM nc_mas where clm_no = v_clmno
                 )LOOP 
                     P_PH_CONVERT.CONV_CLMTYPE(Cmas.CLM_TYPE ,o_inc ,o_recpt ,o_inv ,o_ost ,o_dead);
@@ -1577,7 +1581,8 @@ BEGIN
     ,close_date  ,cwp_code , cwp_remark ,cwp_user  ,(select descr from clm_constant x where key like 'CWPPH-TYPE%' and remark = cwp_code) cwp_descr
      ,(select key from clm_constant x where key like 'CWPPH-TYPE%' and remark = cwp_code) rem_close  
     ,'' fax_clm ,'' invoice ,
-    '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user
+    '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user ,
+    OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS
     FROM nc_mas where clm_no = v_clmno
     )LOOP 
         update mis_clm_mas
@@ -1715,7 +1720,8 @@ BEGIN
     ,close_date  ,cwp_code , cwp_remark ,cwp_user  ,(select descr from clm_constant x where key like 'CWPPH-TYPE%' and remark = cwp_code) cwp_descr
      ,(select key from clm_constant x where key like 'CWPPH-TYPE%' and remark = cwp_code) rem_close  ,reopen_date
     ,'' fax_clm ,'' invoice ,
-    '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user
+    '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user ,
+    OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS
     FROM nc_mas where clm_no = v_clmno
     )LOOP 
         update mis_clm_mas
