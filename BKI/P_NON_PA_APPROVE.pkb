@@ -6126,6 +6126,60 @@ EXCEPTION
     return  'N';
 END IS_URGENT_CLM;
 
+PROCEDURE SAVE_CLM_LIMIT_HISTORY(v_SUBSYSID IN VARCHAR2  ,v_user IN VARCHAR2 ,
+                    RST OUT VARCHAR2)  IS --เรียกใช้ก่อนบันทึกลง CLM_LIMIT_STD ทุกครั้ง  RST=null 
+    v_trn_Seq number:=0 ;
+    v_found     varchar2(10);
+    v_sysdate   date:=sysdate;
+    v_hist  number;
+BEGIN
+    begin
+       SELECT 'xx' into v_found
+        FROM CLM_LIMIT_STD
+        WHERE SUBSYSID = v_SUBSYSID and user_id = v_user and rownum=1;                  
+    exception
+        when no_data_found then
+            v_found := null ;
+        when others then
+            v_found := null ;
+    end;
+            
+    if v_found is null then
+        --RST := 'not found CLM_LIMIT_STD' ; 
+        return ;
+    end if;
+
+    BEGIN        
+        SELECT CLMLIMIT_SEQ.NEXTVAL into v_hist        
+        FROM dual;        
+    EXCEPTION        
+        WHEN  NO_DATA_FOUND THEN        
+            v_hist := 0;        
+        WHEN  OTHERS THEN        
+            v_hist := 0;        
+    END;   
+                                               
+    BEGIN
+        Insert into ALLCLM.CLM_LIMIT_STD_HISTORY
+           (SUBSYSID, USER_ID, DEPT_ID, DIV_ID, TEAM_ID, MIN_LIMIT, MAX_LIMIT, EFFECTIVE_DATE ,EXPIRE_DATE , APPROVE_FLAG, UPDATE_USER_ID, LAST_UPDATE
+           ,HIST_ID ,HIST_DATE)
+            (
+            select SUBSYSID, USER_ID, DEPT_ID, DIV_ID, TEAM_ID, MIN_LIMIT, MAX_LIMIT, EFFECTIVE_DATE ,EXPIRE_DATE , APPROVE_FLAG, UPDATE_USER_ID, LAST_UPDATE
+            ,v_hist ,v_sysdate
+            from clm_limit_std
+            where SUBSYSID = v_SUBSYSID and user_id = v_user     
+            )
+            ;
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RST := 'error insert History:'||sqlerrm ; return ;
+    END;
+                      
+END SAVE_CLM_LIMIT_HISTORY;                                                        
+
+
 END P_NON_PA_APPROVE;
 /
 

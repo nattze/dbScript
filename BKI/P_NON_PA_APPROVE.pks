@@ -145,6 +145,9 @@ FUNCTION IS_AVP_UP(i_user in varchar2 ) RETURN VARCHAR2 ; -- Y ,N
 FUNCTION IS_SWITCH_ON(i_switch in varchar2) RETURN BOOLEAN;
 
 FUNCTION IS_URGENT_CLM(vClmNo in varchar2 ,vPayNo in varchar2) RETURN VARCHAR2 ; -- Y ,N
+
+PROCEDURE SAVE_CLM_LIMIT_HISTORY(v_SUBSYSID IN VARCHAR2  ,v_user IN VARCHAR2 ,
+                            RST OUT VARCHAR2) ;
  
 END P_NON_PA_APPROVE;
 /
