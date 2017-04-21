@@ -8234,6 +8234,13 @@ BEGIN
                 and RI_TYPE = x.ri_type and ri_code =x.ri_code and ri_br_code = x.ri_br_code and ri_sub_type = x.ri_sub_type;
                 dbms_output.put_line('update pay_no :'||x.pay_no||' RI_TYPE ='||x.ri_type||' ri_amt='||x.pay_amt||' lett_no='||vLett_no);
                 commit;
+            elsif vLETT_PRT = 'N' and x.lett_prt = 'Y' then
+                update mis_cri_paid
+                set lett_prt = vLETT_PRT ,lett_no = vLett_no ,lett_type = 'L' 
+                where pay_no = x.pay_no and corr_seq = x.corr_seq
+                and RI_TYPE = x.ri_type and ri_code =x.ri_code and ri_br_code = x.ri_br_code and ri_sub_type = x.ri_sub_type;
+                dbms_output.put_line('update lettPrt pay_no :'||x.pay_no||' RI_TYPE ='||x.ri_type||' ri_amt='||x.pay_amt||' lett_prt='||vLETT_PRT);    
+                commit;            
             end if;
     end loop;
     
@@ -8241,6 +8248,29 @@ EXCEPTION
     WHEN OTHERS THEN
         rollback;    
 END FIX_LETTNO;
+
+FUNCTION CHECK_LSA(vPayNo in varchar2) Return VARCHAR2 IS
+    rst varchar2(100);
+    v_LettNo    varchar2(20);
+BEGIN
+    select lett_no into v_LettNo
+    from mis_cri_paid a
+    where pay_no = vPayNo
+    and corr_seq in (select max(aa.corr_seq) from mis_cri_paid aa where aa.pay_no = a.pay_no)
+    and lett_no is not null and rownum=1;
+    
+    rst := v_LettNo;
+    
+    return rst;
+    
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        rst := '';
+        return rst;
+    WHEN OTHERS THEN
+        rst := '';
+        return rst;
+END CHECK_LSA;
 
 END NC_HEALTH_PAID;
 /

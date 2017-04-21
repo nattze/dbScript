@@ -159,6 +159,8 @@ CREATE OR REPLACE PACKAGE ALLCLM."NC_HEALTH_PAID" IS
     
     PROCEDURE FIX_LETTNO(vClmNo in varchar2 ,vPayNo in varchar2) ;
     
+    FUNCTION CHECK_LSA(vPayNo in varchar2) Return VARCHAR2;
+    
 END NC_HEALTH_PAID;
 /
 
