@@ -31,9 +31,9 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
         from mis_clm_mas
         where out_clm_no = v_notno;
         
-        if dumm_clm is not null then
-            o_RST := 'Not_No นี้เปิดเคลม ได้เลข :'||dumm_clm||' แล้ว บน bkiapp';
-            return false;
+        if dumm_clm is not null then 
+            o_RST := 'Not_No นี้เปิดเคลม ได้เลข :'||dumm_clm||' แล้ว บน bkiapp'; 
+            return false; 
         end if;        
         
     EXCEPTION
@@ -56,6 +56,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
             if not p_ph_ost.CAN_OPEN_CLAIM(x.not_no ,v_rst) then dbms_output.put_line(v_rst); 
             else
                 p_ph_ost.OPEN_CLM(v_date ,x.not_no ,v_user ,v_rst);
+                
             end if;
             
         END LOOP; -- X
