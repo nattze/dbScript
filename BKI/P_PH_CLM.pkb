@@ -357,9 +357,17 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         ret_bene    varchar2(10);
         is_opd  varchar2(5):='%';
         bill_descr  varchar2(200);
+        txt_daysur  varchar2(200):= '%ผ่าตัด%ไม่ต้องพัก%';
+        txt_room    varchar2(200):='%ค่าห้อง%';
+        txt_meal    varchar2(200):='%ค่าอาหาร%';
+        bill_type   varchar2(5);
     BEGIN
+        bill_type := substr(v_bill,1,3);
          misc.healthutil.get_pa_health_type(v_polno ,v_polrun ,o_type);
-
+        /*
+        2.1.x   ค่าห้อง
+        2.3.x   ค่าอาหาร    
+         */
          begin
             select descr_th into bill_descr
             from nc_billing_std
@@ -376,17 +384,69 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
 
          if o_type ='HG' then
             begin
-                select a.bene_code  into ret_bene
-                from pa_gm_ben a
-                where pol_no =v_polno and pol_run =v_polrun
-                and plan=v_plan
-                and a.bene_code in (
-                    select x.bene_code
-                    from nc_billing_mapp x
-                    where x.cancel is null
-                    and x.bill_code = v_bill
-                ) and pd_flag like is_opd
-                and rownum=1;
+                if v_flag = 'PHADMTYPE03' then -- Day Surg.
+                    select a.bene_code  into ret_bene
+                    from pa_gm_ben a ,medical_ben_std b
+                    where a.bene_code = b.bene_code
+                    and b.th_eng ='T'
+                    and pol_no =v_polno and pol_run =v_polrun
+                    and plan=v_plan
+                    and a.bene_code in (
+                        select x.bene_code
+                        from nc_billing_mapp x
+                        where x.cancel is null
+                        and x.bill_code = v_bill
+                    ) and a.pd_flag like is_opd
+                    and descr not like TXT_DAYSUR
+                    and rownum=1;                
+                else
+                    if bill_type = '2.1' then   -- ห้อง
+                        select a.bene_code  into ret_bene
+                        from pa_gm_ben a ,medical_ben_std b
+                        where a.bene_code = b.bene_code
+                        and b.th_eng ='T'
+                        and pol_no =v_polno and pol_run =v_polrun
+                        and plan=v_plan
+                        and a.bene_code in (
+                            select x.bene_code
+                            from nc_billing_mapp x
+                            where x.cancel is null
+                            and x.bill_code = v_bill
+                        ) and a.pd_flag like is_opd
+                        and descr like TXT_ROOM
+                        and rownum=1;                       
+                    elsif bill_type = '2.3' then    --อาหาร
+                        select a.bene_code  into ret_bene
+                        from pa_gm_ben a ,medical_ben_std b
+                        where a.bene_code = b.bene_code
+                        and b.th_eng ='T'
+                        and pol_no =v_polno and pol_run =v_polrun
+                        and plan=v_plan
+                        and a.bene_code in (
+                            select x.bene_code
+                            from nc_billing_mapp x
+                            where x.cancel is null
+                            and x.bill_code = v_bill
+                        ) and a.pd_flag like is_opd
+                        and descr like TXT_MEAL
+                        and rownum=1;                          
+                    else
+                        select a.bene_code  into ret_bene
+                        from pa_gm_ben a ,medical_ben_std b
+                        where a.bene_code = b.bene_code
+                        and b.th_eng ='T'
+                        and pol_no =v_polno and pol_run =v_polrun
+                        and plan=v_plan
+                        and a.bene_code in (
+                            select x.bene_code
+                            from nc_billing_mapp x
+                            where x.cancel is null
+                            and x.bill_code = v_bill
+                        ) and a.pd_flag like is_opd
+                        --and descr like TXT_MEAL
+                        and rownum=1;                      
+                    end if;
+                end if;
             exception
                 when no_data_found then
                     ret_bene := null;
@@ -395,17 +455,81 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
             end;
          elsif o_type = 'HI' then
             begin
-                select a.bene_code  into ret_bene
-                from pa_ph_ben a
-                where pol_no =v_polno and pol_run =v_polrun
-                and plan=v_plan
-                and a.bene_code in (
-                    select x.bene_code
-                    from nc_billing_mapp x
-                    where x.cancel is null
-                    and x.bill_code = v_bill
-                )  and pd_flag like is_opd
-                and rownum=1;
+                if v_flag = 'PHADMTYPE03' then -- Day Surg.
+                    select a.bene_code  into ret_bene
+                    from pa_ph_ben a ,medical_ben_std b
+                    where a.bene_code = b.bene_code
+                    and b.th_eng ='T'
+                    and pol_no =v_polno and pol_run =v_polrun
+                    and plan=v_plan
+                    and a.bene_code in (
+                        select x.bene_code
+                        from nc_billing_mapp x
+                        where x.cancel is null
+                        and x.bill_code = v_bill
+                    ) and a.pd_flag like is_opd
+                    and descr not like TXT_DAYSUR
+                    and rownum=1;                
+                else
+                    if bill_type = '2.1' then   -- ห้อง
+                        select a.bene_code  into ret_bene
+                        from pa_ph_ben a ,medical_ben_std b
+                        where a.bene_code = b.bene_code
+                        and b.th_eng ='T'
+                        and pol_no =v_polno and pol_run =v_polrun
+                        and plan=v_plan
+                        and a.bene_code in (
+                            select x.bene_code
+                            from nc_billing_mapp x
+                            where x.cancel is null
+                            and x.bill_code = v_bill
+                        ) and a.pd_flag like is_opd
+                        and descr like TXT_ROOM
+                        and rownum=1;                       
+                    elsif bill_type = '2.3' then    --อาหาร
+                        select a.bene_code  into ret_bene
+                        from pa_ph_ben a ,medical_ben_std b
+                        where a.bene_code = b.bene_code
+                        and b.th_eng ='T'
+                        and pol_no =v_polno and pol_run =v_polrun
+                        and plan=v_plan
+                        and a.bene_code in (
+                            select x.bene_code
+                            from nc_billing_mapp x
+                            where x.cancel is null
+                            and x.bill_code = v_bill
+                        ) and a.pd_flag like is_opd
+                        and descr like TXT_MEAL
+                        and rownum=1;                          
+                    else
+                        select a.bene_code  into ret_bene
+                        from pa_ph_ben a ,medical_ben_std b
+                        where a.bene_code = b.bene_code
+                        and b.th_eng ='T'
+                        and pol_no =v_polno and pol_run =v_polrun
+                        and plan=v_plan
+                        and a.bene_code in (
+                            select x.bene_code
+                            from nc_billing_mapp x
+                            where x.cancel is null
+                            and x.bill_code = v_bill
+                        ) and a.pd_flag like is_opd
+                        --and descr like TXT_MEAL
+                        and rownum=1;                      
+                    end if;
+                end if;
+            
+--                select a.bene_code  into ret_bene
+--                from pa_ph_ben a
+--                where pol_no =v_polno and pol_run =v_polrun
+--                and plan=v_plan
+--                and a.bene_code in (
+--                    select x.bene_code
+--                    from nc_billing_mapp x
+--                    where x.cancel is null
+--                    and x.bill_code = v_bill
+--                )  and pd_flag like is_opd
+--                and rownum=1;
             exception
                 when no_data_found then
                     ret_bene := null;
@@ -494,7 +618,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                  Values
                    (Mas.sts_key ,v_clmno ,Mas.prod_grp , Mas.prod_type , 'NCNATTYPECLM101',
                     'NCNATSUBTYPECLM101', v_maxSeq+1 ,v_sysdate , v_sysdate ,x.mapp_bene,
-                    cnt_prem_seq, x.net_amt , v_user , v_user );
+                    cnt_prem_seq, x.net_amt , v_user , 'PROGRAM' );
             END LOOP; --x
         END LOOP; --Mas
 
@@ -2075,7 +2199,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                  IF v_apprv_id <> i_userid THEN
                      o_rst := 'งานนี้เป็นของรหัส '||v_apprv_id ||' เป็นผู้อนุมัติ !';
                      v_return :=  'N';
-                 ELSE
+                 ELSIF v_apprv_id = i_userid and v_apprv_id is not null THEN
                     o_rst := null;
                     v_return :=  'Y';
                     return v_return;
@@ -2458,7 +2582,8 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
             into sum_pay
             from nc_payment a
             where  clm_no= v_clmno and pay_no = v_maxpayno
-            and trn_seq = (select max(trn_seq) from nc_payment aa where aa.pay_no = a.pay_no)
+            and trn_seq = (select max(trn_seq) from nc_payment aa where aa.pay_no = a.pay_no and aa.type = 'NCNATTYPECLM101')
+            and a.type ='NCNATTYPECLM101'
             ;
         exception
             when no_data_found then
@@ -2611,6 +2736,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         v_sumres    number;
         v_return varchar2(10):='Y';
         v_maxpayno varchar2(20);
+        v_clmsts    varchar2(20);
     BEGIN
         if v_payno is null then
             begin
@@ -2629,6 +2755,14 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         else
             v_maxpayno := v_payno;
         end if;
+        
+        v_clmsts :=  P_PH_CLM.GET_CLAIM_STATUS(v_clmno ,'' ,'C');
+        if v_clmsts in ('PHCLMSTS06', 'PHCLMSTS30' ,'PHCLMSTS31') then
+                o_rst := 'เคลม อยู่ในสถานะ '||p_ph_clm.get_clmsts_descr(v_clmsts)||' ไม่สามารถแก้ไขข้อมูลได้';
+                v_return := 'N';       
+                return v_return; 
+        end if;
+        
         v_return := P_PH_CLM.CAN_SEND_APPROVE(v_clmno ,v_maxpayno ,o_rst) ;
 
         if v_return = 'Y' then -- เช็ค Claim Status เพิ่ม
@@ -2986,6 +3120,72 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                 );
             end loop; --y
 
+            for x in (  -- Reserve
+                select  a.clm_no ,'**ยังไม่จ่าย**' pay_no,a.pol_no ,a.pol_run ,a.fleet_seq ,a.mas_cus_name ,a.cus_name, a.plan
+                ,a.hpt_code ,p_ph_clm.get_hospital_name(a.hpt_code) hpt_descr, p_ph_clm.get_clmpdflag(nr.prem_code) clm_pd_flag
+                ,a.claim_status clm_sts ,p_ph_clm.get_clmsts_descr(a.claim_status) clm_sts_descr
+                , nr.prem_code bene_code ,p_ph_clm.get_bene_descr(nr.prem_code ,'T') bene_descr
+                , a.dis_code ,p_ph_clm.get_icd10_descr(a.dis_code,'T') dis_code_descr
+                ,a.loss_date ,a.tr_date_fr ,a.tr_date_to ,a.tot_tr_day ipd_day ,a.add_tr_day add_day  , '' remark
+                ,nr.res_amt  ,'' pay_amt ,'' rec_amt
+                from nc_mas a ,nc_reserved nr 
+                where nr.clm_no = a.clm_no
+                and a.pol_no =v_polno and a.pol_run = v_polrun and a.fleet_seq = v_fleet
+                and a.claim_status not in ('PHCLMSTS03','PHCLMSTS06')
+                and nr.trn_seq in (select max(nrr.trn_seq) from nc_reserved nrr where nrr.clm_no = nr.clm_no)
+                and nr.clm_no like nvl(v_clmno,'%')
+                order by a.clm_no ,nr.prem_code
+            )loop
+                cnt_r1 := cnt_r1+1;
+                INSERT into TMP_PH_HISTORY(
+                SID ,clm_no ,pay_no ,pol_no ,pol_run ,fleet_seq ,mas_cus_name ,cus_name ,plan
+                ,hpt_code ,hpt_descr ,clm_pd_flag ,clm_sts ,clm_sts_descr
+                ,bene_code ,bene_descr,dis_code ,dis_code_descr
+                ,loss_date ,tr_date_fr ,tr_date_to ,ipd_day ,add_day ,remark
+                ,res_amt ,pay_amt ,rec_amt
+                )values(
+                mySID ,x.clm_no ,x.pay_no ,x.pol_no ,x.pol_run ,x.fleet_seq ,x.mas_cus_name ,x.cus_name ,x.plan
+                ,x.hpt_code ,x.hpt_descr ,x.clm_pd_flag ,x.clm_sts ,x.clm_sts_descr
+                ,x.bene_code ,x.bene_descr,x.dis_code ,x.dis_code_descr
+                ,x.loss_date ,x.tr_date_fr ,x.tr_date_to ,x.ipd_day ,x.add_day ,x.remark
+                ,x.res_amt ,x.pay_amt ,x.rec_amt
+                );
+            end loop; --x
+                        
+            for y in (  --Reserve
+                SELECT cr.clm_no ,'**ยังไม่จ่าย**' pay_no ,c.pol_no ,c.pol_run ,cr.fleet_seq ,c.mas_cus_enq mas_cus_name ,cr.title||' '||cr.name cus_name , cr.plan
+                ,cr.hpt_code  ,p_ph_clm.get_hospital_name(cr.hpt_code) hpt_descr , cr.clm_pd_flag
+                ,c.clm_sts ,p_ph_clm.get_clmsts_descr(c.clm_sts) clm_sts_descr
+                , cr.bene_code ,p_ph_clm.get_bene_descr(cr.bene_code ,'T') bene_descr
+                , cr.dis_code  ,p_ph_clm.get_icd10_descr(cr.dis_code,'T') dis_code_descr
+                ,cr.loss_date ,cr.loss_date tr_date_fr ,'' tr_date_to ,cr.ipd_day ipd_day ,'' add_day , '' remark
+                ,cr.res_amt ,'' pay_amt ,'' rec_amt
+                FROM mis_clm_mas c ,clm_medical_res cr 
+                WHERE c.clm_no = cr.clm_no 
+                AND cr.fleet_seq = v_fleet
+                AND pol_no = v_polno AND pol_run = v_polrun
+                AND c.clm_sts not in ('2','6')
+                AND state_seq = (SELECT MAX (state_seq) FROM clm_medical_res b WHERE b.clm_no = cr.clm_no AND b.state_no = cr.state_no)
+                AND cr.clm_no like nvl(v_clmno,'%')
+                and c.clm_no not in (select d.clm_no from nc_mas d where d.clm_no = c.clm_no)
+                order by cr.clm_no ,state_seq ,cr.bene_code
+            )loop
+                cnt_r2 := cnt_r2+1;
+                INSERT into TMP_PH_HISTORY(
+                SID ,clm_no ,pay_no ,pol_no ,pol_run ,fleet_seq ,mas_cus_name ,cus_name ,plan
+                ,hpt_code ,hpt_descr ,clm_pd_flag ,clm_sts ,clm_sts_descr
+                ,bene_code ,bene_descr,dis_code ,dis_code_descr
+                ,loss_date ,tr_date_fr ,tr_date_to ,ipd_day ,add_day ,remark
+                ,res_amt ,pay_amt ,rec_amt
+                )values(
+                mySID ,y.clm_no ,y.pay_no ,y.pol_no ,y.pol_run ,y.fleet_seq ,y.mas_cus_name ,y.cus_name ,y.plan
+                ,y.hpt_code ,y.hpt_descr ,y.clm_pd_flag ,y.clm_sts ,y.clm_sts_descr
+                ,y.bene_code ,y.bene_descr,y.dis_code ,y.dis_code_descr
+                ,y.loss_date ,y.tr_date_fr ,y.tr_date_to ,y.ipd_day ,y.add_day ,y.remark
+                ,y.res_amt ,y.pay_amt ,y.rec_amt
+                );
+            end loop; --y            
+
             if cnt_r1 + cnt_r2 = 0 then --not found claim
                 v_rst := 'ไม่พบประวัติเคลม';
             end if;
@@ -2999,7 +3199,8 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                 ,loss_date ,tr_date_fr ,tr_date_to ,ipd_day ,add_day ,remark
                 ,res_amt ,pay_amt ,rec_amt
                 FROM TMP_PH_HISTORY
-                WHERE SID = mySID;
+                WHERE SID = mySID
+                order by p_std_clmno.split_clm_num(clm_no) ,p_std_clmno.split_clm_run(clm_no);
 
             delete     TMP_PH_HISTORY where SID = mySID;
             commit;
@@ -3091,6 +3292,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         v_sysdate   date:=sysdate;
         vPayNo  VARCHAR2(20);
         v_rst   VARCHAR2(250);
+        V_AMT   number:=0;
     BEGIN
         begin
             select max(pay_no) into vPayNo
@@ -3104,16 +3306,39 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         end;
 
         Insert into ALLCLM.NC_PAYMENT
-           (CLM_NO, PAY_NO, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, PROD_GRP, PROD_TYPE, STS_KEY, TYPE, SUB_TYPE, PREM_CODE, PREM_SEQ, STATUS, TOT_PAY_AMT
+           (CLM_NO, PAY_NO, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, SUBSYSID, CURR_CODE, CURR_RATE, STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, PROD_GRP, PROD_TYPE, STS_KEY, TYPE, SUB_TYPE, PREM_CODE, PREM_SEQ, STATUS, TOT_PAY_AMT
            ,CLM_SEQ ,OFFSET_FLAG ,DAYS ,RECOV_AMT ,DAY_ADD ,REMARK)
            (
-            select clm_no, pay_no, trn_seq+1, pay_sts, 0 pay_amt, 0 trn_amt, curr_code, curr_rate, sts_date,v_sysdate, clm_men, amd_user, prod_grp, prod_type, sts_key, type, sub_type, prem_code, prem_seq, status, tot_pay_amt
+            select clm_no, pay_no, trn_seq+1, pay_sts, V_AMT pay_amt, V_AMT trn_amt, subsysid, curr_code, curr_rate, sts_date,v_sysdate, clm_men, v_user, prod_grp, prod_type, sts_key, type, sub_type, prem_code, prem_seq, status, tot_pay_amt
             ,clm_seq ,offset_flag ,days ,recov_amt ,day_add ,remark
             from nc_payment a
-            where  a.trn_seq in (select max(aa.trn_seq) from nc_payment aa where  aa.clm_no =a.clm_no and aa.pay_no = a.pay_no)
+            where  a.trn_seq in (select max(aa.trn_seq) from nc_payment aa where  aa.clm_no =a.clm_no and aa.pay_no = a.pay_no and type<>'01')
             and a.pay_no = vPayNo
+             and type<>'01'
             );
 
+        Insert into ALLCLM.NC_PAYMENT
+           (CLM_NO, PAY_NO, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, SUBSYSID, CURR_CODE, CURR_RATE, STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, PROD_GRP, PROD_TYPE, STS_KEY, TYPE, SUB_TYPE, PREM_CODE, PREM_SEQ, STATUS, TOT_PAY_AMT
+           ,CLM_SEQ ,OFFSET_FLAG ,DAYS ,RECOV_AMT ,DAY_ADD ,REMARK)
+           (
+            select clm_no, pay_no, trn_seq+1, 'NCPAYSTS06' pay_sts, V_AMT pay_amt, V_AMT trn_amt, subsysid, curr_code, curr_rate, sts_date,v_sysdate, clm_men, v_user, prod_grp, prod_type, sts_key, type, sub_type, prem_code, prem_seq, status, tot_pay_amt
+            ,clm_seq ,offset_flag ,days ,recov_amt ,day_add ,remark
+            from nc_payment a
+            where  a.trn_seq in (select max(aa.trn_seq) from nc_payment aa where  aa.clm_no =a.clm_no and aa.pay_no = a.pay_no and type='01')
+            and a.pay_no = vPayNo
+             and type='01'
+            );
+            
+        Insert into ALLCLM.NC_PAYMENT_APPRV
+        (CLM_NO, PAY_NO, CLM_SEQ, TRN_SEQ, PAY_STS, PAY_AMT, TRN_AMT, CURR_CODE, CURR_RATE, STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, PROD_GRP, PROD_TYPE
+        , SUBSYSID, STS_KEY, TYPE, SUB_TYPE, REMARK)
+        (
+        select CLM_NO, PAY_NO, CLM_SEQ, TRN_SEQ+1, 'PHSTSAPPRV31' PAY_STS, V_AMT PAY_AMT, V_AMT TRN_AMT, CURR_CODE, CURR_RATE, STS_DATE, v_sysdate, CLM_MEN, v_user, PROD_GRP, PROD_TYPE
+        , SUBSYSID, STS_KEY, TYPE, SUB_TYPE, 'Cancel by Cancel/Cwp'
+        from NC_PAYMENT_APPRV a
+        where clm_no = v_clmno and pay_no = vPayNo
+        and trn_seq in (select max(aa.trn_seq) from nc_payment_apprv aa where aa.pay_no = a.pay_no)
+        );
 
         Insert into ALLCLM.NC_PAYMENT_INFO
            (CLM_NO, PAY_NO, TYPE, PROD_GRP, PROD_TYPE, TRN_SEQ, STS_DATE, AMD_DATE, CLM_USER, STS_KEY
@@ -3132,9 +3357,9 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
             ,SEND_ADDR1 ,SEND_ADDR2 ,SALVAGE_FLAG ,EMAIL ,SMS ,APPOINT_DATE ,CURR_RATE ,AGENT_SMS ,AGENT_EMAIL ,SPECIAL_FLAG ,SPECIAL_REMARK ,GRP_PAYEE_FLAG ,URGENT_FLAG
             ,RECOVERY_FLAG ,RECOVERY_AMT ,PAID_TO)
            (
-            select clm_no, pay_no, prod_grp, prod_type, trn_seq +1, sts_date, v_sysdate, payee_code, payee_name, payee_type, payee_seq, 0 payee_amt, settle, acc_no, acc_name, bank_code, bank_br_code, br_name, send_title, paid_sts, deduct_flag, type, sent_type, salvage_amt, deduct_amt, curr_code
+            select clm_no, pay_no, prod_grp, prod_type, trn_seq +1, sts_date, v_sysdate, payee_code, payee_name, payee_type, payee_seq, V_AMT payee_amt, settle, acc_no, acc_name, bank_code, bank_br_code, br_name, send_title, paid_sts, deduct_flag, type, sent_type, salvage_amt, deduct_amt, curr_code
             ,send_addr1 ,send_addr2 ,salvage_flag ,email ,sms ,appoint_date ,curr_rate ,agent_sms ,agent_email ,special_flag ,special_remark ,grp_payee_flag ,urgent_flag
-            ,recovery_flag ,0 recovery_amt ,paid_to
+            ,recovery_flag ,V_AMT recovery_amt ,paid_to
             from nc_payee a
             where  a.trn_seq in (select max(aa.trn_seq) from nc_payee aa where  aa.clm_no =a.clm_no and aa.pay_no = a.pay_no)
             and a.pay_no = vPayNo
@@ -3146,7 +3371,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
            ,LETT_NO ,LETT_PRT ,LETT_TYPE ,CASHCALL ,CANCEL ,PRINT_TYPE ,PRINT_USER ,PRINT_DATE
            )
            (
-           select sts_key, clm_no, pay_no, prod_grp, prod_type, type, ri_code, ri_br_code, ri_type, ri_lf_flag, ri_sub_type, ri_share, trn_seq +1, ri_sts_date,v_sysdate,0 ri_pay_amt,0 ri_trn_amt, status, sub_type
+           select sts_key, clm_no, pay_no, prod_grp, prod_type, type, ri_code, ri_br_code, ri_type, ri_lf_flag, ri_sub_type, ri_share, trn_seq +1, ri_sts_date,v_sysdate,V_AMT ri_pay_amt,V_AMT ri_trn_amt, status, sub_type
            ,lett_no ,lett_prt ,lett_type ,cashcall ,cancel ,print_type ,print_user ,print_date
             from nc_ri_paid a
             where  a.trn_seq in (select max(aa.trn_seq) from nc_ri_paid aa where  aa.clm_no =a.clm_no and aa.pay_no = a.pay_no)
