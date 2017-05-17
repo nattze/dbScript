@@ -1,7 +1,7 @@
-CREATE OR REPLACE PACKAGE BODY P_PH_CONVERT AS
+ÔªøCREATE OR REPLACE PACKAGE BODY P_PH_CONVERT AS
 /******************************************************************************
  NAME: ALLCLM.P_PH_CONVERT
-   PURPOSE:      ”À√—∫°“√ Convert to old table(BKIAPP) ·≈–  Ë«π°“√ post Data
+   PURPOSE:     ‡∏™‡∏≥‡∏´‡∏£‡∏±‡∏ö‡∏Å‡∏≤‡∏£ Convert to old table(BKIAPP) ‡πÅ‡∏•‡∏∞ ‡∏™‡πà‡∏ß‡∏ô‡∏Å‡∏≤‡∏£ post Data
    
 
    REVISIONS:
@@ -69,7 +69,7 @@ BEGIN
  end if; 
  
  if c_rec.clm_user is null then
- P_RST := c_rec.clm_no||': ‰¡Ëæ∫ ‡®È“¢Õß‡√◊ËÕß' ; 
+ P_RST := c_rec.clm_no||': ‡πÑ‡∏°‡πà‡∏û‡∏ö ‡πÄ‡∏à‡πâ‡∏≤‡∏Ç‡∏≠‡∏á‡πÄ‡∏£‡∏∑‡πà‡∏≠‡∏á' ; 
  return false;  
  end if;
  
@@ -609,13 +609,13 @@ BEGIN
 --    END; 
     
     IF v_lastPaySTS <> 'PHSTSAPPRV03' THEN
-        v_rst := '‡≈¢∑’Ë®Ë“¬π’È‰¡Ë„™Ë ∂“π– Approve!!'; 
+        v_rst := '‡πÄ‡∏•‡∏Ç‡∏ó‡∏µ‡πà‡∏à‡πà‡∏≤‡∏¢‡∏ô‡∏µ‡πâ‡πÑ‡∏°‡πà‡πÉ‡∏ä‡πà‡∏™‡∏ñ‡∏≤‡∏ô‡∏∞ Approve!!'; 
         dbms_output.put_line('in validate Last ApproveStatus: '||v_rst); 
         return false;            
     END IF;
      
 --     if v_chkApproved is not null then
---        v_rst := '‡≈¢∑’Ë®Ë“¬π’È¡’°“√Õπÿ¡—µ‘‰ª·≈È«!!'; 
+--        v_rst := '‡πÄ‡∏•‡∏Ç‡∏ó‡∏µ‡πà‡∏à‡πà‡∏≤‡∏¢‡∏ô‡∏µ‡πâ‡∏°‡∏µ‡∏Å‡∏≤‡∏£‡∏≠‡∏ô‡∏∏‡∏°‡∏±‡∏ï‡∏¥‡πÑ‡∏õ‡πÅ‡∏•‡πâ‡∏ß!!'; 
 --        dbms_output.put_line('in validate Last ApproveStatus: '||v_rst); 
 --        return false;        
 --     end if;
@@ -906,6 +906,7 @@ FUNCTION CONV_PH_OPEN(v_clmno in varchar2,v_payno in varchar2  ,v_sts in varchar
     v_state_no  varchar2(20);
     v_max_stateseq   number(5):=0;
     v_max_criseq   number(5):=0;
+    v_hpt_code  varchar2(20);
     o_inc  varchar2(2);
     o_recpt   varchar2(2);
     o_inv  varchar2(2);
@@ -979,7 +980,7 @@ BEGIN
                '' AGENT_SEQ, END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE, '01' CLM_BR_CODE,
                trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  ,close_date , '' cwp_remark ,'' fax_clm ,'' invoice ,
                '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,FLEET_SEQ ,CLM_TYPE ,
-               OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS
+               OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS ,OTHER_HPT
            from nc_mas
            where clm_no = v_clmno   
         )loop
@@ -1108,11 +1109,17 @@ BEGIN
                 if v_state_no is null then        
                     v_state_no := p_ph_convert.GEN_STATENO('');
                 end if;
-
+                
+                if cmas.hpt_code is null and cmas.other_hpt is not null then
+                    v_hpt_code := '3880';
+                else
+                    v_hpt_code := P_PH_CONVERT.CONV_HOSPITAL(cmas.hpt_code);
+                end if;
+                
                 FOR res in (
                     select CLM_NO,'' STATE_NO,'' STATE_SEQ, '' FLEET_SEQ,'' SUB_SEQ,'' PLAN ,'' DIS_CODE,PREM_CODE BENE_CODE, '' RECPT_SEQ
                     ,'' STATE_DATE,'' CORR_DATE,'' TITLE,'' NAME,'' FR_DATE,'' TO_DATE,'' HPT_CODE, RES_AMT,'' CLOSE_DATE,'' LOSS_DATE,'' FAM_STS,'N' PAID_STS
-                    ,'' CONTACT,'' REMARK,PD_FLAG , CLM_PD_FLAG,1 SEQ,'' FAM_SEQ,'' DEPT_BKI,'' ID_NO
+                    ,'' CONTACT,'' REMARK,nvl(pd_flag,clm_pd_flag) PD_FLAG , CLM_PD_FLAG,1 SEQ,'' FAM_SEQ,'' DEPT_BKI,'' ID_NO
                     from nc_reserved a ,medical_ben_std b
                     where clm_no = v_clmno
                     and a.trn_seq in (select max(aa.trn_seq) from nc_reserved aa where aa.clm_no = a.clm_no)
@@ -1132,7 +1139,7 @@ BEGIN
                          Values
                            (
                            res.clm_no, v_state_no, v_max_stateseq, fleet.fleet_seq, fleet.sub_seq, fleet.plan, res.pd_flag, Cmas.dis_code, res.bene_code
-                           , Cmas.recpt_seq, trunc(vsysdate), vsysdate, fleet.title, fleet.name, fleet.fr_date, fleet.to_date, Cmas.hpt_code, res.res_amt
+                           , Cmas.recpt_seq, trunc(vsysdate), vsysdate, fleet.title, fleet.name, fleet.fr_date, fleet.to_date, v_hpt_code, res.res_amt
                            , res.close_date, Cmas.loss_date, fleet.fam_sts, res.paid_sts, res.contact, res.remark, res.clm_pd_flag, res.seq, fleet.fam_seq
                            , fleet.dept_bki, fleet.id_no
                            );                      
@@ -1154,7 +1161,7 @@ BEGIN
                '' AGENT_SEQ, END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE, '01' CLM_BR_CODE,
                trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  ,close_date , '' cwp_remark ,'' fax_clm ,'' invoice ,
                '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user  ,clm_type ,
-               OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS
+               OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS  ,OTHER_HPT
            from nc_mas
            where clm_no = v_clmno   
         )loop
@@ -1188,10 +1195,16 @@ BEGIN
                     v_state_no := p_ph_convert.GEN_STATENO('');
                 end if;
 
+                if cmas.hpt_code is null and cmas.other_hpt is not null then
+                    v_hpt_code := '3880';
+                else
+                    v_hpt_code := P_PH_CONVERT.CONV_HOSPITAL(cmas.hpt_code);
+                end if;
+                
                 FOR res in (
                     select CLM_NO,'' STATE_NO,'' STATE_SEQ, '' FLEET_SEQ,'' SUB_SEQ,'' PLAN ,'' DIS_CODE,PREM_CODE BENE_CODE, '' RECPT_SEQ
                     ,'' STATE_DATE,'' CORR_DATE,'' TITLE,'' NAME,'' FR_DATE,'' TO_DATE,'' HPT_CODE, RES_AMT,'' CLOSE_DATE,'' LOSS_DATE,'' FAM_STS,'N' PAID_STS
-                    ,'' CONTACT,'' REMARK,PD_FLAG , CLM_PD_FLAG,1 SEQ,'' FAM_SEQ,'' DEPT_BKI,'' ID_NO
+                    ,'' CONTACT,'' REMARK,nvl(pd_flag,clm_pd_flag) PD_FLAG , CLM_PD_FLAG,1 SEQ,'' FAM_SEQ,'' DEPT_BKI,'' ID_NO
                     from nc_reserved a ,medical_ben_std b
                     where clm_no = v_clmno
                     and a.trn_seq in (select max(aa.trn_seq) from nc_reserved aa where aa.clm_no = a.clm_no)
@@ -1211,7 +1224,7 @@ BEGIN
                          Values
                            (
                            res.clm_no, v_state_no, v_max_stateseq, fleet.fleet_seq, fleet.sub_seq, fleet.plan, res.pd_flag, Cmas.dis_code, res.bene_code
-                           , Cmas.recpt_seq, trunc(vsysdate), vsysdate, fleet.title, fleet.name, fleet.fr_date, fleet.to_date, Cmas.hpt_code, res.res_amt
+                           , Cmas.recpt_seq, trunc(vsysdate), vsysdate, fleet.title, fleet.name, fleet.fr_date, fleet.to_date, v_hpt_code, res.res_amt
                            , res.close_date, Cmas.loss_date, fleet.fam_sts, res.paid_sts, res.contact, res.remark, res.clm_pd_flag, res.seq, fleet.fam_seq
                            , fleet.dept_bki, fleet.id_no
                            );                      
@@ -1248,6 +1261,7 @@ FUNCTION CONV_PH_DRAFT(v_clmno in varchar2,v_payno in varchar2  ,v_sts in varcha
     v_clmpdflag varchar2(5);
     v_lossdate  date;
     v_hpt_code varchar2(20);
+    v_other_hpt varchar2(250);
     v_days  number;
     cnt_paid    number:=0;
     v_gmpaid_seq number:=0;
@@ -1260,6 +1274,8 @@ FUNCTION CONV_PH_DRAFT(v_clmno in varchar2,v_payno in varchar2  ,v_sts in varcha
     o_ost  varchar2(2);
     o_dead   varchar2(2);     
     v_payeetype varchar2(5);
+    v_max_amt   number;
+    v_agr_amt   number;
 BEGIN
     begin -- check mis_clm_mas
         select clm_no into v_dummy_clm
@@ -1328,7 +1344,7 @@ BEGIN
     end;  -- max v_cripaid_seq    
             
     begin -- get policy
-        select pol_no ,pol_run ,fleet_seq ,dis_code ,loss_date ,hpt_code ,tot_tr_day  into v_polno ,v_polrun ,v_fleet ,v_discode ,v_lossdate ,v_hpt_code ,v_days
+        select pol_no ,pol_run ,fleet_seq ,dis_code ,loss_date ,hpt_code ,tot_tr_day ,other_hpt  into v_polno ,v_polrun ,v_fleet ,v_discode ,v_lossdate ,v_hpt_code ,v_days ,v_other_hpt
         from nc_mas 
         where clm_no = v_clmno;
     exception
@@ -1337,7 +1353,13 @@ BEGIN
     end;  -- get policy
           
     dbms_output.put_line ('v_dummy_clm:'||v_dummy_clm);
-    
+
+    if v_hpt_code is null and v_other_hpt is not null then
+        v_hpt_code := '3880';
+    else
+        v_hpt_code := P_PH_CONVERT.CONV_HOSPITAL(v_hpt_code);
+    end if;
+                    
     delete CLM_MEDICAL_PAID where clm_no = v_clmno; -- Clear Record
     
     FOR paid IN (
@@ -1358,7 +1380,7 @@ BEGIN
             and rownum=1                  
         )loop
             begin -- get policy
-                select pd_flag ,clm_pd_flag into v_pdflag ,v_clmpdflag
+                select nvl(pd_flag,clm_pd_flag) pd_flag ,clm_pd_flag into v_pdflag ,v_clmpdflag
                 from medical_ben_std  b
                 where bene_code = paid.bene_code and b.th_eng='T' ;
             exception
@@ -1368,10 +1390,23 @@ BEGIN
                     v_pdflag := null ;v_clmpdflag := null;  
             end;  -- get policy
             
+            if p_ph_clm.IS_BKIPOLICY(v_polno ,v_polrun) then
+                v_max_amt := 0;
+                v_agr_amt := paid.pay_amt;
+            else
+                if v_clmpdflag in ('O','S') then
+                    v_max_amt := paid.pay_amt;
+                    v_agr_amt := 0;                         
+                else
+                    v_max_amt := 0;
+                    v_agr_amt := paid.pay_amt;                 
+                end if;           
+            end if;
+            
             Insert into MISC.CLM_MEDICAL_PAID
-               (POL_NO, CLM_NO, FLEET_SEQ, SUB_SEQ, PLAN, PD_FLAG, DIS_CODE, BENE_CODE, MAX_AMT_CLM, CLM_PD_FLAG, POL_RUN, FAM_SEQ)
+               (POL_NO, CLM_NO, FLEET_SEQ, SUB_SEQ, PLAN, PD_FLAG, DIS_CODE, BENE_CODE, MAX_AMT_CLM ,MAX_AGR_AMT , CLM_PD_FLAG, POL_RUN, FAM_SEQ ,DEPT_BKI ,ID_NO)
              Values
-               (v_polno ,v_clmno ,v_fleet ,F.sub_seq ,F.plan ,v_pdflag ,v_discode ,paid.bene_code ,paid.pay_amt ,v_clmpdflag ,v_polrun ,F.Fam_seq);
+               (v_polno ,v_clmno ,v_fleet ,F.sub_seq ,F.plan ,v_pdflag ,v_discode ,paid.bene_code ,v_max_amt ,v_agr_amt ,v_clmpdflag ,v_polrun ,F.Fam_seq ,F.dept_bki ,F.id_no);
                
             Insert into MISC.CLM_GM_PAID
            (CLM_NO, PAY_NO, CORR_SEQ, FLEET_SEQ, SUB_SEQ, PLAN, PD_FLAG, DIS_CODE, BENE_CODE, LOSS_DATE, DATE_PAID, CORR_DATE
@@ -1844,17 +1879,39 @@ BEGIN
     return v_ret;                      
 END CONV_PAYEETYPE;   
 
+FUNCTION CONV_HOSPITAL(v_code in varchar2) RETURN VARCHAR2 IS  
+
+    v_ret varchar2(250);
+BEGIN
+    IF v_code is null THEN return null ; END IF;
+    
+    BEGIN
+        select gm_code into v_ret
+        from med_hospital_list
+        where hosp_id=v_code and rownum=1 ;
+        
+        if v_ret is null then v_ret := v_code; end if;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            v_ret := v_code;
+        WHEN OTHERS THEN
+            v_ret := v_code;
+    END;    
+    
+    return v_ret;                      
+END CONV_HOSPITAL;   
+
 PROCEDURE CONV_CLMTYPE(v_code in varchar2, o_inc out varchar2 ,o_recpt out varchar2 
     ,o_inv out varchar2 ,o_ost out varchar2 ,o_dead out varchar2) IS  
 
     v_ret varchar2(250);
 BEGIN
 /*
-PHCLMTYPE01    ª√–‡¿∑‡§≈¡ß“π√–∫∫ PH    Reimburse
-PHCLMTYPE02    ª√–‡¿∑‡§≈¡ß“π√–∫∫ PH    Credit
-PHCLMTYPE03    ª√–‡¿∑‡§≈¡ß“π√–∫∫ PH    Outsource
-PHCLMTYPE04    ª√–‡¿∑‡§≈¡ß“π√–∫∫ PH    Cancer
-PHCLMTYPE05    ª√–‡¿∑‡§≈¡ß“π√–∫∫ PH    Death
+PHCLMTYPE01    ‡∏õ‡∏£‡∏∞‡πÄ‡∏†‡∏ó‡πÄ‡∏Ñ‡∏•‡∏°‡∏á‡∏≤‡∏ô‡∏£‡∏∞‡∏ö‡∏ö PH    Reimburse
+PHCLMTYPE02    ‡∏õ‡∏£‡∏∞‡πÄ‡∏†‡∏ó‡πÄ‡∏Ñ‡∏•‡∏°‡∏á‡∏≤‡∏ô‡∏£‡∏∞‡∏ö‡∏ö PH    Credit
+PHCLMTYPE03    ‡∏õ‡∏£‡∏∞‡πÄ‡∏†‡∏ó‡πÄ‡∏Ñ‡∏•‡∏°‡∏á‡∏≤‡∏ô‡∏£‡∏∞‡∏ö‡∏ö PH    Outsource
+PHCLMTYPE04    ‡∏õ‡∏£‡∏∞‡πÄ‡∏†‡∏ó‡πÄ‡∏Ñ‡∏•‡∏°‡∏á‡∏≤‡∏ô‡∏£‡∏∞‡∏ö‡∏ö PH    Cancer
+PHCLMTYPE05    ‡∏õ‡∏£‡∏∞‡πÄ‡∏†‡∏ó‡πÄ‡∏Ñ‡∏•‡∏°‡∏á‡∏≤‡∏ô‡∏£‡∏∞‡∏ö‡∏ö PH    Death
 */
     IF v_code is null THEN 
         o_inc :=null ; o_recpt :=null ; o_inv :=null ; o_ost :=null ; o_dead :=null ;
@@ -1996,7 +2053,7 @@ BEGIN
 --    END; 
 --    
 --    if v_key > 0 then
---         P_RST := vClmNo||': ‡§¬ Convert ‡¢È“ CLNMC924 ·≈È«  “¡“√∂µ√«® Õ∫∑’Ë CLNMC924 ‰¥È‡≈¬' ; 
+--         P_RST := vClmNo||': ‡πÄ‡∏Ñ‡∏¢ Convert ‡πÄ‡∏Ç‡πâ‡∏≤ CLNMC924 ‡πÅ‡∏•‡πâ‡∏ß ‡∏™‡∏≤‡∏°‡∏≤‡∏£‡∏ñ‡∏ï‡∏£‡∏ß‡∏à‡∏™‡∏≠‡∏ö‡∏ó‡∏µ‡πà CLNMC924 ‡πÑ‡∏î‡πâ‡πÄ‡∏•‡∏¢' ; 
 --        v_chk := 'N';
 --        return v_chk;     
 --    end if;       
@@ -2016,11 +2073,11 @@ BEGIN
     END; 
 
     if v_apprvsts in ('NCPAYSTS02' ,'NCPAYSTS07' ) then
-         P_RST := vClmNo||': Õ¬ŸË√–À«Ë“ß√ÕÕπÿ¡—µ‘·≈È« ‰¡Ë “¡“√∂ Convert ‰¥È' ; 
+         P_RST := vClmNo||': ‡∏≠‡∏¢‡∏π‡πà‡∏£‡∏∞‡∏´‡∏ß‡πà‡∏≤‡∏á‡∏£‡∏≠‡∏≠‡∏ô‡∏∏‡∏°‡∏±‡∏ï‡∏¥‡πÅ‡∏•‡πâ‡∏ß ‡πÑ‡∏°‡πà‡∏™‡∏≤‡∏°‡∏≤‡∏£‡∏ñ Convert ‡πÑ‡∏î‡πâ' ; 
         v_chk := 'N';
         return v_chk;     
     elsif v_apprvsts in ('NCPAYSTS03' ,'NCPAYSTS11' ,'NCPAYSTS12' ) then
-         P_RST := vClmNo||': Õπÿ¡—µ‘·≈È« ‰¡Ë “¡“√∂ Convert ‰¥È' ; 
+         P_RST := vClmNo||': ‡∏≠‡∏ô‡∏∏‡∏°‡∏±‡∏ï‡∏¥‡πÅ‡∏•‡πâ‡∏ß ‡πÑ‡∏°‡πà‡∏™‡∏≤‡∏°‡∏≤‡∏£‡∏ñ Convert ‡πÑ‡∏î‡πâ' ; 
         v_chk := 'N';
         return v_chk;        
     end if;       

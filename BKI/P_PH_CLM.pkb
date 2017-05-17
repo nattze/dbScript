@@ -2757,8 +2757,14 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         end if;
         
         v_clmsts :=  P_PH_CLM.GET_CLAIM_STATUS(v_clmno ,'' ,'C');
-        if v_clmsts in ('PHCLMSTS06', 'PHCLMSTS30' ,'PHCLMSTS31') then
-                o_rst := 'เคลม อยู่ในสถานะ '||p_ph_clm.get_clmsts_descr(v_clmsts)||' ไม่สามารถแก้ไขข้อมูลได้';
+        if v_clmsts in ('PHCLMSTS06', 'PHCLMSTS30' ,'PHCLMSTS31' ,'PHCLMSTS01') then
+                o_rst := 'เคลม อยู่ในสถานะ '||p_ph_clm.get_clmsts_descr(v_clmsts)||' ไม่สามารถบันทึกข้อมูล Payment ได้';
+                if v_clmsts = 'PHCLMSTS01' then
+                    o_rst := o_rst|| ' ,กรุณาตั้ง Reserved ก่อน';
+                elsif v_clmsts in ('PHCLMSTS30' ,'PHCLMSTS31' ) then
+                    o_rst := o_rst|| ' ,กรุณาทำ ReOpen ก่อน';
+                end if;
+                
                 v_return := 'N';       
                 return v_return; 
         end if;
@@ -3062,7 +3068,8 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                 and nr.clm_no = np.clm_no(+)
                 and a.pol_no =v_polno and a.pol_run = v_polrun and a.fleet_seq = v_fleet
                 and nr.trn_seq in (select max(nrr.trn_seq) from nc_reserved nrr where nrr.clm_no = nr.clm_no)
-                and np.trn_seq in (select max(npp.trn_seq) from nc_payment npp where npp.clm_no = np.clm_no and npp.type = 'NCNATTYPECLM101')
+                and np.pay_no = (select max(npp.pay_no) from nc_payment npp where npp.clm_no = np.clm_no)
+                and np.trn_seq in (select max(npp.trn_seq) from nc_payment npp where npp.clm_no = np.clm_no and npp.pay_no = np.pay_no and npp.type = 'NCNATTYPECLM101')
                 and np.type = 'NCNATTYPECLM101'
                 and nr.prem_code = np.prem_code
                 and nr.clm_no like nvl(v_clmno,'%')
