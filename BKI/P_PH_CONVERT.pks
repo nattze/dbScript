@@ -35,7 +35,10 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_PH_CONVERT AS
 
     FUNCTION CONV_PH_REOPEN(v_clmno in varchar2,v_payno in varchar2 ,v_sts in varchar2
     , v_err_message out varchar2) RETURN BOOLEAN ;
-            
+
+    FUNCTION CONV_PH_RES_REV(v_clmno in varchar2,v_payno in varchar2 ,v_sts in varchar2
+    , v_err_message out varchar2) RETURN BOOLEAN ;
+                
     PROCEDURE CONV_TABLE(v_clmno in varchar2,v_payno in varchar2 ,v_prodtype in varchar2
     , v_err_message out varchar2) ;
     
@@ -46,7 +49,9 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_PH_CONVERT AS
     FUNCTION CONV_PAYEETYPE(v_code in varchar2) RETURN VARCHAR2;
     
     FUNCTION CONV_HOSPITAL(v_code in varchar2) RETURN VARCHAR2;
-    
+
+    FUNCTION CONV_HOSPITAL_NEW(v_code in varchar2) RETURN VARCHAR2;
+        
     PROCEDURE CONV_CLMTYPE(v_code in varchar2, o_inc out varchar2 ,o_recpt out varchar2 
     ,o_inv out varchar2 ,o_ost out varchar2 ,o_dead out varchar2);
 

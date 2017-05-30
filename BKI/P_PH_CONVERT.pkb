@@ -980,7 +980,7 @@ BEGIN
                '' AGENT_SEQ, END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE, '01' CLM_BR_CODE,
                trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  ,close_date , '' cwp_remark ,'' fax_clm ,'' invoice ,
                '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,FLEET_SEQ ,CLM_TYPE ,
-               OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS ,OTHER_HPT
+               OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS ,OTHER_HPT ,LOSS_DETAIL
            from nc_mas
            where clm_no = v_clmno   
         )loop
@@ -1083,7 +1083,7 @@ BEGIN
                v_AGENT_SEQ, Cmas.END_SEQ, Cmas.POL_RUN, v_CHANNEL, Cmas.PROD_GRP, Cmas.PROD_TYPE, Cmas.CLM_BR_CODE,
                Cmas.FAX_CLM_DATE, Cmas.IPD_FLAG  ,Cmas.close_date,Cmas.cwp_remark 
                ,o_inc ,o_inv ,o_recpt ,o_ost ,o_dead , Cmas.CLM_TYPE ,
-               Cmas.RISK_DESCR ,Cmas.REMARK ,Cmas.OUT_CLM_NO ,Cmas.OUT_OPEN_STS ,Cmas.OUT_PAID_STS ,Cmas.OUT_APPROVE_STS                  
+               Cmas.LOSS_DETAIL ,Cmas.REMARK ,Cmas.OUT_CLM_NO ,Cmas.OUT_OPEN_STS ,Cmas.OUT_PAID_STS ,Cmas.OUT_APPROVE_STS                  
             );     
             
             update nc_mas
@@ -1127,7 +1127,7 @@ BEGIN
                     and b.th_eng='T'                
                 )LOOP
                     for fleet in (
-                        select  FLEET_SEQ, SUB_SEQ, PLAN, TITLE, NAME, FR_DATE, TO_DATE
+                        select  FLEET_SEQ, NVL(SUB_SEQ,0) SUB_SEQ, PLAN, TITLE, NAME, FR_DATE, TO_DATE
                         , FAM_STS, FAM_SEQ, DEPT_BKI, ID_NO
                         from pa_medical_det
                         where pol_no =Cmas.Pol_no and pol_run = Cmas.Pol_run
@@ -1161,7 +1161,7 @@ BEGIN
                '' AGENT_SEQ, END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE, '01' CLM_BR_CODE,
                trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  ,close_date , '' cwp_remark ,'' fax_clm ,'' invoice ,
                '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user  ,clm_type ,
-               OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS  ,OTHER_HPT
+               OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS  ,OTHER_HPT ,LOSS_DETAIL
            from nc_mas
            where clm_no = v_clmno   
         )loop
@@ -1171,6 +1171,7 @@ BEGIN
             update mis_clm_mas
             set tot_res = Cmas.tot_res ,clm_sts =Cmas.CLM_STS , tot_paid = Cmas.tot_paid , close_date = cmas.close_date ,loss_date = cmas.loss_date
             ,fax_clm_date =cmas.fax_clm_date ,clm_men = cmas.clm_men ,clm_staff =  cmas.amd_user ,remark = cmas.remark 
+            ,risk_descr = cmas.loss_detail 
             ,fax_clm = o_inc ,invoice =o_inv ,receipt =o_recpt ,walkin =o_ost ,deathclm = o_dead ,clm_type = Cmas.CLM_TYPE
             ,OUT_CLM_NO = Cmas.OUT_CLM_NO ,OUT_OPEN_STS = Cmas.OUT_OPEN_STS ,OUT_PAID_STS = Cmas.OUT_PAID_STS ,OUT_PRINT_STS = Cmas.OUT_APPROVE_STS        
             where clm_no = v_clmno;
@@ -1212,7 +1213,7 @@ BEGIN
                     and b.th_eng='T'                
                 )LOOP
                     for fleet in (
-                        select  FLEET_SEQ, SUB_SEQ, PLAN, TITLE, NAME, FR_DATE, TO_DATE
+                        select  FLEET_SEQ, NVL(SUB_SEQ,0) SUB_SEQ, PLAN, TITLE, NAME, FR_DATE, TO_DATE
                         , FAM_STS, FAM_SEQ, DEPT_BKI, ID_NO
                         from pa_medical_det
                         where pol_no =Cmas.Pol_no and pol_run = Cmas.Pol_run
@@ -1298,7 +1299,18 @@ BEGIN
         when others then
             v_max_corrseq := 0;
     end;  -- max corr_seq
-        
+     
+    begin -- max v_max_stateseq
+        select nvl(max(state_seq)+1,0) into v_max_stateseq
+        from clm_medical_res 
+        where clm_no = v_clmno;
+    exception
+        when no_data_found then 
+            v_max_stateseq := 0;
+        when others then
+            v_max_stateseq := 0;
+    end;  -- max v_max_stateseq    
+            
     begin -- max v_gmpaid_seq
         select nvl(max(corr_seq)+1,0) into v_gmpaid_seq
         from clm_gm_paid 
@@ -1363,7 +1375,7 @@ BEGIN
     delete CLM_MEDICAL_PAID where clm_no = v_clmno; -- Clear Record
     
     FOR paid IN (
-       select clm_no ,pay_no , trn_seq corr_seq ,pay_amt ,sts_date ,amd_date ,prem_code bene_code ,prem_seq ,remark ,recov_amt
+       select clm_no ,pay_no , trn_seq corr_seq ,pay_amt ,sts_date ,amd_date ,prem_code bene_code ,prem_seq ,remark ,recov_amt ,days ,day_add
        from nc_payment a
        where clm_no =v_clmno
        and pay_no = v_payno
@@ -1372,7 +1384,7 @@ BEGIN
     )LOOP
         cnt_paid := cnt_paid+1;
         for F in (
-            select  FLEET_SEQ, SUB_SEQ, PLAN, TITLE, NAME, FR_DATE, TO_DATE
+            select  FLEET_SEQ, NVL(SUB_SEQ,0) SUB_SEQ, PLAN, TITLE, NAME, FR_DATE, TO_DATE
             , FAM_STS, FAM_SEQ, DEPT_BKI, ID_NO
             from pa_medical_det
             where pol_no =v_polno and pol_run = v_polrun
@@ -1407,7 +1419,8 @@ BEGIN
                (POL_NO, CLM_NO, FLEET_SEQ, SUB_SEQ, PLAN, PD_FLAG, DIS_CODE, BENE_CODE, MAX_AMT_CLM ,MAX_AGR_AMT , CLM_PD_FLAG, POL_RUN, FAM_SEQ ,DEPT_BKI ,ID_NO)
              Values
                (v_polno ,v_clmno ,v_fleet ,F.sub_seq ,F.plan ,v_pdflag ,v_discode ,paid.bene_code ,v_max_amt ,v_agr_amt ,v_clmpdflag ,v_polrun ,F.Fam_seq ,F.dept_bki ,F.id_no);
-               
+            
+            v_days := nvl(paid.days,0)+nvl(paid.day_add,0);
             Insert into MISC.CLM_GM_PAID
            (CLM_NO, PAY_NO, CORR_SEQ, FLEET_SEQ, SUB_SEQ, PLAN, PD_FLAG, DIS_CODE, BENE_CODE, LOSS_DATE, DATE_PAID, CORR_DATE
            , DISC_AMT, PAY_AMT, HPT_CODE, CLM_PD_FLAG, SEQ, REC_PAY_DATE, FAM_SEQ
@@ -1472,7 +1485,7 @@ BEGIN
                 trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  
                 ,close_date , '' cwp_remark ,'' fax_clm ,'' invoice ,
                 '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user ,clm_type ,
-                OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS
+                OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS ,LOSS_DETAIL
                 FROM nc_mas where clm_no = v_clmno
                 )LOOP 
                     P_PH_CONVERT.CONV_CLMTYPE(Cmas.CLM_TYPE ,o_inc ,o_recpt ,o_inv ,o_ost ,o_dead);
@@ -1480,6 +1493,7 @@ BEGIN
                     update mis_clm_mas
                     set tot_res = Cmas.tot_res ,clm_sts =Cmas.CLM_STS , tot_paid = Cmas.tot_paid , close_date = cmas.close_date ,loss_date = cmas.loss_date
                     ,fax_clm_date =cmas.fax_clm_date ,clm_men = cmas.clm_men ,clm_staff =  cmas.amd_user ,remark = cmas.remark 
+                    ,risk_descr = cmas.loss_detail 
                     ,fax_clm = o_inc ,invoice =o_inv ,receipt =o_recpt ,walkin =o_ost ,deathclm = o_dead ,clm_type = Cmas.CLM_TYPE
                     where clm_no = v_clmno;
 
@@ -1689,51 +1703,7 @@ BEGIN
             v_max_corrseq := 0;
         when others then
             v_max_corrseq := 0;
-    end;  -- max corr_seq
-        
---    begin -- max v_gmpaid_seq
---        select nvl(max(corr_seq)+1,0) into v_gmpaid_seq
---        from clm_gm_paid 
---        where clm_no = v_clmno and pay_no = v_payno;
---    exception
---        when no_data_found then 
---            v_gmpaid_seq := 0;
---        when others then
---            v_gmpaid_seq := 0;
---    end;  -- max v_gmpaid_seq    
---
---    begin -- max v_misclm_seq
---        select nvl(max(corr_seq)+1,0) into v_misclm_seq
---        from mis_clmgm_paid 
---        where clm_no = v_clmno and pay_no = v_payno;
---    exception
---        when no_data_found then 
---            v_misclm_seq := 0;
---        when others then
---            v_misclm_seq := 0;
---    end;  -- max v_misclm_seq    
---
---    begin -- max v_payee_seq
---        select nvl(max(corr_seq)+1,0) into v_payee_seq
---        from clm_gm_payee 
---        where clm_no = v_clmno and pay_no = v_payno;
---    exception
---        when no_data_found then 
---            v_payee_seq := 0;
---        when others then
---            v_payee_seq := 0;
---    end;  -- max v_payee_seq    
---
---    begin -- max v_cripaid_seq
---        select nvl(max(corr_seq)+1,0) into v_cripaid_seq
---        from mis_cri_paid 
---        where clm_no = v_clmno and pay_no = v_payno;
---    exception
---        when no_data_found then 
---            v_cripaid_seq := 0;
---        when others then
---            v_cripaid_seq := 0;
---    end;  -- max v_cripaid_seq    
+    end;  -- max corr_seq       
             
     begin -- get policy
         select pol_no ,pol_run ,fleet_seq ,dis_code ,loss_date ,hpt_code ,tot_tr_day  into v_polno ,v_polrun ,v_fleet ,v_discode ,v_lossdate ,v_hpt_code ,v_days
@@ -1785,6 +1755,264 @@ EXCEPTION
         rollback;
         return false;
 END CONV_PH_REOPEN;
+
+FUNCTION CONV_PH_RES_REV(v_clmno in varchar2,v_payno in varchar2  ,v_sts in varchar2
+    , v_err_message out varchar2) RETURN BOOLEAN IS 
+    v_claim_status VARCHAR2(20); 
+    v_dummy_clm  VARCHAR2(20); 
+    v_MAIN_CLASS varchar2(2);  
+    v_COV_NO varchar2(15);  v_COV_SEQ number(2);  
+    v_POL_YR varchar2(10);  v_BR_CODE varchar2(5);  v_PROD_TYPE varchar2(5);  v_prod_grp varchar2(5); 
+    v_CHANNEL varchar2(2);  
+    v_MAS_CUS_CODE varchar2(20);  v_MAS_CUS_SEQ number(3); 
+    v_MAS_CUS_ENQ     varchar2(100);      
+    v_CURR_CODE varchar2(5);  
+    v_CURR_RATE number;  v_CO_TYPE varchar2(2);  v_CO_RE varchar2(2); 
+    v_BKI_SHR number;  v_AGENT_CODE varchar2(5);  v_AGENT_SEQ varchar2(5);   
+    v_TH_ENG  varchar2(2); 
+    v_ALC_RE varchar2(2); v_UNNAME_POL varchar2(2); v_MAS_SUM_INS number;  v_RECPT_SUM_INS number; 
+    v_FR_DATE    DATE; v_TO_DATE    DATE; 
+    v_Close_date    DATE; v_cwp_remark varchar2(250);
+    v_invoice    varchar2(1);
+    v_fax    varchar2(1);
+    v_sum_res number;
+    v_sum_paid    number;    
+    v_max_corrseq   number(5):=0;
+    vsysdate    date:=sysdate;
+    v_state_no  varchar2(20);
+    v_max_stateseq   number(5):=0;
+    v_max_criseq   number(5):=0;
+    v_polno varchar2(20);
+    v_polrun number;
+    v_fleet number;
+    v_discode   varchar2(20);
+    v_pdflag    varchar2(5);
+    v_clmpdflag varchar2(5);
+    v_lossdate  date;
+    v_hpt_code varchar2(20);
+    v_other_hpt varchar2(250);
+    v_days  number;
+    cnt_paid    number:=0;
+    v_gmpaid_seq number:=0;
+    v_misclm_seq number:=0;
+    v_payee_seq number:=0;
+    v_cripaid_seq number:=0;
+    o_inc  varchar2(2);
+    o_recpt   varchar2(2);
+    o_inv  varchar2(2);
+    o_ost  varchar2(2);
+    o_dead   varchar2(2); 
+    v_max_amt   number;
+    v_agr_amt   number;    
+BEGIN
+    begin -- check mis_clm_mas
+        select clm_no into v_dummy_clm
+        from mis_clm_mas 
+        where clm_no = v_clmno;
+    exception
+        when no_data_found then 
+            v_dummy_clm := null;
+        when others then
+            v_dummy_clm := null;
+    end;  -- check mis_clm_mas
+
+    begin -- max corr_seq
+        select nvl(max(corr_seq)+1,0) into v_max_corrseq
+        from mis_clm_mas_seq 
+        where clm_no = v_clmno;
+    exception
+        when no_data_found then 
+            v_max_corrseq := 0;
+        when others then
+            v_max_corrseq := 0;
+    end;  -- max corr_seq
+
+    begin -- max v_max_stateseq
+        select  max(state_no) into v_state_no
+        from clm_medical_res 
+        where clm_no = v_clmno;
+    exception
+        when no_data_found then 
+            v_state_no := null;
+        when others then
+            v_state_no := null;
+    end;  -- max v_max_stateseq    
+        
+    begin -- max v_max_stateseq
+        select nvl(max(state_seq)+1,0) into v_max_stateseq
+        from clm_medical_res 
+        where clm_no = v_clmno;
+    exception
+        when no_data_found then 
+            v_max_stateseq := 0;
+        when others then
+            v_max_stateseq := 0;
+    end;  -- max v_max_stateseq    
+
+    begin -- max v_gmpaid_seq
+        select nvl(max(corr_seq)+1,0) into v_gmpaid_seq
+        from clm_gm_paid 
+        where clm_no = v_clmno and pay_no = v_payno;
+    exception
+        when no_data_found then 
+            v_gmpaid_seq := 0;
+        when others then
+            v_gmpaid_seq := 0;
+    end;  -- max v_gmpaid_seq    
+          
+    dbms_output.put_line ('v_dummy_clm:'||v_dummy_clm);
+
+    for Cmas in (
+      select STS_KEY ,CLM_NO, 'M' MAIN_CLASS, POL_NO, RECPT_SEQ, CLM_YR, POL_YR,'01' BR_CODE, MAS_CUS_CODE, 
+           MAS_CUS_SEQ,MAS_CUS_NAME MAS_CUS_ENQ, CUS_CODE, CUS_SEQ,CUS_NAME CUS_ENQ, MAS_SUM_INS, RECPT_SUM_INS, 
+          p_ph_clm.get_SUM_RES(clm_no ,null) TOT_RES,p_ph_clm.get_SUM_Paid(clm_no ,null) TOT_PAID,0 TOT_DEDUCT,0 TOT_RECOV, FR_DATE, TO_DATE, CURR_CODE, CURR_RATE, 
+          '' CO_TYPE,'' CO_RE, BKI_SHR, '' AGENT_CODE,'T' TH_ENG, trunc(REG_DATE) reg_date, trunc(CLM_DATE) clm_date, trunc(LOSS_DATE) loss_date, LOSS_TIME, 
+          CLM_USER CLM_MEN,CLM_USER CLM_STAFF ,'' PAID_STAFF,'' RECOV_STS,'' POL_COV,p_ph_convert.CONV_CLMSTS(claim_status) CLM_STS, ALC_RE,'' CLM_CURR_CODE,'' CLM_CURR_RATE, '' SHR_TYPE, 
+           '' AGENT_SEQ, END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE, '01' CLM_BR_CODE,
+           trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  ,close_date , '' cwp_remark ,'' fax_clm ,'' invoice ,
+           '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user  ,clm_type ,
+           OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS  ,OTHER_HPT ,LOSS_DETAIL
+       from nc_mas
+       where clm_no = v_clmno   
+    )loop
+            
+        P_PH_CONVERT.CONV_CLMTYPE(Cmas.CLM_TYPE ,o_inc ,o_recpt ,o_inv ,o_ost ,o_dead);
+                        
+        update mis_clm_mas
+        set loss_date = cmas.loss_date
+--        ,fax_clm_date =cmas.fax_clm_date 
+        ,clm_men = cmas.clm_men ,clm_staff =  cmas.amd_user ,remark = cmas.remark 
+        ,risk_descr = cmas.loss_detail 
+        ,fax_clm = o_inc ,invoice =o_inv ,receipt =o_recpt ,walkin =o_ost ,deathclm = o_dead ,clm_type = Cmas.CLM_TYPE
+        ,OUT_CLM_NO = Cmas.OUT_CLM_NO ,OUT_OPEN_STS = Cmas.OUT_OPEN_STS ,OUT_PAID_STS = Cmas.OUT_PAID_STS ,OUT_PRINT_STS = Cmas.OUT_APPROVE_STS        
+        where clm_no = v_clmno;
+
+         insert into mis_clm_mas_seq(clm_no,pol_no,pol_run,corr_seq,corr_date,channel,prod_grp,
+                                     prod_type,clm_date,tot_res,tot_paid,clm_sts,close_date)
+         values (
+                          Cmas.clm_no,Cmas.pol_no,Cmas.pol_run,v_max_corrseq ,vsysdate,
+                 Cmas.channel , Cmas.Prod_grp, Cmas.Prod_type,Cmas.clm_date,
+                 Cmas.tot_res, Cmas.tot_paid ,Cmas.clm_sts, Cmas.Close_date); 
+                                          
+        if 1=1then     
+                
+            if v_state_no is null then        
+                v_state_no := p_ph_convert.GEN_STATENO('');
+            end if;
+
+            if cmas.hpt_code is null and cmas.other_hpt is not null then
+                v_hpt_code := '3880';
+            else
+                v_hpt_code := P_PH_CONVERT.CONV_HOSPITAL(cmas.hpt_code);
+            end if;
+                
+            FOR res in (
+                select CLM_NO,'' STATE_NO,'' STATE_SEQ, '' FLEET_SEQ,'' SUB_SEQ,'' PLAN ,'' DIS_CODE,PREM_CODE BENE_CODE, '' RECPT_SEQ
+                ,'' STATE_DATE,'' CORR_DATE,'' TITLE,'' NAME,'' FR_DATE,'' TO_DATE,'' HPT_CODE, RES_AMT,'' CLOSE_DATE,'' LOSS_DATE,'' FAM_STS,'N' PAID_STS
+                ,'' CONTACT,'' REMARK ,nvl(pd_flag,clm_pd_flag) PD_FLAG , CLM_PD_FLAG,1 SEQ,'' FAM_SEQ,'' DEPT_BKI,'' ID_NO
+                from nc_reserved a ,medical_ben_std b
+                where clm_no = v_clmno
+                and a.trn_seq in (select max(aa.trn_seq) from nc_reserved aa where aa.clm_no = a.clm_no)
+                and a.prem_code = b.bene_code
+                and b.th_eng='T'                
+            )LOOP
+                for fleet in (
+                    select  FLEET_SEQ, SUB_SEQ, PLAN, TITLE, NAME, FR_DATE, TO_DATE
+                    , FAM_STS, FAM_SEQ, DEPT_BKI, ID_NO
+                    from pa_medical_det
+                    where pol_no =Cmas.Pol_no and pol_run = Cmas.Pol_run
+                    and fleet_seq = CMas.Fleet_seq  
+                    and rownum=1                  
+                )loop
+                    Insert into MISC.CLM_MEDICAL_RES
+                       (CLM_NO, STATE_NO, STATE_SEQ, FLEET_SEQ, SUB_SEQ, PLAN, PD_FLAG, DIS_CODE, BENE_CODE, RECPT_SEQ, STATE_DATE, CORR_DATE
+                       , TITLE, NAME, FR_DATE, TO_DATE, HPT_CODE, RES_AMT, CLOSE_DATE, LOSS_DATE, FAM_STS, PAID_STS, CONTACT, REMARK
+                       , CLM_PD_FLAG, SEQ, FAM_SEQ, DEPT_BKI, ID_NO )
+                     Values
+                       (
+                       res.clm_no, v_state_no, v_max_stateseq, fleet.fleet_seq, fleet.sub_seq, fleet.plan, res.pd_flag, Cmas.dis_code, res.bene_code
+                       , Cmas.recpt_seq, trunc(vsysdate), vsysdate, fleet.title, fleet.name, fleet.fr_date, fleet.to_date, v_hpt_code, res.res_amt
+                       , res.close_date, Cmas.loss_date, fleet.fam_sts, res.paid_sts, res.contact, res.remark, res.clm_pd_flag, res.seq, fleet.fam_seq
+                       , fleet.dept_bki, fleet.id_no 
+                       );                      
+                end loop;
+                                                      
+            END LOOP; --res
+        end if;
+
+        delete CLM_MEDICAL_PAID where clm_no = v_clmno; -- Clear Record
+        
+        FOR paid IN (
+           select clm_no ,pay_no , trn_seq corr_seq ,pay_amt ,sts_date ,amd_date ,prem_code bene_code ,prem_seq ,remark ,recov_amt ,days ,day_add
+           from nc_payment a
+           where clm_no =v_clmno
+           and pay_no = v_payno
+           and trn_seq in (select max(aa.trn_seq) from nc_payment aa where aa.pay_no = a.pay_no and type like 'NCNATTYPECLM%')    
+           and a.type like 'NCNATTYPECLM%'
+        )LOOP
+            cnt_paid := cnt_paid+1;
+            for F in (
+                select  FLEET_SEQ, SUB_SEQ, PLAN, TITLE, NAME, FR_DATE, TO_DATE
+                , FAM_STS, FAM_SEQ, DEPT_BKI, ID_NO
+                from pa_medical_det
+                where pol_no =cmas.pol_no and pol_run = cmas.pol_run
+                and fleet_seq = cmas.fleet_seq 
+                and rownum=1                  
+            )loop
+                begin -- get policy
+                    select nvl(pd_flag,clm_pd_flag) pd_flag ,clm_pd_flag into v_pdflag ,v_clmpdflag
+                    from medical_ben_std  b
+                    where bene_code = paid.bene_code and b.th_eng='T' ;
+                exception
+                    when no_data_found then 
+                        v_pdflag := null ;v_clmpdflag := null;
+                    when others then
+                        v_pdflag := null ;v_clmpdflag := null;  
+                end;  -- get policy
+                
+                if p_ph_clm.IS_BKIPOLICY(v_polno ,v_polrun) then
+                    v_max_amt := 0;
+                    v_agr_amt := paid.pay_amt;
+                else
+                    if v_clmpdflag in ('O','S') then
+                        v_max_amt := paid.pay_amt;
+                        v_agr_amt := 0;                         
+                    else
+                        v_max_amt := 0;
+                        v_agr_amt := paid.pay_amt;                 
+                    end if;           
+                end if;
+                
+                Insert into MISC.CLM_MEDICAL_PAID
+                   (POL_NO, CLM_NO, FLEET_SEQ, SUB_SEQ, PLAN, PD_FLAG, DIS_CODE, BENE_CODE, MAX_AMT_CLM ,MAX_AGR_AMT , CLM_PD_FLAG, POL_RUN, FAM_SEQ ,DEPT_BKI ,ID_NO)
+                 Values
+                   (cmas.pol_no ,v_clmno ,cmas.fleet_seq ,F.sub_seq ,F.plan ,v_pdflag ,cmas.dis_code ,paid.bene_code ,v_max_amt ,v_agr_amt ,v_clmpdflag ,cmas.pol_run ,F.Fam_seq ,F.dept_bki ,F.id_no);
+                
+                v_days := nvl(paid.days,0)+nvl(paid.day_add,0);
+                Insert into MISC.CLM_GM_PAID
+               (CLM_NO, PAY_NO, CORR_SEQ, FLEET_SEQ, SUB_SEQ, PLAN, PD_FLAG, DIS_CODE, BENE_CODE, LOSS_DATE, DATE_PAID, CORR_DATE
+               , DISC_AMT, PAY_AMT, HPT_CODE, CLM_PD_FLAG, SEQ, REC_PAY_DATE, FAM_SEQ
+               ,REMARK ,REC_AMT ,IPD_DAY ,DEPT_BKI ,ID_NO)      
+               Values
+               (v_clmno ,v_payno ,v_gmpaid_seq ,cmas.fleet_seq ,F.sub_seq ,F.plan ,v_pdflag ,cmas.dis_code ,paid.bene_code ,cmas.loss_date ,paid.sts_date ,vsysdate
+               , 0 ,paid.pay_amt ,v_hpt_code ,v_clmpdflag ,1 ,paid.sts_date ,F.fam_seq
+               ,paid.remark ,paid.recov_amt , v_days ,F.dept_bki ,F.id_no);            
+                                                 
+            end loop;    
+        END LOOP;
+                
+    end loop; --Cmas           
+
+    COMMIT;
+    return true;
+EXCEPTION
+    WHEN OTHERS THEN
+        v_err_message :=     'CONV_PH_RES_REV error:'||sqlerrm;
+        dbms_output.put_line (v_err_message);
+        rollback;
+        return false;
+END CONV_PH_RES_REV;
+
 
 PROCEDURE CONV_TABLE(v_clmno in varchar2,v_payno in varchar2 ,v_prodtype in varchar2
     , v_err_message out varchar2) IS
@@ -1900,6 +2128,28 @@ BEGIN
     
     return v_ret;                      
 END CONV_HOSPITAL;   
+
+FUNCTION CONV_HOSPITAL_NEW(v_code in varchar2) RETURN VARCHAR2 IS  
+
+    v_ret varchar2(250);
+BEGIN
+    IF v_code is null THEN return null ; END IF;
+    
+    BEGIN
+        select hosp_id into v_ret
+        from med_hospital_list
+        where gm_code=v_code and rownum=1 ;
+        
+        if v_ret is null then v_ret := v_code; end if;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            v_ret := v_code;
+        WHEN OTHERS THEN
+            v_ret := v_code;
+    END;    
+    
+    return v_ret;                      
+END CONV_HOSPITAL_NEW;   
 
 PROCEDURE CONV_CLMTYPE(v_code in varchar2, o_inc out varchar2 ,o_recpt out varchar2 
     ,o_inv out varchar2 ,o_ost out varchar2 ,o_dead out varchar2) IS  
