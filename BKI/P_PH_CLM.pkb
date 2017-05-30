@@ -1404,6 +1404,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         v_rst   VARCHAR2(250);
         save_Detail_Status VARCHAR2(25);
         save_NC_Status VARCHAR2(25);
+        v_err_message   VARCHAR2(250);
     BEGIN
         if v_action is null or v_clmno is null then
             v_ret := 'กรุณาระบุข้อมูลให้ครบ';
@@ -1474,11 +1475,15 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
 
         COMMIT;
 
-        if v_action in ( 'payment' ,'payee' ) then -- check for Update Status Payment and Claim
-            null;
+        if v_action in ( 'claim_info_paid' ) then -- check for Update claim_info_paid on Payment
+            if not p_ph_convert.CONV_PH_RES_REV(v_clmno ,v_payno  ,save_Detail_Status, v_err_message ) then
+                null;
+            end if;   
+        else
+            p_ph_convert.CONV_TABLE(v_clmno ,v_payno ,null, v_ret) ;        
         end if;
 
-        p_ph_convert.CONV_TABLE(v_clmno ,v_payno ,null, v_ret) ;
+--        p_ph_convert.CONV_TABLE(v_clmno ,v_payno ,null, v_ret) ;
 
         return v_ret;
     EXCEPTION
@@ -1942,6 +1947,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
      m_curr_rate number(5,2);
      dummy_payno varchar2(20);
      v_apprv_date date;
+     v_sts_date date:=sysdate;
      v_oldsts  varchar2(20);
      v_rst2 varchar2(250);
      dumm_rst   boolean;
@@ -1964,12 +1970,27 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
             where sts_key = v_key and pay_no = v_payno
             --and type = 'NCNATTYPECLM101' and sub_type = 'NCNATSUBTYPECLM101'
             ;
+            
         exception
             when no_data_found then
                 v_max_seq := 1;
             when others then
                 v_max_seq := 1;
         END;
+        
+        if v_max_seq >1 then
+            BEGIN
+                select sts_date into v_sts_date
+                from nc_payment_apprv a
+                where sts_key = v_key and pay_no = v_payno
+                and trn_seq in (select max(aa.trn_seq) from nc_payment_apprv aa where aa.pay_no = a.pay_no );
+            exception
+                when no_data_found then
+                    v_sts_date := sysdate;
+                when others then
+                    v_sts_date := sysdate;
+            END;        
+        end if;
 
         FOR X1 in (
         select prod_grp ,prod_type ,curr_code ,curr_rate
@@ -2007,7 +2028,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         INSERT into nc_payment_apprv(clm_no ,pay_no ,clm_seq ,trn_seq ,Pay_sts ,pay_amt ,Trn_amt ,Curr_code ,Curr_rate
         ,Sts_date ,Amd_date ,Clm_men ,Amd_user, APPROVE_ID ,approve_date , Prod_grp ,Prod_type ,SUBSYSID ,Sts_key ,Sub_type ,Type ,apprv_flag ,remark)
         VALUES (v_clmno , v_payno ,1 ,v_max_seq, v_sts ,v_res_amt ,v_accum_amt,
-        m_curr_code, m_curr_rate ,sysdate ,sysdate ,v_user ,v_amd_user ,v_apprv_user ,v_apprv_date
+        m_curr_code, m_curr_rate ,v_sts_date ,sysdate ,v_user ,v_amd_user ,v_apprv_user ,v_apprv_date
         ,m_prodgrp,m_prodtype, 'PH' ,v_key ,'NCNATSUBTYPECLM101' ,'NCNATTYPECLM101' ,v_apprv_flag ,v_remark) ;
 
         UPDATE NC_MAS
