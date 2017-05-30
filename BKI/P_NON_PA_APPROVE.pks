@@ -28,6 +28,8 @@ FUNCTION GET_CTRL_PAGE_RES_AMT(i_clmno IN varchar2 ) RETURN NUMBER ;
 PROCEDURE GET_APPROVE_USER(i_clmno IN varchar2 ,i_payno IN varchar2 ,o_apprv_id OUT varchar2 ,o_apprv_sts OUT varchar2) ; 
  
 PROCEDURE GET_REPORT_USER(i_clmno IN varchar2 ,i_payno IN varchar2 ,o_apprv_id OUT varchar2 ,o_clm_men OUT varchar2) ; 
+
+FUNCTION IS_PASS_DRAFT(i_clmno IN varchar2 ,i_payno IN varchar2 ,o_rst OUT varchar2) RETURN BOOLEAN ;  
   
 FUNCTION CAN_SEND_APPROVE(i_clmno IN varchar2 ,i_payno IN varchar2 ,o_rst OUT varchar2) RETURN BOOLEAN ;  
  

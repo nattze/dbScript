@@ -218,55 +218,172 @@ BEGIN
  
 END GET_REPORT_USER;
 
+FUNCTION IS_PASS_DRAFT(i_clmno IN varchar2 ,i_payno IN varchar2 ,o_rst OUT varchar2) RETURN BOOLEAN IS
+ v_f1 varchar2(20):=null;
+ v_return boolean;
+BEGIN
+     begin
+         select pay_sts into v_f1
+        from nc_payment_apprv a
+        where clm_no = i_clmno
+        and pay_no = i_payno
+        and trn_seq in (select max(aa.trn_seq) from nc_payment_apprv aa where aa.pay_no = a.pay_no and aa.pay_sts like 'NONPASTSAPPRV%')
+        and a.pay_sts in ('NONPASTSAPPRV03' ,'NONPASTSAPPRV11','NONPASTSAPPRV12' )
+        ;
+
+         v_return := true; 
+     exception
+     when no_data_found then
+         v_return := false;
+     when others then
+         dbms_output.put_line('error'||sqlerrm);
+         v_return := false;
+     end;
+     
+     if v_return then return v_return; end if;
+     
+     begin
+         select pay_sts into v_f1
+        from nc_payment_apprv a
+        where clm_no = i_clmno
+        and pay_no = i_payno
+        and trn_seq in (select max(aa.trn_seq) from nc_payment_apprv aa where aa.pay_no = a.pay_no and aa.pay_sts like 'NONPASTSAPPRV2%')
+        and a.pay_sts = 'NONPASTSAPPRV23'
+        ;
+         --o_rst := 'งานอยู่ระหว่างรอการอนุมัติ' ; 
+         v_return := true; 
+     exception
+     when no_data_found then
+        o_rst := 'งานยังไม่ผ่าน Approve Draft' ; 
+         v_return := false;
+     when others then
+         dbms_output.put_line('error'||sqlerrm);
+         o_rst := 'error'||sqlerrm ; 
+         v_return := false;
+     end;
+ return v_return;
+END IS_PASS_DRAFT; 
+
 FUNCTION CAN_SEND_APPROVE(i_clmno IN varchar2 ,i_payno IN varchar2 ,o_rst OUT varchar2) RETURN BOOLEAN IS
  v_f1 varchar2(20):=null;
  v_return boolean;
 BEGIN
- begin
- select pay_sts into v_f1
- from nc_payment_apprv xxx
- where 
- xxx.clm_no = i_clmno and pay_no = i_payno and 
- xxx.pay_sts in ('NONPASTSAPPRV02','NONPASTSAPPRV05') and 
- type = '01' and sub_type = '01' and 
- xxx.trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = xxx.sts_key and b.pay_no = xxx.pay_no
- and type = '01' and sub_type = '01' );
- o_rst := 'งานอยู่ระหว่างรอการอนุมัติ' ; 
- v_return := false; 
- exception
- when no_data_found then
- v_f1 := null;
- v_return := true;
- when others then
- dbms_output.put_line('error'||sqlerrm);
- o_rst := 'error'||sqlerrm ; 
- v_return := false;
- end;
+    if not p_non_pa_approve.IS_PASS_DRAFT(i_clmno ,i_payno  ,o_rst) and P_NON_PA_APPROVE.IS_SWITCH_ON('NONPASWITCH02')  then        
+        o_rst := null;
+         begin
+             select pay_sts into v_f1
+             from nc_payment_apprv xxx
+             where 
+             xxx.clm_no = i_clmno and pay_no = i_payno and 
+             xxx.pay_sts in ('NONPASTSAPPRV22','NONPASTSAPPRV25') and 
+             type = '01' and sub_type = '01' and 
+             xxx.trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = xxx.sts_key and b.pay_no = xxx.pay_no
+             and type = '01' and sub_type = '01' );
+             o_rst := 'งานอยู่ระหว่างรอการอนุมัติ Draft' ; 
+             v_return := false; 
+         exception
+         when no_data_found then
+             v_f1 := null;
+             v_return := true;
+         when others then
+             dbms_output.put_line('error'||sqlerrm);
+             o_rst := 'error'||sqlerrm ; 
+             v_return := false;
+         end;
+     
+         if v_f1 is null then
+             begin
+                 select pay_sts into v_f1
+                 from nc_payment_apprv xxx
+                 where 
+                 xxx.clm_no = i_clmno and pay_no = i_payno and 
+                 xxx.pay_sts in ('NONPASTSAPPRV23') and 
+                 type = '01' and sub_type = '01' and 
+                 xxx.trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = xxx.sts_key and b.pay_no = xxx.pay_no
+                 and type = '01' and sub_type = '01' );
+                 o_rst := 'งานอนุมัติ Draft ไปแล้ว' ; 
+                 v_return := false; 
+             exception
+             when no_data_found then
+                 v_f1 := null;
+                 v_return := true;
+             when others then
+                 dbms_output.put_line('error'||sqlerrm);
+                 o_rst := 'error'||sqlerrm ; 
+                 v_return := false;
+             end; 
+         end if;
+        
+    return v_return;
+    end if;
+    
+     begin
+         select pay_sts into v_f1
+         from nc_payment_apprv xxx
+         where 
+         xxx.clm_no = i_clmno and pay_no = i_payno and 
+         xxx.pay_sts in ('NONPASTSAPPRV02','NONPASTSAPPRV05') and 
+         type = '01' and sub_type = '01' and 
+         xxx.trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = xxx.sts_key and b.pay_no = xxx.pay_no
+         and type = '01' and sub_type = '01' );
+         o_rst := 'งานอยู่ระหว่างรอการอนุมัติ' ; 
+         v_return := false; 
+     exception
+     when no_data_found then
+         v_f1 := null;
+         v_return := true;
+     when others then
+         dbms_output.put_line('error'||sqlerrm);
+         o_rst := 'error'||sqlerrm ; 
+         v_return := false;
+     end;
  
- if v_f1 is null then
- begin
- select pay_sts into v_f1
- from nc_payment_apprv xxx
- where 
- xxx.clm_no = i_clmno and pay_no = i_payno and 
- xxx.pay_sts in ('NONPASTSAPPRV03','NONPASTSAPPRV11','NONPASTSAPPRV12') and 
- type = '01' and sub_type = '01' and 
- xxx.trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = xxx.sts_key and b.pay_no = xxx.pay_no
- and type = '01' and sub_type = '01' );
- o_rst := 'งานอนุมัติไปแล้ว' ; 
- v_return := false; 
- exception
- when no_data_found then
- v_f1 := null;
- v_return := true;
- when others then
- dbms_output.put_line('error'||sqlerrm);
- o_rst := 'error'||sqlerrm ; 
- v_return := false;
- end; 
- end if;
- 
--- o_rst := null;
+     if v_f1 is null then
+         begin
+             select pay_sts into v_f1
+             from nc_payment_apprv xxx
+             where 
+             xxx.clm_no = i_clmno and pay_no = i_payno and 
+             xxx.pay_sts in ('NONPASTSAPPRV03','NONPASTSAPPRV11','NONPASTSAPPRV12') and 
+             type = '01' and sub_type = '01' and 
+             xxx.trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = xxx.sts_key and b.pay_no = xxx.pay_no
+             and type = '01' and sub_type = '01' );
+             o_rst := 'งานอนุมัติไปแล้ว' ; 
+             v_return := false; 
+         exception
+         when no_data_found then
+             v_f1 := null;
+             v_return := true;
+         when others then
+             dbms_output.put_line('error'||sqlerrm);
+             o_rst := 'error'||sqlerrm ; 
+             v_return := false;
+         end; 
+     end if;
+
+--     if v_f1 is null then
+--         begin
+--             select pay_sts into v_f1
+--             from nc_payment_apprv xxx
+--             where 
+--             xxx.clm_no = i_clmno and pay_no = i_payno and 
+--             xxx.pay_sts in ('NONPASTSAPPRV22','','NONPASTSAPPRV24','NONPASTSAPPRV25','NONPASTSAPPRV26') and 
+--             type = '01' and sub_type = '01' and 
+--             xxx.trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = xxx.sts_key and b.pay_no = xxx.pay_no
+--             and type = '01' and sub_type = '01' );
+--             o_rst := 'งานยังอยู่ระหว่างการ Approve Draft' ; 
+--             v_return := false; 
+--         exception
+--         when no_data_found then
+--             v_f1 := null;
+--             v_return := true;
+--         when others then
+--             dbms_output.put_line('error'||sqlerrm);
+--             o_rst := 'error'||sqlerrm ; 
+--             v_return := false;
+--         end; 
+--     end if;     
+    -- o_rst := null;
  return v_return;
 END CAN_SEND_APPROVE; 
 
@@ -277,20 +394,21 @@ BEGIN
 
  --return true ; -- bypass For Test waiting for adjust add read on acc_clm_payee_tmp
  
- begin
- select remark into v_found
- from clm_constant a
- where key like 'NONPAEXCEPT%'
- and remark = i_clmno
- and rownum=1;
- if v_found is not null then return TRUE; end if;
- exception
- when no_data_found then
- v_found := null;
- when others then
- v_found := null;
- end;
+     begin
+         select remark into v_found
+         from clm_constant a
+         where key like 'NONPAEXCEPT%'
+         and remark = i_clmno
+         and rownum=1;
+         if v_found is not null then return TRUE; end if;
+     exception
+     when no_data_found then
+     v_found := null;
+     when others then
+     v_found := null;
+     end;
  
+
 -- FOR c1 IN (
 -- select pay_no ,sum(pay_total) pay_amt
 -- from mis_clm_paid a
@@ -332,38 +450,43 @@ BEGIN
  group by a.pay_no having sum(a.pay_amt)>0
  ) LOOP
 
- begin
- select payment_no
- into v_found
- from acc_clm_tmp
- where payment_no = c1.pay_no and rownum=1;
- exception
- when no_data_found then
- v_found := null;
- when others then
- v_found := null;
- dbms_output.put_line('error'||sqlerrm);
- end;
- 
- if v_found is null then -- ไม่พบการจอนุมัติรอ post
- begin
- select payment_no
- into v_found
- from acr_name_mas
- where payment_no = c1.pay_no and rownum=1;
- exception
- when no_data_found then
- v_found := null;
- when others then
- v_found := null;
- dbms_output.put_line('error'||sqlerrm);
- end;
- end if;
- 
- if v_found is null then -- ไม่พบการจ่าย ใน ACR 
- v_return := false;
- o_rst := 'มีเลขที่จ่าย '||c1.pay_no || 'ค้าง draft ในระบบ ไม่สามารถสร้างเลขจ่ายใหม่ได้ !! ';
- end if;
+     begin
+     select payment_no
+     into v_found
+     from acc_clm_tmp
+     where payment_no = c1.pay_no and rownum=1;
+     exception
+     when no_data_found then
+     v_found := null;
+     when others then
+     v_found := null;
+     dbms_output.put_line('error'||sqlerrm);
+     end;
+
+    if not p_non_pa_approve.IS_PASS_DRAFT(i_clmno ,c1.pay_no  ,o_rst) and P_NON_PA_APPROVE.IS_SWITCH_ON('NONPASWITCH02')  then 
+         v_found := 'found';
+         v_return := false;
+    end if; 
+         
+     if v_found is null then -- ไม่พบการจอนุมัติรอ post
+     begin
+     select payment_no
+     into v_found
+     from acr_name_mas
+     where payment_no = c1.pay_no and rownum=1;
+     exception
+     when no_data_found then
+     v_found := null;
+     when others then
+     v_found := null;
+     dbms_output.put_line('error'||sqlerrm);
+     end;
+     end if;
+         
+     if v_found is null then -- ไม่พบการจ่าย ใน ACR 
+     v_return := false;
+     o_rst := 'มีเลขที่จ่าย '||c1.pay_no || 'ค้าง draft ในระบบ ไม่สามารถสร้างเลขจ่ายใหม่ได้ !! ';
+     end if;
  
  END LOOP; --c1
  
@@ -381,32 +504,37 @@ FUNCTION CAN_GO_APPROVE(i_clmno IN varchar2 ,i_payno IN varchar2 ,i_userid IN va
  v_found varchar2(20);
 BEGIN
 
- BEGIN
- select key into v_found
- from clm_constant a
- where key like 'NONPASTSAPPRV%'
- and key = i_status
--- and (remark2 is not null or remark2 = 'APPRV')
- and remark2 is not null;
- EXCEPTION
- WHEN NO_DATA_FOUND THEN
- v_found := null;
- WHEN OTHERS THEN
- v_found := null;
- END; 
- 
- IF v_found is not null THEN
- o_rst := 'สถานะงานไม่อยู่ในการขออนุมัติ !';
- v_return := false;
- END IF;
- 
- IF v_return THEN
- ALLCLM.P_NON_PA_APPROVE.GET_APPROVE_USER(i_clmno ,i_payno ,v_apprv_id ,v_sts );
- IF v_apprv_id <> i_userid THEN
- o_rst := 'งานนี้เป็นของรหัส '||v_apprv_id ||' เป็นผู้อนุมัติ !';
- v_return := false; 
- END IF;
- END IF;
+     BEGIN
+         select remark2 into v_found
+         from clm_constant a
+         where key like 'NONPASTSAPPRV%'
+         and key = i_status
+        -- and (remark2 is not null or remark2 = 'APPRV')
+         and remark2 is not null;
+     EXCEPTION
+     WHEN NO_DATA_FOUND THEN
+        v_found := null;
+     WHEN OTHERS THEN
+         v_found := null;
+     END; 
+      
+     IF v_found is not null THEN
+         o_rst := 'สถานะงานไม่อยู่ในการขออนุมัติ !';
+         v_return := false;
+     END IF;
+--
+--     IF v_found = 'APPRV_D' THEN
+--         o_rst := 'งานยังอยู่ระหว่างการ Approve Draft';
+--         v_return := false;
+--     END IF;
+      
+     IF v_return THEN
+         ALLCLM.P_NON_PA_APPROVE.GET_APPROVE_USER(i_clmno ,i_payno ,v_apprv_id ,v_sts );
+         IF v_apprv_id <> i_userid THEN
+             o_rst := 'งานนี้เป็นของรหัส '||v_apprv_id ||' เป็นผู้อนุมัติ !';
+             v_return := false; 
+         END IF;
+     END IF;
  
 -- o_rst := null;
  return v_return;
@@ -5538,7 +5666,7 @@ BEGIN
     v_payee := xpayee.payee_code ;
     v_payee_name := xpayee.payee_name ;
     v_payee_amt := xpayee.payee_amt ;
-    x_payeedtl := x_payeedtl||'payee: '||v_payee||'&nbsp;&nbsp;'||v_payee_name||'&nbsp;&nbsp;&nbsp;'||'จำนวนเงิน: '||to_char(v_payee_amt,'9,999,999.00')||'<br/>';
+    x_payeedtl := x_payeedtl||'payee: '||v_payee||'&nbsp;&nbsp;'||v_payee_name||'&nbsp;&nbsp;&nbsp;'||'จำนวนเงิน: '||to_char(v_payee_amt,'9,999,999,999.00')||'<br/>';
  end loop;
 
     -- Check Voucher stamp??   
