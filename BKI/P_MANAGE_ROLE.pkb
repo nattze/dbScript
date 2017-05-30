@@ -668,6 +668,7 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
         o_msg   varchar2(250); 
         dumm_prog   varchar2(20); 
         v_jobdesc   varchar2(150);
+        chk_lawsys   varchar2(20);
     BEGIN
         --dbms_output.put_line('==== assign ROLE : '||v_role||' ======');            
         begin
@@ -727,8 +728,21 @@ CREATE OR REPLACE PACKAGE BODY P_MANAGE_ROLE AS
                     
             end loop;
         end if; -- chk_inclmuser
-        
-        if v_dept_id = '06' then -- Legal Dept.
+
+        begin -- chk lawsystem
+            select menuid into chk_lawsys
+            from idm_mapping_role2menu
+            where roleid = v_role
+            and menuid in ('LAW') and rownum=1;
+        exception
+            when no_data_found then
+                chk_lawsys := null;
+            when others then
+                chk_lawsys := null;
+        end; --chk lawsystem
+                
+        --if v_dept_id = '06' then -- Legal Dept.
+        if chk_lawsys is not null then -- SetUp Law User in LawSystem
             web_law_proc.regis_newuser( v_user,o_msg);
         end if;
             
