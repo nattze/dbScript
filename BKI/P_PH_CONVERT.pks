@@ -46,6 +46,8 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_PH_CONVERT AS
     
     FUNCTION CONV_CLMSTS(v_code in varchar2) RETURN VARCHAR2;
     
+    FUNCTION CONV_CLMSTS_O2N(v_code in varchar2, v_type in varchar2) RETURN VARCHAR2; -- V_type : 1 (CLM_STS),2 (CLAIM_STATUS)
+    
     FUNCTION CONV_PAYEETYPE(v_code in varchar2) RETURN VARCHAR2;
     
     FUNCTION CONV_HOSPITAL(v_code in varchar2) RETURN VARCHAR2;
@@ -54,6 +56,8 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_PH_CONVERT AS
         
     PROCEDURE CONV_CLMTYPE(v_code in varchar2, o_inc out varchar2 ,o_recpt out varchar2 
     ,o_inv out varchar2 ,o_ost out varchar2 ,o_dead out varchar2);
+    
+    FUNCTION CONV_CWPCODE(v_code in varchar2) RETURN VARCHAR2;
 
     FUNCTION SET_SETTLEDATE(vClmNo in varchar2 ,vPayNo in varchar2 ,vClmUser in varchar2 ,P_RST OUT VARCHAR2) RETURN BOOLEAN ;
     
@@ -62,6 +66,25 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_PH_CONVERT AS
     
     FUNCTION CONVERT924(vClmNo in varchar2 ,vPayNo in varchar2 ,vUser in varchar2 ,P_RST OUT VARCHAR2) RETURN VARCHAR2;
     -- Return Y ,N    
+    
+    PROCEDURE O2N_CONV_RUN_PA(v_Year in VARCHAR2); -- for Keep Result via Email
+
+    PROCEDURE O2N_CONV_RUN_GM(v_Year in VARCHAR2); -- for Keep Result via Email
+        
+    FUNCTION O2N_CONV_PA(v_Date in Date ,v_CLMNO in VARCHAR2 ,P_RST OUT VARCHAR2) RETURN BOOLEAN ; -- Convert PA Claim
+
+    FUNCTION O2N_CONV_PH(v_Date in Date ,v_CLMNO in VARCHAR2 ,P_RST OUT VARCHAR2) RETURN BOOLEAN ; -- Convert PH Claim    
+    
+    FUNCTION IS_EXIST_NC_MAS(v_CLMNO in VARCHAR2) RETURN BOOLEAN;
+    
+    FUNCTION IS_FOUND_CPARES(v_CLMNO in VARCHAR2 ,v_Date in Date) RETURN BOOLEAN;
+    
+    FUNCTION IS_FOUND_CPARES(v_CLMNO in VARCHAR2 ) RETURN BOOLEAN;
+    
+    FUNCTION IS_FOUND_NCRES(v_CLMNO in VARCHAR2 ) RETURN BOOLEAN;
+    
+    FUNCTION IS_FOUND_CPAPAID(v_CLMNO in VARCHAR2 ,v_PAYNO in VARCHAR2 ) RETURN BOOLEAN;
+    
 END P_PH_CONVERT;
 /
 
