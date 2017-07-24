@@ -26,7 +26,19 @@ CREATE OR REPLACE PACKAGE P_PH_OST AS
      , o_contact_name OUT VARCHAR2 , o_addr1 OUT VARCHAR2  , o_addr2 OUT VARCHAR2  , o_mobile OUT VARCHAR2  , o_email OUT VARCHAR2
      ,o_agent_mobile  OUT VARCHAR2 ,o_agent_email  OUT VARCHAR2 ,o_paidto OUT VARCHAR2
      ,o_acc_no  out varchar2, o_acc_name_th out varchar2,  o_acc_name_en  out varchar2, o_bank_code  out varchar2, o_bank_br_code  out varchar2, o_deposit out varchar2) ;
-     
+
+    FUNCTION SET_CLMUSER(v_batch in VARCHAR2 ,v_user in VARCHAR2 ,v_rst out VARCHAR2) RETURN NUMBER   ;  -- 0 ,1 
+    
+    FUNCTION SET_CLMUSER_ByCLM(v_clmno in VARCHAR2 ,v_user in VARCHAR2 ,v_rst out VARCHAR2) RETURN NUMBER   ;  -- 0 ,1 
+    
+    PROCEDURE GET_BATCH_STATUS(v_batch in VARCHAR2 ,V_STS out varchar2) ; -- N = Not Open,Y = Open/Draft ,P = Paid,S = Print statement,C = cwp
+    
+    FUNCTION FIX_BATCH_PAYEE(v_batch in VARCHAR2 ,v_clmno in VARCHAR2 ,v_user in VARCHAR2 
+     , v_payee_code IN VARCHAR2 ,v_payee_seq IN VARCHAR2 ,v_payee_type IN VARCHAR2 , v_payee_name IN VARCHAR2 
+     , v_contact_name IN VARCHAR2 , v_addr1 IN VARCHAR2  , v_addr2 IN VARCHAR2  , v_mobile IN VARCHAR2  , v_email IN VARCHAR2
+     ,v_agent_mobile  IN VARCHAR2 ,v_agent_email  IN VARCHAR2 ,v_paidto IN VARCHAR2
+     ,v_acc_no  IN varchar2, v_acc_name_th IN varchar2,  v_acc_name_en  IN varchar2, v_bank_code  IN varchar2, v_bank_br_code  IN varchar2, v_settle IN varchar2
+     ,o_rst out VARCHAR2) RETURN NUMBER ; --0 false ,1 true 
 END P_PH_OST;
 
 /
