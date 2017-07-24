@@ -980,7 +980,7 @@ BEGIN
                '' AGENT_SEQ, END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE, '01' CLM_BR_CODE,
                trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  ,close_date , '' cwp_remark ,'' fax_clm ,'' invoice ,
                '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,FLEET_SEQ ,CLM_TYPE ,
-               OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS ,OTHER_HPT ,LOSS_DETAIL
+               OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS ,OTHER_HPT ,LOSS_DETAIL ,BATCH_NO
            from nc_mas
            where clm_no = v_clmno   
         )loop
@@ -1073,7 +1073,7 @@ BEGIN
                AGENT_SEQ, END_SEQ, POL_RUN, CHANNEL, PROD_GRP, PROD_TYPE, CLM_BR_CODE,
                FAX_CLM_DATE, IPD_FLAG  ,close_date,cwp_remark 
                ,fax_clm ,invoice ,receipt ,walkin ,deathclm ,clm_type ,
-               RISK_DESCR ,REMARK ,OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_PRINT_STS)
+               RISK_DESCR ,REMARK ,OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_PRINT_STS ,BATCH_NO)
             Values  (
                 Cmas.STS_KEY ,Cmas.CLM_NO,  v_MAIN_CLASS ,  Cmas.POL_NO, Cmas.RECPT_SEQ, Cmas.CLM_YR, v_POL_YR ,v_BR_CODE, Cmas.MAS_CUS_CODE,
                Cmas.MAS_CUS_SEQ, Cmas.MAS_CUS_ENQ, Cmas.CUS_CODE, Cmas.CUS_SEQ, Cmas.CUS_ENQ,v_MAS_SUM_INS, v_RECPT_SUM_INS,
@@ -1083,7 +1083,7 @@ BEGIN
                v_AGENT_SEQ, Cmas.END_SEQ, Cmas.POL_RUN, v_CHANNEL, Cmas.PROD_GRP, Cmas.PROD_TYPE, Cmas.CLM_BR_CODE,
                Cmas.FAX_CLM_DATE, Cmas.IPD_FLAG  ,Cmas.close_date,Cmas.cwp_remark 
                ,o_inc ,o_inv ,o_recpt ,o_ost ,o_dead , Cmas.CLM_TYPE ,
-               Cmas.LOSS_DETAIL ,Cmas.REMARK ,Cmas.OUT_CLM_NO ,Cmas.OUT_OPEN_STS ,Cmas.OUT_PAID_STS ,Cmas.OUT_APPROVE_STS                  
+               Cmas.LOSS_DETAIL ,Cmas.REMARK ,Cmas.OUT_CLM_NO ,Cmas.OUT_OPEN_STS ,Cmas.OUT_PAID_STS ,Cmas.OUT_APPROVE_STS ,Cmas.BATCH_NO                  
             );     
             
             update nc_mas
@@ -1495,6 +1495,7 @@ BEGIN
                     ,fax_clm_date =cmas.fax_clm_date ,clm_men = cmas.clm_men ,clm_staff =  cmas.amd_user ,remark = cmas.remark 
                     ,risk_descr = cmas.loss_detail 
                     ,fax_clm = o_inc ,invoice =o_inv ,receipt =o_recpt ,walkin =o_ost ,deathclm = o_dead ,clm_type = Cmas.CLM_TYPE
+                    ,OUT_CLM_NO = Cmas.OUT_CLM_NO ,OUT_OPEN_STS = Cmas.OUT_OPEN_STS ,OUT_PAID_STS = Cmas.OUT_PAID_STS ,OUT_PRINT_STS = Cmas.OUT_APPROVE_STS                            
                     where clm_no = v_clmno;
 
                     insert into mis_clm_mas_seq(clm_no,pol_no,pol_run,corr_seq,corr_date,channel,prod_grp,
@@ -1639,6 +1640,7 @@ BEGIN
         ,fax_clm_date =cmas.fax_clm_date ,clm_men = cmas.clm_men ,clm_staff =  cmas.amd_user ,remark = cmas.remark 
         ,first_close = decode(first_close ,null ,cmas.close_date ,first_close)
         ,cwp_remark = Cmas.cwp_remark ,rem_close =Cmas.rem_close ,remark_cwp = Cmas.cwp_descr ,cwp_user = Cmas.cwp_user
+        ,OUT_CLM_NO = Cmas.OUT_CLM_NO ,OUT_OPEN_STS = Cmas.OUT_OPEN_STS ,OUT_PAID_STS = Cmas.OUT_PAID_STS ,OUT_PRINT_STS = Cmas.OUT_APPROVE_STS                            
         where clm_no = v_clmno;
 
         insert into mis_clm_mas_seq(clm_no,pol_no,pol_run,corr_seq,corr_date,channel,prod_grp,
@@ -1735,6 +1737,7 @@ BEGIN
         ,first_close = decode(first_close ,null ,cmas.close_date ,first_close)
         ,cwp_remark = Cmas.cwp_remark ,rem_close =Cmas.rem_close ,remark_cwp = Cmas.cwp_descr ,cwp_user = Cmas.cwp_user
         ,reopen_date = Cmas.reopen_date
+        ,OUT_CLM_NO = Cmas.OUT_CLM_NO ,OUT_OPEN_STS = Cmas.OUT_OPEN_STS ,OUT_PAID_STS = Cmas.OUT_PAID_STS ,OUT_PRINT_STS = Cmas.OUT_APPROVE_STS                                    
         where clm_no = v_clmno;
 
         insert into mis_clm_mas_seq(clm_no,pol_no,pol_run,corr_seq,corr_date,channel,prod_grp,
@@ -3002,7 +3005,7 @@ BEGIN
         , reg_date, a.clm_date, a.loss_date, fr_date, to_date,loss_date_fr tr_date_fr, loss_date_to tr_date_to, loss_of_day tot_tr_day, add_day add_tr_day, c.close_date, c.reopen_date, alc_re, loss_detail,a.clm_men clm_user,'' invoice_no, hpt_code, hpt_seq,'' hn_no
         , mas_cus_code, mas_cus_seq, mas_cus_enq mas_cus_name, cus_code, cus_seq, b.loss_name cus_name, fax_clm_date, mas_sum_ins, recpt_sum_ins, ''Sub_cause_code
         , c.clm_sts, remark, cwp_remark, a.rem_close cwp_code, cwp_user, card_id_type, card_id_no, card_other_type, card_other_no, card_updatedate
-        , complete_code, complete_user, '' admission_type, '' clm_type 
+        , complete_code, complete_user, '' admission_type, '' clm_type ,a.channel
         , receipt, invoice, walkin, fax_clm, deathclm
         ,c.corr_date, curr_code, curr_rate, a.tot_paid
         from mis_clm_mas a ,mis_cpa_res b ,mis_clm_mas_seq c
@@ -3043,6 +3046,20 @@ BEGIN
         
         v_HPTCODE := M1.HPT_CODE;
         v_HPTSEQ := M1.HPT_SEQ;
+        
+        if substr(v_HPTCODE,1,1) <> 'H' and length(v_HPTCODE) > 4 then
+            begin -- hpt_code
+                 select hosp_id into v_HPTCODE
+                 from med_hospital_list x 
+                 where x.payee_code = v_HPTCODE and hosp_seq = v_HPTSEQ 
+                 and rownum=1;
+            exception
+                when no_data_found then 
+                    v_HPTCODE := M1.HPT_CODE;
+                when others then
+                    v_HPTCODE := M1.HPT_CODE;
+            end;  -- hpt_code           
+        end if;
         
         v_CLMSTS := P_PH_CONVERT.CONV_CLMSTS_O2N(M1.CLM_STS ,'1');
         v_CLAIMSTATUS := P_PH_CONVERT.CONV_CLMSTS_O2N(M1.CLM_STS ,'2');
@@ -3109,12 +3126,14 @@ BEGIN
             , REG_DATE, CLM_DATE, LOSS_DATE, FR_DATE, TO_DATE, TR_DATE_FR, TR_DATE_TO, TOT_TR_DAY, CLOSE_DATE, REOPEN_DATE, ALC_RE, LOSS_DETAIL, CLM_USER, INVOICE_NO, HPT_CODE, HPT_SEQ, HN_NO
             , MAS_CUS_CODE, MAS_CUS_SEQ, MAS_CUS_NAME, CUS_CODE, CUS_SEQ, CUS_NAME, FAX_CLM, FAX_CLM_DATE, MAS_SUM_INS, RECPT_SUM_INS, SUB_CAUSE_CODE
             , CLM_STS, REMARK, CWP_REMARK, CWP_CODE, CWP_USER, CARD_ID_TYPE, CARD_ID_NO, CARD_OTHER_TYPE, CARD_OTHER_NO, CARD_UPDATEDATE
+            , CHANNEL, OIC_FLAG_POL ,GRP_SEQ
             , COMPLETE_CODE, COMPLETE_USER, CLAIM_STATUS, ADMISSION_TYPE, CLM_TYPE, CONVERT_FLAG)   
             VALUES
             (v_STSKEY, M1.CLM_NO ,M1.REG_NO, M1.POL_NO, M1.POL_RUN, M1.END_SEQ, M1.RECPT_SEQ, M1.CLM_YR, M1.POL_YR, M1.PROD_GRP, M1.PROD_TYPE, M1.FLEET_SEQ, V_IDNO, M1.IPD_FLAG, M1.DIS_CODE, M1.CAUSE_CODE, M1.CAUSE_SEQ
             , M1.REG_DATE, M1.CLM_DATE, M1.LOSS_DATE, M1.FR_DATE, M1.TO_DATE, M1.TR_DATE_FR, M1.TR_DATE_TO, M1.TOT_TR_DAY, M1.CLOSE_DATE, M1.REOPEN_DATE, M1.ALC_RE, M1.LOSS_DETAIL, M1.CLM_USER, M1.INVOICE_NO, v_HPTCODE, v_HPTSEQ, M1.HN_NO
             , M1.MAS_CUS_CODE, M1.MAS_CUS_SEQ, M1.MAS_CUS_NAME, M1.CUS_CODE, M1.CUS_SEQ, M1.CUS_NAME, M1.FAX_CLM, M1.FAX_CLM_DATE, M1.MAS_SUM_INS, M1.RECPT_SUM_INS, M1.SUB_CAUSE_CODE
             , v_CLMSTS, M1.REMARK, M1.CWP_REMARK, v_CWPCODE, M1.CWP_USER, M1.CARD_ID_TYPE, M1.CARD_ID_NO, M1.CARD_OTHER_TYPE, M1.CARD_OTHER_NO, M1.CARD_UPDATEDATE
+            , M1.CHANNEL ,'Y' ,0
             , M1.COMPLETE_CODE, M1.COMPLETE_USER, v_CLAIMSTATUS, M1.ADMISSION_TYPE, v_CLMTYPE, 'Y');         
         ELSE
             dbms_output.put_line('Exist CLM_NO in NC_MAS STS_KEY='||v_STSKEY);
@@ -3129,7 +3148,7 @@ BEGIN
             ,MAS_CUS_CODE = M1.MAS_CUS_CODE,MAS_CUS_SEQ = M1.MAS_CUS_SEQ,MAS_CUS_NAME = M1.MAS_CUS_NAME,CUS_CODE = M1.CUS_CODE,CUS_SEQ = M1.CUS_SEQ,CUS_NAME = M1.CUS_NAME
             ,FAX_CLM_DATE = M1.FAX_CLM_DATE,MAS_SUM_INS = M1.MAS_SUM_INS,RECPT_SUM_INS = M1.RECPT_SUM_INS,REMARK= M1.REMARK, CWP_REMARK= M1.CWP_REMARK, CWP_CODE= v_CWPCODE, CWP_USER= M1.CWP_USER, CARD_ID_TYPE= M1.CARD_ID_TYPE, CARD_ID_NO= M1.CARD_ID_NO
             ,CARD_OTHER_TYPE = M1.CARD_OTHER_TYPE ,CARD_OTHER_NO= M1.CARD_OTHER_NO, CARD_UPDATEDATE= M1.CARD_UPDATEDATE
-            ,ID_NO = V_IDNO ,CLM_DATE = M1.CLM_DATE ,REG_DATE =  M1.REG_DATE
+            ,ID_NO = V_IDNO ,CLM_DATE = M1.CLM_DATE ,REG_DATE =  M1.REG_DATE ,GRP_SEQ = 0
             ,COMPLETE_CODE = M1.COMPLETE_CODE, COMPLETE_USER= M1.COMPLETE_USER,CLM_STS= v_CLMSTS, CLAIM_STATUS = v_CLAIMSTATUS, ADMISSION_TYPE = M1.ADMISSION_TYPE, CLM_TYPE=v_CLMTYPE, CONVERT_FLAG= 'Y'
             WHERE CLM_NO = M1.CLM_NO;
         END IF;
@@ -3432,9 +3451,10 @@ BEGIN
         , reg_date, a.clm_date, b.loss_date, b.fr_date, b.to_date,'' tr_date_fr, '' tr_date_to, b.ipd_day tot_tr_day, '' add_tr_day, c.close_date, c.reopen_date, alc_re,RISK_DESCR loss_detail,a.clm_men clm_user,'' invoice_no, hpt_code,'' hpt_seq,'' hn_no
         , mas_cus_code, mas_cus_seq, mas_cus_enq mas_cus_name, cus_code, cus_seq, b.title||' '||b.name cus_name, fax_clm_date, mas_sum_ins, recpt_sum_ins, ''Sub_cause_code
         , c.clm_sts, a.remark, cwp_remark, a.rem_close cwp_code, cwp_user, card_id_type, card_id_no, card_other_type, card_other_no, card_updatedate
-        , complete_code, complete_user, '' admission_type, '' clm_type 
+        , complete_code, complete_user, '' admission_type, '' clm_type  ,a.channel
         , receipt, invoice, walkin, fax_clm, deathclm 
         ,c.corr_date, curr_code, curr_rate, a.tot_paid        
+        ,a.out_clm_no ,a.batch_no ,out_open_sts ,out_paid_sts ,out_print_sts 
         from mis_clm_mas a ,clm_medical_res b ,mis_clm_mas_seq c
         where a.clm_no = b.clm_no and a.clm_no = c.clm_no and a.prod_grp = '0' 
         and c.corr_seq in (select max(cc.corr_seq) from mis_clm_mas_seq cc where cc.clm_no = c.clm_no 
@@ -3541,12 +3561,14 @@ BEGIN
             , REG_DATE, CLM_DATE, LOSS_DATE, FR_DATE, TO_DATE, TR_DATE_FR, TR_DATE_TO, TOT_TR_DAY, CLOSE_DATE, REOPEN_DATE, ALC_RE, LOSS_DETAIL, CLM_USER, INVOICE_NO, HPT_CODE, HPT_SEQ, HN_NO
             , MAS_CUS_CODE, MAS_CUS_SEQ, MAS_CUS_NAME, CUS_CODE, CUS_SEQ, CUS_NAME, FAX_CLM, FAX_CLM_DATE, MAS_SUM_INS, RECPT_SUM_INS, SUB_CAUSE_CODE
             , CLM_STS, REMARK, CWP_REMARK, CWP_CODE, CWP_USER, CARD_ID_TYPE, CARD_ID_NO, CARD_OTHER_TYPE, CARD_OTHER_NO, CARD_UPDATEDATE
+            , CHANNEL, OIC_FLAG_POL , OUT_CLM_NO, BATCH_NO, OUT_OPEN_STS, OUT_PAID_STS, OUT_APPROVE_STS
             , COMPLETE_CODE, COMPLETE_USER, CLAIM_STATUS, ADMISSION_TYPE, CLM_TYPE, CONVERT_FLAG)   
             VALUES
             (v_STSKEY, M1.CLM_NO ,M1.REG_NO, M1.POL_NO, M1.POL_RUN, M1.END_SEQ, M1.RECPT_SEQ, M1.CLM_YR, M1.POL_YR, M1.PROD_GRP, M1.PROD_TYPE, M1.FLEET_SEQ, V_IDNO, M1.IPD_FLAG, M1.DIS_CODE, M1.CAUSE_CODE, M1.CAUSE_SEQ
             , M1.REG_DATE, M1.CLM_DATE, M1.LOSS_DATE, M1.FR_DATE, M1.TO_DATE, M1.TR_DATE_FR, M1.TR_DATE_TO, M1.TOT_TR_DAY, M1.CLOSE_DATE, M1.REOPEN_DATE, M1.ALC_RE, M1.LOSS_DETAIL, M1.CLM_USER, M1.INVOICE_NO, v_HPTCODE, v_HPTSEQ, M1.HN_NO
             , M1.MAS_CUS_CODE, M1.MAS_CUS_SEQ, M1.MAS_CUS_NAME, M1.CUS_CODE, M1.CUS_SEQ, M1.CUS_NAME, M1.FAX_CLM, M1.FAX_CLM_DATE, M1.MAS_SUM_INS, M1.RECPT_SUM_INS, M1.SUB_CAUSE_CODE
             , v_CLMSTS, M1.REMARK, M1.CWP_REMARK, v_CWPCODE, M1.CWP_USER, M1.CARD_ID_TYPE, M1.CARD_ID_NO, M1.CARD_OTHER_TYPE, M1.CARD_OTHER_NO, M1.CARD_UPDATEDATE
+            , M1.CHANNEL, 'Y' ,M1.out_clm_no ,M1.batch_no ,M1.out_open_sts ,M1.out_paid_sts ,M1.out_print_sts 
             , M1.COMPLETE_CODE, M1.COMPLETE_USER, v_CLAIMSTATUS, M1.ADMISSION_TYPE, v_CLMTYPE, 'Y');         
         ELSE
             dbms_output.put_line('Exist CLM_NO in NC_MAS STS_KEY='||v_STSKEY);
@@ -3562,6 +3584,7 @@ BEGIN
             ,FAX_CLM_DATE = M1.FAX_CLM_DATE,MAS_SUM_INS = M1.MAS_SUM_INS,RECPT_SUM_INS = M1.RECPT_SUM_INS,REMARK= M1.REMARK, CWP_REMARK= M1.CWP_REMARK, CWP_CODE= v_CWPCODE, CWP_USER= M1.CWP_USER, CARD_ID_TYPE= M1.CARD_ID_TYPE, CARD_ID_NO= M1.CARD_ID_NO
             ,CARD_OTHER_TYPE = M1.CARD_OTHER_TYPE ,CARD_OTHER_NO= M1.CARD_OTHER_NO, CARD_UPDATEDATE= M1.CARD_UPDATEDATE
             ,ID_NO = V_IDNO ,CLM_DATE = M1.CLM_DATE ,REG_DATE =  M1.REG_DATE
+            ,OUT_CLM_NO = M1.OUT_CLM_NO, BATCH_NO = M1.BATCH_NO, OUT_OPEN_STS = M1.OUT_OPEN_STS, OUT_PAID_STS = M1.OUT_PAID_STS, OUT_APPROVE_STS = M1.OUT_PRINT_STS
             ,COMPLETE_CODE = M1.COMPLETE_CODE, COMPLETE_USER= M1.COMPLETE_USER,CLM_STS= v_CLMSTS, CLAIM_STATUS = v_CLAIMSTATUS, ADMISSION_TYPE = M1.ADMISSION_TYPE, CLM_TYPE=v_CLMTYPE, CONVERT_FLAG= 'Y'
             WHERE CLM_NO = M1.CLM_NO;
         END IF;
