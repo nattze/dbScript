@@ -1638,6 +1638,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         v_type   varchar2(20):='NCNATTYPECLM101';
         v_subtype   varchar2(20):='NCNATSUBTYPECLM101';
         v_endseq    number;
+        v_recpt_seq number;
 
         C2   NC_HEALTH_PACKAGE.v_ref_cursor4;
         TYPE t_data2 IS RECORD
@@ -1657,8 +1658,8 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
     BEGIN
 
         begin
-            select pol_no ,pol_run ,loss_date ,clm_yr ,pol_yr ,prod_grp ,prod_type ,end_seq
-            into v_polno ,v_polrun ,v_lossdate , v_clmyr ,v_polyr ,v_prodgrp ,v_prodtype ,v_endseq
+            select pol_no ,pol_run ,loss_date ,clm_yr ,pol_yr ,prod_grp ,prod_type ,end_seq ,recpt_seq
+            into v_polno ,v_polrun ,v_lossdate , v_clmyr ,v_polyr ,v_prodgrp ,v_prodtype ,v_endseq ,v_recpt_seq
             from nc_mas a
             where  clm_no= v_clmno;
         exception
@@ -1673,7 +1674,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                 v_polyr := to_char(sysdate,'yyyy');
                 v_clmyr := to_char(sysdate,'yyyy');
         end;
-
+        dbms_output.put_line('v_polno:'||v_polno||' v_polrun:'||v_polrun||' v_recpt_seq:'||v_recpt_seq||' v_endseq:'||v_endseq);
         v_cnt_res := NC_HEALTH_PACKAGE.GET_RI_RES(v_polno ,v_polrun ,0 ,0 ,v_lossdate ,v_endseq ,C2 );
 
         if v_cnt_res > 0 then
@@ -3525,7 +3526,8 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         select clm_no into v_dumm
         from nc_mas a
         where a.clm_no = v_clmno
-        and prod_grp ='0';
+        and prod_grp ='0' and convert_flag is null
+        and out_clm_no is null;
 
         if v_dumm is not null then
             O_RST := 'CLMNO: '||v_clmno||' ถูกสร้างบนระบบ new PHsystem กรุณาดำเนินการที่โปรแกรมใหม่!';
