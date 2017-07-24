@@ -254,7 +254,7 @@ BEGIN
          v_return := true; 
      exception
      when no_data_found then
-        o_rst := 'งานยังไม่ผ่าน Approve Draft' ; 
+        o_rst := 'เลขจ่าย: '||i_payno||' ยังไม่ผ่าน Approve Draft' ; 
          v_return := false;
      when others then
          dbms_output.put_line('error'||sqlerrm);
