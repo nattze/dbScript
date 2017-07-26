@@ -1951,6 +1951,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
      v_sts_date date:=sysdate;
      v_oldsts  varchar2(20);
      v_rst2 varchar2(250);
+     v_outclm   varchar2(20);
      dumm_rst   boolean;
     BEGIN
         if v_accum_amt <= 0 then
@@ -1994,13 +1995,18 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         end if;
 
         FOR X1 in (
-        select prod_grp ,prod_type ,curr_code ,curr_rate
+        select prod_grp ,prod_type ,curr_code ,curr_rate ,out_clm_no
         from nc_mas a
         where sts_key = v_key
         )
         LOOP
         m_prodgrp := x1.prod_grp ;
         m_prodtype := x1.prod_type ;
+        if x1.out_clm_no is not null then
+            v_outclm := 'Y';
+        else
+            v_outclm := null;
+        end if;
         --m_curr_code := x1.curr_code;
         --m_curr_rate := x1.curr_rate;
         END LOOP;
@@ -2067,7 +2073,10 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         if v_sts in ('PHSTSAPPRV03') then
             --Call Post ACC TMP
             IF not p_ph_convert.APPROVE_PAYMENT(v_key  ,v_clmno  ,v_payno ,v_sts ,v_apprv_user  ,v_remark ,v_rst) THEN
-
+                UPDATE NC_MAS
+                SET OUT_APPROVE_STS = v_outclm 
+                WHERE CLM_NO = v_clmno;
+                COMMIT;
                 return '0';
             END IF;
         end if;
