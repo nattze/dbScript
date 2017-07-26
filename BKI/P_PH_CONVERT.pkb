@@ -785,7 +785,7 @@ BEGIN
     
     IF chk_success THEN 
         UPDATE NC_MAS
-        SET APPROVE_STATUS = 'PHSTSAPPRV11'
+        SET APPROVE_STATUS = 'PHSTSAPPRV11' 
         WHERE CLM_NO = v_clmno;
             
         COMMIT;return null ; 
@@ -1277,6 +1277,7 @@ FUNCTION CONV_PH_DRAFT(v_clmno in varchar2,v_payno in varchar2  ,v_sts in varcha
     v_payeetype varchar2(5);
     v_max_amt   number;
     v_agr_amt   number;
+    v_settle    varchar2(3);
 BEGIN
     begin -- check mis_clm_mas
         select clm_no into v_dummy_clm
@@ -1426,19 +1427,11 @@ BEGIN
            , DISC_AMT, PAY_AMT, HPT_CODE, CLM_PD_FLAG, SEQ, REC_PAY_DATE, FAM_SEQ
            ,REMARK ,REC_AMT ,IPD_DAY ,DEPT_BKI ,ID_NO)      
            Values
-           (v_clmno ,v_payno ,v_gmpaid_seq ,v_fleet ,F.sub_seq ,F.plan ,v_pdflag ,v_discode ,paid.bene_code ,v_lossdate ,paid.sts_date ,paid.amd_date
+           (v_clmno ,v_payno ,v_gmpaid_seq ,v_fleet ,F.sub_seq ,F.plan ,v_pdflag ,v_discode ,paid.bene_code ,v_lossdate ,null ,paid.amd_date
            , 0 ,paid.pay_amt ,v_hpt_code ,v_clmpdflag ,1 ,paid.sts_date ,F.fam_seq
            ,paid.remark ,paid.recov_amt , v_days ,F.dept_bki ,F.id_no);            
            
-            if cnt_paid =1 then
-                Insert into MISC.MIS_CLMGM_PAID
-                (   CLM_NO, PAY_NO, CORR_SEQ, PAY_DATE, PAY_TOTAL, REC_TOTAL, DISC_TOTAL, SETTLE, REC_PAY_DATE, PRINT_TYPE
-                ,REMARK )         
-                values
-                (
-                    v_clmno ,v_payno ,v_misclm_seq ,null , p_ph_clm.get_sum_paid(v_clmno ,v_payno) ,0 , 0 ,null ,paid.sts_date ,null ,paid.remark
-                );     
-                
+            if cnt_paid =1 then                
                 delete CLM_GM_PAYEE where clm_no = v_clmno  and pay_no = v_payno; -- Clear Record
                 
                 FOR payee in (
@@ -1465,8 +1458,17 @@ BEGIN
                          ,payee.settle ,payee.acc_no  ,payee.acc_name ,payee.bank_code ,payee.bank_br_code ,payee.br_name ,payee.urgent_flag
                           ,payee.invalid_payee ,payee.invalid_payee_remark
                         );
+                     v_settle :=payee.settle;    
                 END LOOP;
 
+                Insert into MISC.MIS_CLMGM_PAID
+                (   CLM_NO, PAY_NO, CORR_SEQ, PAY_DATE, PAY_TOTAL, REC_TOTAL, DISC_TOTAL, SETTLE, REC_PAY_DATE, PRINT_TYPE
+                ,REMARK )         
+                values
+                (
+                    v_clmno ,v_payno ,v_misclm_seq ,null , p_ph_clm.get_sum_paid(v_clmno ,v_payno) ,0 , 0 ,v_settle ,paid.sts_date ,null ,paid.remark
+                );   
+                
                 Insert into MISC.MIS_CRI_PAID
                 (CLM_NO, PAY_NO, PAY_STS, RI_CODE, RI_BR_CODE, RI_TYPE, PAY_AMT, LETT_PRT, LETT_TYPE, CORR_SEQ, LF_FLAG, RI_SUB_TYPE ,LETT_NO )
                 (
