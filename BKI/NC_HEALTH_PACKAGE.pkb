@@ -3759,7 +3759,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
     END ;       -- END get RI _RES  
     
     FUNCTION GET_PREMCODE_DESCR(v_prem in varchar2 , v_th_eng in VARCHAR2) RETURN VARCHAR2 IS
-        v_descr VARCHAR2(100);
+        v_descr VARCHAR2(150);
     BEGIN
         select descr into v_descr
         from prem_std a
