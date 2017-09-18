@@ -8,6 +8,9 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
    Ver        Date        Author           Description
    ---------  ----------  ---------------  ------------------------------------
    1.0        5/4/2017      2702       1. Created this package.
+   
+   Use NC_WS_LOG by usesr_id=PH_OST name=Fix_Batch
+   nc_health_package.WRITE_LOG  ( 'PH_OST' ,'Fix_Batch' ,'Error' ,t_sql , m_rst)   ;
 ******************************************************************************/
 
     FUNCTION CAN_OPEN_CLAIM(v_notno  IN VARCHAR2 ,o_RST OUT VARCHAR2) RETURN BOOLEAN IS
@@ -97,6 +100,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
         cnt_det number:=0;
         v_GenRI varchar2(200);
         v_SaveStatus    varchar2(200);
+        v_oth_hosp  varchar2(250);
         
         v_max_resseq    number(5):=0;
     BEGIN
@@ -148,26 +152,48 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                     end if;
                 end if;
                 
-                if mas.DOC_DATE is null then    
-                    if mas.reg_date is not null then
-                        v_DocDate := mas.reg_date ;
-                    else
-                        v_DocDate := mas.ret_date ;
-                    end if;    
-                else    
-                    v_DocDate := mas.DOC_DATE;  
-                end if;
+--                if mas.DOC_DATE is null then    
+--                    if mas.reg_date is not null then
+--                        v_DocDate := mas.reg_date ;
+--                    else
+--                        v_DocDate := mas.ret_date ;
+--                    end if;    
+--                else    
+--                    v_DocDate := mas.DOC_DATE;  
+--                end if;
+--                if mas.reg_date is not null then
+--                    v_RegDate := mas.reg_date ;
+--                else
+--                    v_RegDate := mas.not_date ;
+--                end if;                    
+--                v_ClmDate := v_SYSDATE;
+
                 if mas.reg_date is not null then
-                    v_RegDate := mas.reg_date ;
+                    v_DocDate := mas.reg_date ;
                 else
-                    v_RegDate := mas.not_date ;
-                end if;                    
-                --v_RegDate := mas.not_date ;
-                v_ClmDate := v_SYSDATE;
+                    if  mas.DOC_DATE is not null then
+                        v_DocDate := mas.DOC_DATE ;
+                    else
+                        v_DocDate := v_SYSDATE ;
+                    end if;
+                end if;    
                 
+                if mas.not_date is not null then
+                    v_RegDate := mas.not_date ;
+                else
+                    v_RegDate :=v_SYSDATE ;
+                end if;                    
+                v_ClmDate := v_RegDate;
+                                
                 if mas.CLM_TYPE = 'IPD' then v_ADMIT := 'PHADMTYPE02'; 
                 elsif  mas.CLM_TYPE = 'OPD' then v_ADMIT := 'PHADMTYPE01'; 
                 else  v_ADMIT := 'PHADMTYPE99';    end if;
+                
+                if mas.hosp_code is null and mas.hosp_name is not null then
+                    v_oth_hosp := mas.hosp_name;
+                else
+                    v_oth_hosp := null;
+                end if;
                 
                 Insert into ALLCLM.NC_MAS
                    (STS_KEY, CLM_NO, POL_NO, POL_RUN, END_SEQ, RECPT_SEQ, CLM_YR, POL_YR, PROD_GRP, PROD_TYPE, FLEET_SEQ, SUB_SEQ, FAM_STS, FAM_SEQ, PATRONIZE, ID_NO, PLAN, DIS_CODE
@@ -180,7 +206,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                    , v_RegDate, v_ClmDate, mas.ADMIT, pol.FR_DATE, pol.TO_DATE, mas.ADMIT, mas.DISC, null, mas.DISC - mas.ADMIT+1, null, pol.ALC_RE, v_Detail,v_User, mas.HOSP_CODE, pol.MAS_CUS_CODE, pol.MAS_CUS_SEQ
                    , pol.MAS_CUS_NAME, pol.mas_cus_code, pol.mas_cus_seq, pol.TITLE||' '||pol.NAME, v_DocDate, 'NCCLMSTS01', v_Remark, pol.CHANNEL, null, null
                    , null, null, mas.ICD10_2, mas.ICD10_3, null, v_ADMIT, 'PHCLMTYPE03', 'PHCLMSTS01', null, v_user
-                   , null, null, mas.NOT_NO, 'Y', null, null ,mas.batch_no
+                   , null, v_oth_hosp, mas.NOT_NO, 'Y', null, null ,mas.batch_no
                     );        
                 
                 Update clm_outservice_mas
@@ -218,7 +244,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                 END LOOP; -- det
                 
                 if cnt_det > 0 then                    
-                    v_GenRI := p_ph_ost.genRI_RES(v_stskey ,v_clmno ,mas.HOSP_AMT);
+                    v_GenRI := p_ph_ost.genRI_RES(v_stskey ,v_clmno ,mas.HOSP_AMT - nvl(mas.DISC_AMT,0));
                     if v_GenRI is not null then dbms_output.put_line('v_GenRI: '||v_GenRI); end if;
                 end if;
                 
@@ -307,7 +333,8 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                                 ,ri_share NUMBER ,prod_grp VARCHAR2(1) ,prod_type VARCHAR2(5) ,ri_display VARCHAR2(250) , ri_name VARCHAR2(250)
         ); 
         j_rec1 t_data1;   
-                     
+        
+        v_stampClose   varchar2(250);             
     BEGIN
         FOR mas IN (
             select not_no ,revision ,batch_no ,bki_clm_no ,pol_no ,fleet_seq ,reg_date ,not_date ,doc_date ,ret_date ,not_sts
@@ -319,7 +346,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
             from clm_outservice_mas a
             where a.not_no = v_notno
             and revision in (select max(aa.revision) from clm_outservice_mas aa where aa.not_no = a.not_no and trunc(created_date) = v_date )  
-            and bki_clm_no is null 
+--            and bki_clm_no is null 
 --            and (not_no not in (select out_clm_no from mis_clm_mas x where x.out_clm_no = a.not_no and x.clm_sts in ('2','3'))
 --            and not_no not in (select out_clm_no   
 --            from mis_clm_mas v
@@ -341,9 +368,32 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
             
             if chk_close is not null then
                 o_RST := 'claim was closed';
+                if p_ph_ost.stampCloseClaim(mas.not_no ,mas.revision ,chk_close ,v_stampClose) = 0 then
+                    o_RST := o_RST||' '||v_stampClose;
+                end if;
                 return;
             end if;
-                            
+            
+            begin 
+                select clm_no into chk_close
+                from mis_clm_mas a
+                where out_clm_no = mas.not_no 
+                and clm_sts in ('6') and a.clm_no in (select b.clm_no from acc_clm_tmp b where b.clm_no = a.clm_no);
+            exception
+                when no_data_found then
+                    chk_close := null;
+                when others then
+                    chk_close := null;
+            end; 
+
+            if chk_close is not null then
+                o_RST := 'claim was approved';
+                if p_ph_ost.stampCloseClaim(mas.not_no ,mas.revision ,chk_close ,v_stampClose) = 0 then
+                    o_RST := o_RST||' '||v_stampClose;
+                end if;
+                return;
+            end if;
+                                                        
             p_acc_package.read_pol(mas.pol_no ,v_POLNO ,v_POLRUN);
             dbms_output.put_line('not_no:'||mas.not_no||' pol_no:'||v_POLNO||' pol_run:'||v_POLRUN||' fleet:'||mas.fleet_seq||' inure:'||mas.title||' '||mas.name||' '||mas.surname||' reg_date:'||mas.reg_date
             ||' not_date:'||mas.not_date||' ret_date:'||mas.ret_date||' clm_sts:'||mas.claim_status);
@@ -355,7 +405,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                 FROM pa_medical_det a , mis_mas b 
                 WHERE a.pol_no = b.pol_no and a.pol_run = b.pol_run and a.end_seq = b.end_seq 
                 and a.pol_no = v_POLNO and a.pol_run =v_POLRUN and fleet_seq = mas.fleet_seq  
-                 and plan = mas.plan
+--                 and plan = mas.plan
                 and mas.acc_date between a.fr_date and a.to_date  
                 and rownum =1           
             )LOOP
@@ -428,9 +478,10 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                         
                 END LOOP; -- det
                 
-                if cnt_det > 0 and (mas.not_sts in ('Y','C') and substr(mas.clm_pstat,1,1) <>'D' ) then    -- for gen. reserve ,paid data     
-                    dbms_output.put_line('in Y not_no:'||mas.not_no||' not_sts:'||mas.not_sts);             
-                    v_GenRI := p_ph_ost.genRI_RES(v_stskey ,v_clmno ,mas.HOSP_AMT);
+                if cnt_det > 0 and (mas.not_sts in ('Y','C') and substr(mas.clm_pstat,1,1) not in ('D' ,'R') ) then    -- for gen. reserve ,paid data     
+                    dbms_output.put_line('in Y not_no:'||mas.not_no||' not_sts:'||mas.not_sts);    
+                    v_ClaimSts := 'PHCLMSTS03';          
+                    v_GenRI := p_ph_ost.genRI_RES(v_stskey ,v_clmno ,mas.HOSP_AMT - nvl(mas.DISC_AMT,0));
                     if v_GenRI is not null then dbms_output.put_line('v_GenRI: '||v_GenRI); end if;
                     
                     begin
@@ -600,7 +651,18 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                         v_PaidSts := 'F';         
                      end if; -- insert NC_PAYEE
                      
-                else -- for gen. reserve ,paid data    
+                else -- for gen. reserve ,paid data   
+                    if cnt_det = 0 then -- Regis Claim Mode 
+                        v_ClaimSts := 'PHCLMSTS01';
+                    else
+                        if (mas.not_sts in ('N') or substr(mas.clm_pstat,1,1) in ('D','R') ) then
+                            v_ClaimSts := 'PHCLMSTS02';
+                        else
+                            v_ClaimSts := 'PHCLMSTS03';
+                        end if;
+                        
+                    end if; 
+                    
                     begin -- max pay_no
                         select max(pay_no) into v_PAYNO
                         from NC_PAYMENT
@@ -612,7 +674,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                             v_PAYNO := null;
                     end;  -- max pay_no                   
                     dbms_output.put_line('in Decline not_no:'||mas.not_no||' not_sts:'||mas.not_sts||' clm='||v_clmno||' pay='||v_payno);       
-                    if (mas.not_sts in ('N') or substr(mas.clm_pstat,1,1) = 'D')  and mas.REVISION >1 then -- update Paid =0
+                    if (mas.not_sts in ('N') or substr(mas.clm_pstat,1,1) in ('D','R') )  and mas.REVISION >1 then -- update Paid =0
                         Insert into ALLCLM.NC_PAYMENT
                         (CLM_NO, PAY_NO, CLM_SEQ, TRN_SEQ, PAY_AMT, RECOV_AMT, CURR_CODE, CURR_RATE
                         , STS_DATE, AMD_DATE, CLM_MEN, AMD_USER, PROD_GRP, PROD_TYPE, SUBSYSID, STS_KEY, TYPE, SUB_TYPE
@@ -654,8 +716,14 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                         and trn_seq in (select max(aa.trn_seq) from NC_PAYEE aa where  aa.pay_no = a.pay_no)
                         and a.clm_no = v_clmno
                         and a.pay_no = v_payno
-                        );                             
-                    end if;  
+                        );       
+                        if cnt_det = 0 then -- Regis Claim Mode 
+                            v_ClaimSts := 'PHCLMSTS01';
+                        else
+                            v_ClaimSts := 'PHCLMSTS02';
+                        end if;        
+                        dbms_output.put_line('--v_ClaimSts= '||v_ClaimSts);                                       
+                    end if;                      
                      
                 end if; -- for gen. reserve ,paid data        
 
@@ -669,6 +737,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                 ,LOSS_DETAIL = v_Detail ,HPT_CODE = mas.HOSP_CODE ,CLM_STS = v_ClmSts ,REMARK = v_Remark ,ICD10_2 = mas.ICD10_2 ,ICD10_3 = mas.ICD10_3
                 ,ADMISSION_TYPE = v_ADMIT ,CLAIM_STATUS = v_ClaimSts
                 ,OUT_PAID_STS = v_PaidSts ,BATCH_NO = mas.BATCH_NO
+                ,FAX_CLM_DATE = mas.REG_DATE
                 where CLM_NO = v_CLMNO;
                 
                 Update clm_outservice_mas
@@ -678,15 +747,30 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                 COMMIT;        
                 
                 --if cnt_det >0 and mas.not_sts <> 'N' then
-                if cnt_det > 0 and (mas.not_sts in ('Y','C') and substr(mas.clm_pstat,1,1) <>'D' ) then
+                if cnt_det > 0 and (mas.not_sts in ('Y','C') and substr(mas.clm_pstat,1,1) not in ('D','R') ) then
                     if mas.REVISION > 1 then
                         v_SaveStatus := p_ph_clm.SAVE_CLAIM_STATUS('claim_info_paid' ,v_clmno ,v_payno) ;
                     end if;
                     v_SaveStatus := p_ph_clm.SAVE_CLAIM_STATUS('payment' ,v_clmno ,v_payno) ;
-                else                  
-                    v_SaveStatus := p_ph_clm.SAVE_CLAIM_STATUS('claim_info_paid' ,v_clmno ,v_payno) ;
-                    if (mas.not_sts in ('N') or substr(mas.clm_pstat,1,1) = 'D')  and mas.REVISION >1 then -- update Paid =0
-                        v_SaveStatus := p_ph_clm.SAVE_CLAIM_STATUS('payment' ,v_clmno ,v_payno) ;
+                else    
+                    if cnt_det =0 then
+                        v_SaveStatus := p_ph_clm.SAVE_CLAIM_STATUS('claim_info_res' ,v_clmno ,null) ;
+--                    else
+--                        v_SaveStatus := p_ph_clm.SAVE_CLAIM_STATUS('claim_info_paid' ,v_clmno ,v_payno) ;                            
+                    end if;              
+
+                    if (mas.not_sts in ('N') or substr(mas.clm_pstat,1,1)  in ('D','R') )  and mas.REVISION >1 then -- update Paid =0
+                        if cnt_det =0 then
+                            v_SaveStatus := p_ph_clm.SAVE_CLAIM_STATUS('claim_info_res' ,v_clmno ,null) ;
+                        else
+                            if (mas.not_sts in ('N') or substr(mas.clm_pstat,1,1)  in ('D','R') ) then
+                                v_SaveStatus := p_ph_clm.SAVE_CLAIM_STATUS('claim_info_res' ,v_clmno ,null) ;
+                            else
+                                v_SaveStatus := p_ph_clm.SAVE_CLAIM_STATUS('payment' ,v_clmno ,v_payno) ;      
+                            end if;
+                                        
+                        end if;                       
+                        
                     end if;                        
                 end if;
             END LOOP; --pol
@@ -909,8 +993,8 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                 p_ph_clm.GET_PAYEE_DETAIL(v_clmno ,o_payee_code ,o_payee_seq ,o_contact_name ,o_addr1 ,o_addr2 ,o_mobile , o_email
                     ,o_agent_mobile ,o_agent_email );
                 begin                    
-                    select b.title||' '||b.name payee_name 
-                    into o_payee_name
+                    select b.title||' '||b.name payee_name ,nvl(payee_type,'03')
+                    into o_payee_name ,o_payee_type
                         from acc_payee b
                         where payee_code =o_payee_code ;                  
                 exception
@@ -930,7 +1014,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
         ELSE    -- paid Insure or Others
             V_search_name := nc_health_package.update_search_name(v_payee_name);
             begin                    
-                select b.payee_code ,payee_type ,b.title||' '||b.name payee_name ,account_no ,decode(account_name_th,null,account_name_eng,account_name_th) account_name_th ,b.bank_code ,b.branch_code
+                select b.payee_code ,nvl(payee_type,'03') ,b.title||' '||b.name payee_name ,account_no ,decode(account_name_th,null,account_name_eng,account_name_th) account_name_th ,b.bank_code ,b.branch_code
                 into o_payee_code ,o_payee_type ,o_payee_name ,O_ACC_NO ,O_ACC_NAME_TH ,O_BANK_CODE ,O_BANK_BR_CODE
                     from acc_payee b
                     where b.cancel is null
@@ -1134,6 +1218,92 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
             v_rst := 'error :'||sqlerrm ;
             Return 0;    
     END SET_CLMUSER_ByCLM ;   
+
+    FUNCTION SET_CLMUSER2(v_batch in VARCHAR2 ,v_user in VARCHAR2 ,v_rst out VARCHAR2) RETURN NUMBER IS -- 0 ,1
+        v_cnt   number:=0;
+        v_cntall   number:=0;
+        dumm_rst    boolean;
+        dumm_rst2    number;
+        v_rst2  varchar2(200);
+    BEGIN
+        -- Validate
+        begin
+            select count(*) into v_cnt
+            from nc_mas a
+            where claim_status not in ('PHCLMSTS06','PHCLMSTS30')
+            and batch_no = v_batch;
+        exception
+            when no_data_found then
+                v_cnt := 0;
+            when others then
+                v_cnt := 0;
+        end;
+
+        if v_cnt = 0 then v_rst := 'ไม่พบข้อมูลที่สามารถ update Clm User ได้ '; return 0; end if;
+        
+        begin
+            select count(*) into v_cnt
+            from acc_clm_tmp a
+            where a.clm_no in (select x.clm_no from nc_mas x where x.batch_no = v_batch);
+        exception
+            when no_data_found then
+                v_cnt := 0;
+            when others then
+                v_cnt := 0;
+        end;
+
+        begin
+            select count(*) into v_cntall
+            from nc_mas a
+            where claim_status not in ('PHCLMSTS06','PHCLMSTS30')
+            and batch_no = v_batch;
+        exception
+            when no_data_found then
+                v_cntall := 0;
+            when others then
+                v_cntall := 0;
+        end;
+                
+        if v_cnt > 0 and (v_cntall = v_cnt) then 
+            v_rst := 'รายการใน Batch นี้อนุมัติงานไปแล้ว '; return 0; 
+        end if;
+        -- End Validate        
+        
+        update nc_mas a
+        set clm_user = v_user 
+        where batch_no = v_batch and claim_status not in ('PHCLMSTS06','PHCLMSTS30')
+        and a.clm_no not in (select c.clm_no from acc_clm_tmp c where c.clm_no = a.clm_no);
+        
+        update nc_payment a
+        set clm_men = v_user
+        where clm_no in (select x.clm_no from nc_mas x where x.batch_no = v_batch)
+        and type <>'01' ;
+        
+        commit;
+        
+        for c in (
+            select sts_key ,clm_no ,(select pay_no from nc_payment m where m.clm_no = a.clm_no and rownum=1) pay_no
+            ,p_ph_clm.get_SUM_PAID(clm_no ,null) tot_paid 
+            from nc_mas a
+            where batch_no = v_batch and claim_status not in ('PHCLMSTS06','PHCLMSTS30')
+            and a.clm_no not in (select c.clm_no from acc_clm_tmp c where c.clm_no = a.clm_no)
+        )loop
+        
+--        dumm_rst := NC_CLNMC908.UPDATE_STATUS(c.sts_key ,'NCPAYSTS' ,'NCPAYSTS01' ,v_user ,'initial from p_ph_ost ' ,v_rst2);
+--
+--        dumm_rst := NC_CLNMC908.UPDATE_NCPAYMENT(c.sts_key ,c.clm_no ,c.pay_no ,'NCPAYSTS01' ,'initial from p_ph_ost ' ,null  ,v_user  ,v_user ,null ,c.tot_paid ,v_rst2);
+            dumm_rst2 := P_PH_CLM.UPD_PAYMENTAPPRV(c.sts_key ,c.clm_no ,c.pay_no ,'PHSTSAPPRV01'
+            ,null ,v_user ,v_user ,null ,c.tot_paid ,c.tot_paid ,'initial from p_ph_ost.set_clmuser2 '  ,v_rst2);
+        end loop; --c 
+        
+        return 1;
+    EXCEPTION
+        WHEN OTHERS THEN
+            rollback;
+            dbms_output.put_line('error :'||sqlerrm);
+            v_rst := 'error :'||sqlerrm ;
+            Return 0;    
+    END SET_CLMUSER2 ;          
     
     PROCEDURE GET_BATCH_STATUS(v_batch in VARCHAR2 ,V_STS out varchar2)  IS -- N = Not Open,Y = Open/Draft ,P = Paid,S = Print statement,C = cwp    
         c_not_open    number;
@@ -1302,8 +1472,16 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
     , v_contact_name IN VARCHAR2 , v_addr1 IN VARCHAR2  , v_addr2 IN VARCHAR2  , v_mobile IN VARCHAR2  , v_email IN VARCHAR2
     ,v_agent_mobile  IN VARCHAR2 ,v_agent_email  IN VARCHAR2 ,v_paidto IN VARCHAR2
     ,v_acc_no  IN varchar2, v_acc_name_th IN varchar2,  v_acc_name_en  IN varchar2, v_bank_code  IN varchar2, v_bank_br_code  IN varchar2, v_settle IN varchar2
+    ,v_special_flag IN varchar2, v_special_remark IN varchar2 
     ,o_rst out VARCHAR2) RETURN NUMBER IS --0 false ,1 true 
          v_batch_sts    varchar2(2);
+         dumm_clm    varchar2(20);
+         v_pay    varchar2(20);
+         pay_amt    number;
+         v_sysdate  date:=sysdate;
+         v_sysdate_T date:=trunc(sysdate);
+         v_SaveStatus   varchar2(200);
+         m_rst   varchar2(200);
     BEGIN
         if v_batch is null then
             o_rst := 'กรุณาระบุ Batch no.';
@@ -1313,7 +1491,15 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
             o_rst := 'กรุณาระบุ User';
             Return 0;             
         end if;        
-        
+        if v_payee_code is null then
+            o_rst := 'กรุณาระบุ Payee Code';
+            Return 0;             
+        end if;    
+        if v_payee_name is null then
+            o_rst := 'กรุณาระบุ Name Code';
+            Return 0;             
+        end if; 
+                          
         P_PH_OST.GET_BATCH_STATUS(v_batch ,v_batch_sts);
         if v_batch_sts in ('N','C','S') then
             o_rst := 'Batch นี้ ไม่อยู่ในสถานะที่สามารถแก้ไขได้ ';
@@ -1321,21 +1507,139 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
         end if;      
         
         for mas in (
-            select b.clm_no
+            select b.clm_no ,prod_grp ,prod_type ,nvl(curr_code,'BHT') curr_code ,nvl(curr_rate,1) curr_rate
             from nc_mas b
             where batch_no = v_batch
-            and close_date is null and claim_status in ('PHCLMSTS02' ,'PHCLMSTS01' ,'PHCLMSTS03')           
+            and close_date is null and claim_status in ('PHCLMSTS02' ,'PHCLMSTS01' ,'PHCLMSTS03')    
+            and clm_no not in (select x.clm_no from acc_clm_tmp x where x.clm_no = b.clm_no)       
         )loop      
             dbms_output.put_line('clm_no='||mas.clm_no);
+            begin
+                select clm_no into dumm_clm
+                from nc_payee
+                where clm_no = mas.clm_no and rownum=1;
+            exception
+                when no_data_found then
+                    dumm_clm := null;
+                when others then
+                    dumm_clm := null;
+            end;
+            begin
+                select max(pay_no) into v_pay
+                from nc_payment
+                where clm_no = mas.clm_no and type<>'01' ;
+            exception
+                when no_data_found then
+                    v_pay := null;
+                when others then
+                    v_pay := null;
+            end;     
+                                    
+            if dumm_clm is null then       
+                        
+                if v_pay is not null then
+                    begin
+                        select sum(pay_amt) into pay_amt
+                        from nc_payment a
+                        where clm_no =  mas.clm_no
+                        and pay_no = v_pay
+                        and trn_seq in (select max(aa.trn_seq) from nc_payment aa where aa.pay_no = a.pay_no)   ;                     
+                    exception
+                        when no_data_found then
+                            pay_amt := 0;
+                        when others then
+                            pay_amt := 0;
+                    end;    
+                    begin
+                        Insert into ALLCLM.NC_PAYEE
+                           (CLM_NO, PAY_NO, PROD_GRP, PROD_TYPE, TRN_SEQ, STS_DATE, AMD_DATE, PAYEE_CODE, PAYEE_TYPE, PAYEE_SEQ, PAYEE_AMT, SETTLE, CURR_CODE, CURR_RATE, CREATE_USER, AMD_USER)
+                         Values
+                           (mas.clm_no, v_pay, mas.prod_grp, mas.prod_type, 1, 
+                           v_sysdate, v_sysdate, '0000', '01' ,
+                            1, pay_amt, '2', mas.curr_code, mas.curr_rate, v_user, v_user
+                           );                        
+                    exception
+                        when others then
+                            rollback;
+                            dbms_output.put_line('error '||sqlerrm);
+                            o_rst := 'error :'||sqlerrm ;
+                            Return 0;                                 
+                    end;                                
+                end if;  
+            end if;    -- dumm_no is null    
+            
+            --=== Section Update Payee Detail
+            begin     
+                update nc_payee a
+                set payee_code = v_payee_code , payee_name = v_payee_name ,payee_type = v_payee_type
+                ,settle = v_settle ,acc_no = v_acc_no ,acc_name = v_acc_name_th ,bank_code = v_bank_code, bank_br_code = v_bank_br_code ,paid_to = v_paidto
+                ,send_title =v_contact_name , send_addr1 = v_addr1 , send_addr2 = v_addr2 , email = v_email ,sms = v_mobile 
+                ,agent_sms = v_agent_mobile ,agent_email = v_agent_email
+                ,special_flag = v_special_flag ,special_remark = v_special_remark
+                where a.clm_no = mas.clm_no and pay_no = v_pay
+                and trn_seq in (select max(aa.trn_seq) from nc_payee aa where aa.pay_no = a.pay_no );       
+
+                update nc_mas a
+                set out_paid_sts = 'Y'
+                where a.clm_no = mas.clm_no;
+                                                        
+            exception
+              when others then
+                  dbms_output.put_line('error fix payee_code :'||sqlerrm);  
+                  o_rst := 'error fix payee_code :'||sqlerrm;
+                  rollback;                
+                  return '0';
+            end;                           
+            v_SaveStatus := p_ph_clm.SAVE_CLAIM_STATUS('payment' ,mas.clm_no ,v_pay) ;    
+            if v_SaveStatus is not null then
+                nc_health_package.WRITE_LOG  ( 'PH_OST' ,'Fix_Batch' ,'Error SaveStatus' ,'CLM: '||mas.clm_no||' : '||v_SaveStatus , m_rst)   ;  
+            end if;
         end loop; --mas  
-                
+        commit;        
         return 1;
     EXCEPTION
     WHEN OTHERS THEN
         rollback;
         dbms_output.put_line('error :'||sqlerrm);
         o_rst := 'error :'||sqlerrm ;
+        nc_health_package.WRITE_LOG  ( 'PH_OST' ,'Fix_Batch' ,'Error' ,o_rst , m_rst)   ;        
         Return 0;         
     END FIX_BATCH_PAYEE ;
+    
+    FUNCTION stampCloseClaim(v_notno IN VARCHAR2 ,v_rev IN NUMBER ,v_clmno IN VARCHAR2 ,o_rst out VARCHAR2) RETURN NUMBER IS --  0 false ,1 true 
+         m_rst   varchar2(200);    
+    BEGIN
+        update clm_outservice_mas
+        set bki_clm_no = V_CLMNO
+        where not_no = v_notno and revision = v_rev; 
+        commit;        
+        return 1;
+    EXCEPTION
+    WHEN OTHERS THEN
+        rollback;
+        dbms_output.put_line('error :'||sqlerrm);
+        o_rst := 'error :'||sqlerrm ;
+        nc_health_package.WRITE_LOG  ( 'PH_OST' ,'stampCloseClaim' ,'Error' ,o_rst , m_rst)   ;        
+        Return 0;      
+    END stampCloseClaim;
+    
+    FUNCTION GET_OSTCLM_STS(v_sts IN VARCHAR2) RETURN VARCHAR2 IS
+        v_ret    varchar2(250);
+    BEGIN
+        begin
+            select remark into v_ret
+            from clm_constant
+            where key like 'PHOSTCLMSTS%' 
+            and remark2 = v_sts ;
+        exception
+            WHEN no_data_found THEN
+                v_ret := 'N/A';
+            WHEN others THEN
+                v_ret := 'N/A';
+        end;
+            
+        return v_ret; 
+    END GET_OSTCLM_STS;
+            
 END P_PH_OST;
 /

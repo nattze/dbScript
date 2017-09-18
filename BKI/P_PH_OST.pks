@@ -8,6 +8,8 @@ CREATE OR REPLACE PACKAGE P_PH_OST AS
    Ver        Date        Author           Description
    ---------  ----------  ---------------  ------------------------------------
    1.0        5/4/2017      2702       1. Created this package.
+   Use NC_WS_LOG by usesr_id=PH_OST name=Fix_Batch
+   nc_health_package.WRITE_LOG  ( 'PH_OST' ,'Fix_Batch' ,'Error' ,t_sql , m_rst)   ;   
 ******************************************************************************/
     TYPE v_curr IS REF CURSOR;    
     
@@ -32,13 +34,20 @@ CREATE OR REPLACE PACKAGE P_PH_OST AS
     FUNCTION SET_CLMUSER_ByCLM(v_clmno in VARCHAR2 ,v_user in VARCHAR2 ,v_rst out VARCHAR2) RETURN NUMBER   ;  -- 0 ,1 
     
     PROCEDURE GET_BATCH_STATUS(v_batch in VARCHAR2 ,V_STS out varchar2) ; -- N = Not Open,Y = Open/Draft ,P = Paid,S = Print statement,C = cwp
-    
+
+    FUNCTION SET_CLMUSER2(v_batch in VARCHAR2 ,v_user in VARCHAR2 ,v_rst out VARCHAR2) RETURN NUMBER   ;  -- 0 ,1 
+        
     FUNCTION FIX_BATCH_PAYEE(v_batch in VARCHAR2 ,v_clmno in VARCHAR2 ,v_user in VARCHAR2 
      , v_payee_code IN VARCHAR2 ,v_payee_seq IN VARCHAR2 ,v_payee_type IN VARCHAR2 , v_payee_name IN VARCHAR2 
      , v_contact_name IN VARCHAR2 , v_addr1 IN VARCHAR2  , v_addr2 IN VARCHAR2  , v_mobile IN VARCHAR2  , v_email IN VARCHAR2
      ,v_agent_mobile  IN VARCHAR2 ,v_agent_email  IN VARCHAR2 ,v_paidto IN VARCHAR2
      ,v_acc_no  IN varchar2, v_acc_name_th IN varchar2,  v_acc_name_en  IN varchar2, v_bank_code  IN varchar2, v_bank_br_code  IN varchar2, v_settle IN varchar2
+     ,v_special_flag IN varchar2, v_special_remark IN varchar2 
      ,o_rst out VARCHAR2) RETURN NUMBER ; --0 false ,1 true 
+     
+     FUNCTION stampCloseClaim(v_notno IN VARCHAR2 ,v_rev IN NUMBER ,v_clmno IN VARCHAR2 ,o_rst out VARCHAR2) RETURN NUMBER; --  0 false ,1 true 
+     
+     FUNCTION GET_OSTCLM_STS(v_sts IN VARCHAR2) RETURN VARCHAR2 ;
 END P_PH_OST;
 
 /
