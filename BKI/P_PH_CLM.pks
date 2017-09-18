@@ -205,6 +205,16 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_PH_CLM AS
     PROCEDURE GET_APPROVE_USER(i_clmno IN varchar2 ,i_payno IN varchar2 ,o_apprv_id OUT varchar2 ,o_apprv_sts OUT varchar2);
 
     FUNCTION IS_NEW_PHCLM(v_clmno IN VARCHAR2 ,O_RST OUT VARCHAR2) RETURN BOOLEAN;
+    
+    FUNCTION CANCEL_APPROVE(vClmNo in varchar2 ,vPayNo in varchar2 ,vClmUser in varchar2 ,P_RST OUT VARCHAR2) RETURN NUMBER; -- 0 Fail ,1 Success 
+
+    PROCEDURE CHECK_LIMIT(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2 ,v_benecode IN VARCHAR2
+    ,v_pdflag IN VARCHAR2 ,v_days IN NUMBER ,v_amount IN NUMBER ,v_clmno IN VARCHAR2 ,v_fleet IN VARCHAR2 ,o_remain_day OUT NUMBER ,o_remain_amt OUT NUMBER ,o_err OUT VARCHAR2);
+
+    PROCEDURE CHECK_OPD(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2 ,v_benecode IN VARCHAR2
+    ,v_poltype IN VARCHAR2 ,v_days IN NUMBER ,v_amount IN NUMBER ,v_clmno IN VARCHAR2 ,v_fleet IN VARCHAR2 ,o_remain_day OUT NUMBER ,o_remain_amt OUT NUMBER ,o_err OUT VARCHAR2);
+
+        
 END P_PH_CLM;
 /
 
