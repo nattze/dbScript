@@ -907,6 +907,7 @@ FUNCTION CONV_PH_OPEN(v_clmno in varchar2,v_payno in varchar2  ,v_sts in varchar
     v_max_stateseq   number(5):=0;
     v_max_criseq   number(5):=0;
     v_hpt_code  varchar2(20);
+    v_min_statedate date;
     o_inc  varchar2(2);
     o_recpt   varchar2(2);
     o_inv  varchar2(2);
@@ -957,6 +958,18 @@ BEGIN
             v_max_stateseq := 0;
     end;  -- max v_max_stateseq    
 
+    begin --v_min_statedate 
+        select state_date into v_min_statedate 
+        from clm_medical_res  a
+        where clm_no = v_clmno
+        and a.state_seq in (select min(aa.state_seq) from clm_medical_res aa where aa.clm_no = a.clm_no);                  
+    exception
+        when no_data_found then 
+            v_min_statedate := trunc(vsysdate);
+        when others then
+            v_min_statedate := trunc(vsysdate);
+    end;  --v_min_statedate 
+   
     begin -- max v_max_criseq
         select nvl(max(corr_seq)+1,0) into v_max_criseq
         from mis_cri_res 
@@ -1139,7 +1152,7 @@ BEGIN
                          Values
                            (
                            res.clm_no, v_state_no, v_max_stateseq, fleet.fleet_seq, fleet.sub_seq, fleet.plan, res.pd_flag, Cmas.dis_code, res.bene_code
-                           , Cmas.recpt_seq, trunc(vsysdate), vsysdate, fleet.title, fleet.name, fleet.fr_date, fleet.to_date, v_hpt_code, res.res_amt
+                           , Cmas.recpt_seq, v_min_statedate, vsysdate, fleet.title, fleet.name, fleet.fr_date, fleet.to_date, v_hpt_code, res.res_amt
                            , res.close_date, Cmas.loss_date, fleet.fam_sts, res.paid_sts, res.contact, res.remark, res.clm_pd_flag, res.seq, fleet.fam_seq
                            , fleet.dept_bki, fleet.id_no
                            );                      
@@ -1225,7 +1238,7 @@ BEGIN
                          Values
                            (
                            res.clm_no, v_state_no, v_max_stateseq, fleet.fleet_seq, fleet.sub_seq, fleet.plan, res.pd_flag, Cmas.dis_code, res.bene_code
-                           , Cmas.recpt_seq, trunc(vsysdate), vsysdate, fleet.title, fleet.name, fleet.fr_date, fleet.to_date, v_hpt_code, res.res_amt
+                           , Cmas.recpt_seq, trunc(v_min_statedate), vsysdate, fleet.title, fleet.name, fleet.fr_date, fleet.to_date, v_hpt_code, res.res_amt
                            , res.close_date, Cmas.loss_date, fleet.fam_sts, res.paid_sts, res.contact, res.remark, res.clm_pd_flag, res.seq, fleet.fam_seq
                            , fleet.dept_bki, fleet.id_no
                            );                      
@@ -1487,7 +1500,7 @@ BEGIN
                 trunc(FAX_CLM_DATE) FAX_CLM_DATE, p_ph_convert.CONV_ADMISSTYPE(admission_type) IPD_FLAG  
                 ,close_date , '' cwp_remark ,'' fax_clm ,'' invoice ,
                 '' RISK_DESCR ,REMARK ,DIS_CODE ,HPT_CODE ,fleet_seq ,amd_user ,clm_type ,
-                OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS ,LOSS_DETAIL
+                BATCH_NO ,OUT_CLM_NO ,OUT_OPEN_STS ,OUT_PAID_STS ,OUT_APPROVE_STS ,LOSS_DETAIL
                 FROM nc_mas where clm_no = v_clmno
                 )LOOP 
                     P_PH_CONVERT.CONV_CLMTYPE(Cmas.CLM_TYPE ,o_inc ,o_recpt ,o_inv ,o_ost ,o_dead);
@@ -1497,7 +1510,8 @@ BEGIN
                     ,fax_clm_date =cmas.fax_clm_date ,clm_men = cmas.clm_men ,clm_staff =  cmas.amd_user ,remark = cmas.remark 
                     ,risk_descr = cmas.loss_detail 
                     ,fax_clm = o_inc ,invoice =o_inv ,receipt =o_recpt ,walkin =o_ost ,deathclm = o_dead ,clm_type = Cmas.CLM_TYPE
-                    ,OUT_CLM_NO = Cmas.OUT_CLM_NO ,OUT_OPEN_STS = Cmas.OUT_OPEN_STS ,OUT_PAID_STS = Cmas.OUT_PAID_STS ,OUT_PRINT_STS = Cmas.OUT_APPROVE_STS                            
+                    ,OUT_CLM_NO = Cmas.OUT_CLM_NO ,OUT_OPEN_STS = Cmas.OUT_OPEN_STS ,OUT_PAID_STS = Cmas.OUT_PAID_STS ,OUT_PRINT_STS = Cmas.OUT_APPROVE_STS   
+                    ,BATCH_NO = Cmas.BATCH_NO                          
                     where clm_no = v_clmno;
 
                     insert into mis_clm_mas_seq(clm_no,pol_no,pol_run,corr_seq,corr_date,channel,prod_grp,
@@ -1787,6 +1801,7 @@ FUNCTION CONV_PH_RES_REV(v_clmno in varchar2,v_payno in varchar2  ,v_sts in varc
     v_state_no  varchar2(20);
     v_max_stateseq   number(5):=0;
     v_max_criseq   number(5):=0;
+    v_min_statedate date;
     v_polno varchar2(20);
     v_polrun number;
     v_fleet number;
@@ -1824,7 +1839,7 @@ BEGIN
     begin -- max corr_seq
         select nvl(max(corr_seq)+1,0) into v_max_corrseq
         from mis_clm_mas_seq 
-        where clm_no = v_clmno;
+        where clm_no = v_clmno; 
     exception
         when no_data_found then 
             v_max_corrseq := 0;
@@ -1854,6 +1869,18 @@ BEGIN
             v_max_stateseq := 0;
     end;  -- max v_max_stateseq    
 
+    begin --v_min_statedate 
+        select state_date into v_min_statedate 
+        from clm_medical_res  a
+        where clm_no = v_clmno
+        and a.state_seq in (select min(aa.state_seq) from clm_medical_res aa where aa.clm_no = a.clm_no);                  
+    exception
+        when no_data_found then 
+            v_min_statedate := trunc(vsysdate);
+        when others then
+            v_min_statedate := trunc(vsysdate);
+    end;  --v_min_statedate 
+    
     begin -- max v_gmpaid_seq
         select nvl(max(corr_seq)+1,0) into v_gmpaid_seq
         from clm_gm_paid 
@@ -1936,7 +1963,7 @@ BEGIN
                      Values
                        (
                        res.clm_no, v_state_no, v_max_stateseq, fleet.fleet_seq, fleet.sub_seq, fleet.plan, res.pd_flag, Cmas.dis_code, res.bene_code
-                       , Cmas.recpt_seq, trunc(vsysdate), vsysdate, fleet.title, fleet.name, fleet.fr_date, fleet.to_date, v_hpt_code, res.res_amt
+                       , Cmas.recpt_seq, trunc(v_min_statedate), vsysdate, fleet.title, fleet.name, fleet.fr_date, fleet.to_date, v_hpt_code, res.res_amt
                        , res.close_date, Cmas.loss_date, fleet.fam_sts, res.paid_sts, res.contact, res.remark, res.clm_pd_flag, res.seq, fleet.fam_seq
                        , fleet.dept_bki, fleet.id_no 
                        );                      
@@ -1999,7 +2026,7 @@ BEGIN
                , DISC_AMT, PAY_AMT, HPT_CODE, CLM_PD_FLAG, SEQ, REC_PAY_DATE, FAM_SEQ
                ,REMARK ,REC_AMT ,IPD_DAY ,DEPT_BKI ,ID_NO)      
                Values
-               (v_clmno ,v_payno ,v_gmpaid_seq ,cmas.fleet_seq ,F.sub_seq ,F.plan ,v_pdflag ,cmas.dis_code ,paid.bene_code ,cmas.loss_date ,paid.sts_date ,vsysdate
+               (v_clmno ,v_payno ,v_gmpaid_seq ,cmas.fleet_seq ,F.sub_seq ,F.plan ,v_pdflag ,cmas.dis_code ,paid.bene_code ,cmas.loss_date ,null ,vsysdate
                , 0 ,paid.pay_amt ,v_hpt_code ,v_clmpdflag ,1 ,paid.sts_date ,F.fam_seq
                ,paid.remark ,paid.recov_amt , v_days ,F.dept_bki ,F.id_no);            
                                                  
