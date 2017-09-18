@@ -3812,13 +3812,13 @@ END;
 --        end if;
 
         if v_dbins='UATBKIIN' then
-            v_link := 'http://bkinetdv/Non_pa_claim/Call_Crystal_Report.aspx?'; 
+            v_link := 'http://bkinetdv/Non_pa_claim/Call_Crystal_Report.aspx?';
             v_url := v_link||'user_id='||v_clmmen||chr(38)||'report_name=CLNMC010_UAT'||chr(38)||'IN_CLM_NO='||P_clm_no||chr(38)||'IN_PAY_NO='||P_pay_no;
-        else 
-            v_link := 'http://bkiintra.bki.co.th/Non_pa_claim/Call_Crystal_Report.aspx?'; 
+        else
+            v_link := 'http://bkiintra.bki.co.th/Non_pa_claim/Call_Crystal_Report.aspx?';
             v_url := v_link||'user_id='||v_clmmen||chr(38)||'report_name=CLNMC010'||chr(38)||'IN_CLM_NO='||P_clm_no||chr(38)||'IN_PAY_NO='||P_pay_no;
-        end if; 
-     
+        end if;
+
     END IF;
     return v_url;
   END GET_STATEMENT_LINK;
@@ -3858,6 +3858,49 @@ END;
     END IF;
     return v_user;
   END GET_PAIDUSER;
+
+  FUNCTION GET_DAMAGE_DESCR(P_pay_no IN varchar2 , /* Payment no  */
+                                                     P_prod_type IN varchar2   /* Prod_type*/
+                                                    ) RETURN VARCHAR2 /* Remark*/ IS
+    v_remark VARCHAR2(250);
+  BEGIN
+    IF NC_CLNMC908.GET_PRODUCTID2(P_prod_type)  = 'PA' THEN
+        BEGIN
+             select risk_descr into v_remark
+            from mis_clm_mas a
+            where clm_no in (select aa.clm_no from mis_clm_paid aa where aa.pay_no =P_pay_no and rownum=1) ;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                v_remark := null;
+            WHEN OTHERS THEN
+                v_remark := null;
+        END;
+   ELSIF NC_CLNMC908.GET_PRODUCTID2(P_prod_type) = 'GM' THEN
+        BEGIN
+              select loss_detail into v_remark
+            from nc_mas a
+            where clm_no in (select aa.clm_no from nc_payment aa where  aa.pay_no = P_pay_no  and rownum=1) ;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                v_remark := null;
+            WHEN OTHERS THEN
+                v_remark := null;
+        END;
+   ELSE
+        BEGIN
+              select loss_detail into v_remark
+            from nc_mas a
+            where clm_no in (select aa.clm_no from nc_payment aa where aa.pay_no = P_pay_no and rownum=1) ;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                v_remark := null;
+            WHEN OTHERS THEN
+                v_remark := null;
+        END;
+    END IF;
+
+    return v_remark;
+  END GET_DAMAGE_DESCR;
 
 END P_CLAIM_ACR;
 /

@@ -257,10 +257,14 @@ CREATE OR REPLACE PACKAGE ALLCLM."P_CLAIM_ACR" AS
   FUNCTION GET_STATEMENT_LINK(P_clm_no  IN VARCHAR2  ,P_pay_no IN varchar2 , /* Payment no  */
                                                      P_prod_type IN varchar2   /* Prod_type*/
                                                     ) RETURN VARCHAR2 /* URL*/ ;
-                                                    
+
   FUNCTION GET_PAIDUSER(P_pay_no IN varchar2 , /* Payment no  */
                                                      P_prod_type IN varchar2   /* Prod_type*/
-                                                    ) RETURN VARCHAR2 /* Paid User*/ ;                                                    
+                                                    ) RETURN VARCHAR2 /* Paid User*/ ;
+                                                    
+  FUNCTION GET_DAMAGE_DESCR(P_pay_no IN varchar2 , /* Payment no  */
+                                                     P_prod_type IN varchar2   /* Prod_type*/
+                                                    ) RETURN VARCHAR2 /* remerk*/ ;                                                    
 END P_CLAIM_ACR;
 /
 
