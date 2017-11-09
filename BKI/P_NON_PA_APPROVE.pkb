@@ -222,6 +222,7 @@ FUNCTION IS_PASS_DRAFT(i_clmno IN varchar2 ,i_payno IN varchar2 ,o_rst OUT varch
  v_f1 varchar2(20):=null;
  v_return boolean;
 BEGIN
+    --return true;
      begin
          select pay_sts into v_f1
         from nc_payment_apprv a
@@ -268,40 +269,20 @@ FUNCTION CAN_SEND_APPROVE(i_clmno IN varchar2 ,i_payno IN varchar2 ,o_rst OUT va
  v_f1 varchar2(20):=null;
  v_return boolean;
 BEGIN
-    if not p_non_pa_approve.IS_PASS_DRAFT(i_clmno ,i_payno  ,o_rst) and P_NON_PA_APPROVE.IS_SWITCH_ON('NONPASWITCH02')  then        
-        o_rst := null;
-         begin
-             select pay_sts into v_f1
-             from nc_payment_apprv xxx
-             where 
-             xxx.clm_no = i_clmno and pay_no = i_payno and 
-             xxx.pay_sts in ('NONPASTSAPPRV22','NONPASTSAPPRV25') and 
-             type = '01' and sub_type = '01' and 
-             xxx.trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = xxx.sts_key and b.pay_no = xxx.pay_no
-             and type = '01' and sub_type = '01' );
-             o_rst := 'งานอยู่ระหว่างรอการอนุมัติ Draft' ; 
-             v_return := false; 
-         exception
-         when no_data_found then
-             v_f1 := null;
-             v_return := true;
-         when others then
-             dbms_output.put_line('error'||sqlerrm);
-             o_rst := 'error'||sqlerrm ; 
-             v_return := false;
-         end;
-     
-         if v_f1 is null then
+    
+    if P_NON_PA_APPROVE.IS_SWITCH_ON('NONPASWITCH02') then
+        if not p_non_pa_approve.IS_PASS_DRAFT(i_clmno ,i_payno  ,o_rst)   then        
+            o_rst := null;
              begin
                  select pay_sts into v_f1
                  from nc_payment_apprv xxx
                  where 
                  xxx.clm_no = i_clmno and pay_no = i_payno and 
-                 xxx.pay_sts in ('NONPASTSAPPRV23') and 
+                 xxx.pay_sts in ('NONPASTSAPPRV22','NONPASTSAPPRV25') and 
                  type = '01' and sub_type = '01' and 
                  xxx.trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = xxx.sts_key and b.pay_no = xxx.pay_no
                  and type = '01' and sub_type = '01' );
-                 o_rst := 'งานอนุมัติ Draft ไปแล้ว' ; 
+                 o_rst := 'งานอยู่ระหว่างรอการอนุมัติ Draft' ; 
                  v_return := false; 
              exception
              when no_data_found then
@@ -311,12 +292,34 @@ BEGIN
                  dbms_output.put_line('error'||sqlerrm);
                  o_rst := 'error'||sqlerrm ; 
                  v_return := false;
-             end; 
-         end if;
-        
-    return v_return;
+             end;
+         
+             if v_f1 is null then
+                 begin
+                     select pay_sts into v_f1
+                     from nc_payment_apprv xxx
+                     where 
+                     xxx.clm_no = i_clmno and pay_no = i_payno and 
+                     xxx.pay_sts in ('NONPASTSAPPRV23') and 
+                     type = '01' and sub_type = '01' and 
+                     xxx.trn_seq = (select max(b.trn_seq) from nc_payment_apprv b where b.sts_key = xxx.sts_key and b.pay_no = xxx.pay_no
+                     and type = '01' and sub_type = '01' );
+                     o_rst := 'งานอนุมัติ Draft ไปแล้ว' ; 
+                     v_return := false; 
+                 exception
+                 when no_data_found then
+                     v_f1 := null;
+                     v_return := true;
+                 when others then
+                     dbms_output.put_line('error'||sqlerrm);
+                     o_rst := 'error'||sqlerrm ; 
+                     v_return := false;
+                 end; 
+             end if;
+            
+        return v_return;
+        end if;    
     end if;
-    
      begin
          select pay_sts into v_f1
          from nc_payment_apprv xxx
@@ -462,11 +465,14 @@ BEGIN
      v_found := null;
      dbms_output.put_line('error'||sqlerrm);
      end;
+    
+    if  P_NON_PA_APPROVE.IS_SWITCH_ON('NONPASWITCH02') then
+        if not p_non_pa_approve.IS_PASS_DRAFT(i_clmno ,c1.pay_no  ,o_rst)   then 
+             v_found := 'found';
+             v_return := false;
+        end if;     
+    end if;
 
-    if not p_non_pa_approve.IS_PASS_DRAFT(i_clmno ,c1.pay_no  ,o_rst) and P_NON_PA_APPROVE.IS_SWITCH_ON('NONPASWITCH02')  then 
-         v_found := 'found';
-         v_return := false;
-    end if; 
          
      if v_found is null then -- ไม่พบการจอนุมัติรอ post
      begin
@@ -485,7 +491,7 @@ BEGIN
          
      if v_found is null then -- ไม่พบการจ่าย ใน ACR 
      v_return := false;
-     o_rst := 'มีเลขที่จ่าย '||c1.pay_no || 'ค้าง draft ในระบบ ไม่สามารถสร้างเลขจ่ายใหม่ได้ !! ';
+     o_rst := 'มีเลขที่จ่าย '||c1.pay_no || ' ค้าง approve payment ในระบบ ไม่สามารถสร้างเลขจ่ายใหม่ได้ !! ';
      end if;
  
  END LOOP; --c1
@@ -1596,9 +1602,13 @@ BEGIN
  v_allcc := '';
  end if;
  
- if i_sts in ('NONPASTSAPPRV02' ,'NONPASTSAPPRV05' ) then -- Send Apprv
+ if i_sts in ('NONPASTSAPPRV02' ,'NONPASTSAPPRV05' ,'NONPASTSAPPRV22' ,'NONPASTSAPPRV25' ) then -- Send Apprv
  if i_sts = 'NONPASTSAPPRV05' then
  x_subject := 'เรื่องขออนุมัติการจ่ายค่าสินไหม '||'(อนุมัติผ่าน)'||v_whatsys; 
+ elsif i_sts = 'NONPASTSAPPRV22' then
+ x_subject := 'เรื่องขออนุมัติการจ่ายค่าสินไหม '||'(อนุมัติ Draft)'||v_whatsys; 
+ elsif i_sts = 'NONPASTSAPPRV25' then
+ x_subject := 'เรื่องขออนุมัติการจ่ายค่าสินไหม '||'(อนุมัติผ่าน Draft)'||v_whatsys; 
  else
  x_subject := 'เรื่องขออนุมัติการจ่ายค่าสินไหม '||v_whatsys; 
  end if;
@@ -1629,13 +1639,19 @@ BEGIN
  '</HTML>'; 
  v_to := core_ldap.GET_EMAIL_FUNC(v_apprv);
  v_cc := core_ldap.GET_EMAIL_FUNC(v_clmmen); 
- elsif i_sts in ('NONPASTSAPPRV03' ,'NONPASTSAPPRV06' ,'NONPASTSAPPRV04') then -- Apprv ,disapprv
+ elsif i_sts in ('NONPASTSAPPRV03' ,'NONPASTSAPPRV06' ,'NONPASTSAPPRV04' ,'NONPASTSAPPRV23' ,'NONPASTSAPPRV24' ,'NONPASTSAPPRV26') then -- Apprv ,disapprv
  if i_sts = 'NONPASTSAPPRV03' then
  v_pay_descr := 'อนุมัติการจ่ายค่าสินไหม'; 
  elsif i_sts = 'NONPASTSAPPRV06' then
  v_pay_descr := 'อนุมัติการจ่ายค่าสินไหม (อนุมัติผ่าน)'; 
  elsif i_sts = 'NONPASTSAPPRV04' then
  v_pay_descr := 'ไม่อนุมัติการจ่ายค่าสินไหม'; 
+ elsif i_sts = 'NONPASTSAPPRV23' then
+ v_pay_descr := 'อนุมัติการจ่ายค่าสินไหม (Draft)'; 
+ elsif i_sts = 'NONPASTSAPPRV24' then
+ v_pay_descr := 'ไม่อนุมัติการจ่ายค่าสินไหม (Draft)'; 
+ elsif i_sts = 'NONPASTSAPPRV26' then
+ v_pay_descr := 'อนุมัติการจ่ายค่าสินไหม (อนุมัติผ่าน Draft)';    
  end if;
  
  x_subject := 'เรื่องผลการอนุมัติการจ่ายค่าสินไหม '||v_whatsys; 
@@ -4696,11 +4712,18 @@ BEGIN
                 END IF;        
                                 
                 if v_chk_adv = false then
-                    IF p3.payee_type = '01' THEN
+                    IF c_rec.prod_grp = '0' THEN --PA PH claim
                         v_ADV_AMT := V_SUM_PAYEE - (V_SUM_PAY - V_SUM_SAL - V_SUM_DEC);
                         if v_ADV_AMT <> 0 then
                             v_chk_adv := true;
-                        end if;
+                        end if;                    
+                    ELSE
+                        IF p3.payee_type = '01' THEN
+                            v_ADV_AMT := V_SUM_PAYEE - (V_SUM_PAY - V_SUM_SAL - V_SUM_DEC);
+                            if v_ADV_AMT <> 0 then
+                                v_chk_adv := true;
+                            end if;
+                        END IF;                    
                     END IF;
                 end if;
                 --===========**CALULATE Deduct Salvage **===========   
