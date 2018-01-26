@@ -568,6 +568,13 @@ BEGIN
             vRST := O_RST ; 
             return false;    
         END IF;        
+    else
+        IF p_pa_clm.IS_NEW_PAPH(vClmno) = '1' THEN
+--            dbms_output.put_line('new Claim='||O_RST);
+            O_RST := 'CLMNO: '||vClmno||' ถูกสร้างบนระบบ new PAPHsystem กรุณาดำเนินการที่โปรแกรมใหม่!';
+            vRST := O_RST ;             
+            return false;    
+        END IF;      
     end if;
     
     -- validate Reserve , ReInsuance

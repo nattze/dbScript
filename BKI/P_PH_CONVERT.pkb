@@ -1,7 +1,7 @@
-ÔªøCREATE OR REPLACE PACKAGE BODY P_PH_CONVERT AS
+CREATE OR REPLACE PACKAGE BODY  ALLCLM.P_PH_CONVERT AS
 /******************************************************************************
  NAME: ALLCLM.P_PH_CONVERT
-   PURPOSE:     ‡∏™‡∏≥‡∏´‡∏£‡∏±‡∏ö‡∏Å‡∏≤‡∏£ Convert to old table(BKIAPP) ‡πÅ‡∏•‡∏∞ ‡∏™‡πà‡∏ß‡∏ô‡∏Å‡∏≤‡∏£ post Data
+   PURPOSE:      ”À√—∫°“√ Convert to old table(BKIAPP) ·≈–  Ë«π°“√ post Data
    
 
    REVISIONS:
@@ -69,7 +69,7 @@ BEGIN
  end if; 
  
  if c_rec.clm_user is null then
- P_RST := c_rec.clm_no||': ‡πÑ‡∏°‡πà‡∏û‡∏ö ‡πÄ‡∏à‡πâ‡∏≤‡∏Ç‡∏≠‡∏á‡πÄ‡∏£‡∏∑‡πà‡∏≠‡∏á' ; 
+ P_RST := c_rec.clm_no||': ‰¡Ëæ∫ ‡®È“¢Õß‡√◊ËÕß' ; 
  return false;  
  end if;
  
@@ -436,7 +436,13 @@ BEGIN
                 END IF;    
                                 
                 if v_chk_adv = false then
-                    IF p3.payee_type = '01' THEN
+--                    IF p3.payee_type = '01' THEN
+--                        v_ADV_AMT := V_SUM_PAYEE - (V_SUM_PAY - V_SUM_SAL - V_SUM_DEC- V_SUM_REC);
+--                        if v_ADV_AMT <> 0 then
+--                            v_chk_adv := true;
+--                        end if;
+--                    END IF;
+                    IF p3.pay_seq = 1 THEN
                         v_ADV_AMT := V_SUM_PAYEE - (V_SUM_PAY - V_SUM_SAL - V_SUM_DEC- V_SUM_REC);
                         if v_ADV_AMT <> 0 then
                             v_chk_adv := true;
@@ -452,6 +458,7 @@ BEGIN
                  --*** Insert CLM_GM_RECOV
                 IF nvl(v_ADV_AMT,0) > 0 THEN
                     NMTR_PACKAGE.SET_CLM_GM_RECOV(c_rec.clm_no ,p1.pay_no ,v_ADV_AMT ,V_RESULT_x );
+                    P_PH_CLM.EMAIL_ALERT_ADVANCE(c_rec.clm_no ,p1.pay_no) ;
                 END IF;  
                                                       
                 begin
@@ -609,13 +616,13 @@ BEGIN
 --    END; 
     
     IF v_lastPaySTS <> 'PHSTSAPPRV03' THEN
-        v_rst := '‡πÄ‡∏•‡∏Ç‡∏ó‡∏µ‡πà‡∏à‡πà‡∏≤‡∏¢‡∏ô‡∏µ‡πâ‡πÑ‡∏°‡πà‡πÉ‡∏ä‡πà‡∏™‡∏ñ‡∏≤‡∏ô‡∏∞ Approve!!'; 
+        v_rst := '‡≈¢∑’Ë®Ë“¬π’È‰¡Ë„™Ë ∂“π– Approve!!'; 
         dbms_output.put_line('in validate Last ApproveStatus: '||v_rst); 
         return false;            
     END IF;
      
 --     if v_chkApproved is not null then
---        v_rst := '‡πÄ‡∏•‡∏Ç‡∏ó‡∏µ‡πà‡∏à‡πà‡∏≤‡∏¢‡∏ô‡∏µ‡πâ‡∏°‡∏µ‡∏Å‡∏≤‡∏£‡∏≠‡∏ô‡∏∏‡∏°‡∏±‡∏ï‡∏¥‡πÑ‡∏õ‡πÅ‡∏•‡πâ‡∏ß!!'; 
+--        v_rst := '‡≈¢∑’Ë®Ë“¬π’È¡’°“√Õπÿ¡—µ‘‰ª·≈È«!!'; 
 --        dbms_output.put_line('in validate Last ApproveStatus: '||v_rst); 
 --        return false;        
 --     end if;
@@ -1291,6 +1298,14 @@ FUNCTION CONV_PH_DRAFT(v_clmno in varchar2,v_payno in varchar2  ,v_sts in varcha
     v_max_amt   number;
     v_agr_amt   number;
     v_settle    varchar2(3);
+    
+    v_has_ripaid    varchar2(20);
+    ri_max_rec number; ri_mas_shr number;
+    v_riamt number(10,4);
+    v_sumri number(10,4);
+    v_tot_paid number(10,4);
+    O_LETTNO    varchar2(20);
+    r_cnt   number;     
 BEGIN
     begin -- check mis_clm_mas
         select clm_no into v_dummy_clm
@@ -1482,15 +1497,83 @@ BEGIN
                     v_clmno ,v_payno ,v_misclm_seq ,null , p_ph_clm.get_sum_paid(v_clmno ,v_payno) ,0 , 0 ,v_settle ,paid.sts_date ,null ,paid.remark
                 );   
                 
-                Insert into MISC.MIS_CRI_PAID
-                (CLM_NO, PAY_NO, PAY_STS, RI_CODE, RI_BR_CODE, RI_TYPE, PAY_AMT, LETT_PRT, LETT_TYPE, CORR_SEQ, LF_FLAG, RI_SUB_TYPE ,LETT_NO )
-                (
-                select clm_no, pay_no,'0' pay_sts, ri_code, ri_br_code, ri_type, ri_pay_amt, lett_prt, lett_type,v_cripaid_seq, ri_lf_flag, ri_sub_type ,lett_no 
-                from nc_ri_paid a
-                where clm_no = v_clmno
-                and pay_no = v_payno
-                and trn_seq in (select max(aa.trn_seq) from nc_ri_paid aa where aa.pay_no = a.pay_no)
-                );                
+                begin 
+                    select clm_no into v_has_ripaid
+                    from nc_ri_paid a
+                    where clm_no = v_clmno and pay_no = v_payno
+                    and rownum=1  ;
+                exception
+                    when no_data_found then
+                        v_has_ripaid :=null;
+                    when others then
+                        v_has_ripaid :=null;
+                end;  
+                if v_has_ripaid is not null then           
+                    Insert into MISC.MIS_CRI_PAID
+                    (CLM_NO, PAY_NO, PAY_STS, RI_CODE, RI_BR_CODE, RI_TYPE, PAY_AMT, LETT_PRT, LETT_TYPE, CORR_SEQ, LF_FLAG, RI_SUB_TYPE ,LETT_NO )
+                    (
+                    select clm_no, pay_no,'0' pay_sts, ri_code, ri_br_code, ri_type, ri_pay_amt, lett_prt, lett_type,v_cripaid_seq, ri_lf_flag, ri_sub_type ,lett_no 
+                    from nc_ri_paid a
+                    where clm_no = v_clmno
+                    and pay_no = v_payno
+                    and trn_seq in (select max(aa.trn_seq) from nc_ri_paid aa where aa.pay_no = a.pay_no)
+                    );       
+                else
+                    begin 
+                        select count(*) ,sum(ri_share) into ri_max_rec, ri_mas_shr
+                        from mis_ri_mas rm
+                        where (pol_no,pol_run) in (
+                        select pol_no ,pol_run from mis_clm_mas
+                        where clm_no =V_CLMNO 
+                        )
+                        and V_LOSSDATE between fr_date and to_date
+                        and end_seq in (select min(rm2.end_seq) from mis_ri_mas rm2 where rm2.pol_no = rm.pol_no and rm2.pol_run = rm.pol_run
+                            and  V_LOSSDATE between rm2.fr_date and rm2.to_date  )
+                         and recpt_seq in (select min(rm3.recpt_seq) from mis_ri_mas rm3 where rm3.pol_no = rm.pol_no and rm3.pol_run = rm.pol_run
+                            and  V_LOSSDATE between rm3.fr_date and rm3.to_date and rm3.end_seq = rm.end_seq)   ;
+                    exception
+                        when no_data_found then
+                            ri_mas_shr :=0;
+                            ri_max_rec :=1;
+                        when others then
+                            ri_mas_shr :=0;
+                            ri_max_rec :=1;
+                    end;      
+                    if ri_mas_shr = 100 then
+                        delete mis_cri_paid
+                        where clm_no = V_CLMNO and pay_no = V_PAYNO and corr_seq = v_cripaid_seq;
+                        
+                        r_cnt :=0;
+                        v_sumri :=0;
+                        for R in (
+                            select ri_code ,ri_br_code ,ri_cont ,ri_type 
+                            ,ri_shr ri_share ,lett_prt,lett_type ,'0' pay_sts ,lf_flag ,ri_sub_type 
+                            from mis_cri_res x
+                            where clm_no = V_CLMNO and corr_seq = (select max(rr.corr_seq) from mis_cri_res rr where rr.clm_no = x.clm_no group by rr.clm_no)  
+                            order by x.ri_code                             
+                        )loop
+                            v_riamt :=0;
+                            r_cnt := r_cnt+1;
+                            if r_cnt = ri_max_rec then
+                                v_riamt := v_tot_paid-v_sumri;
+                            else
+                                v_riamt := v_tot_paid * (R.ri_share/100);    
+                            end if;
+                            v_riamt := trunc(v_riamt ,2);
+                            v_sumri := v_sumri + v_riamt;
+
+                            insert into mis_cri_paid (clm_no ,pay_no ,ri_code ,ri_br_code ,ri_cont ,ri_type 
+                            , pay_amt  , lett_no
+                            ,lett_prt, lett_type, corr_seq,pay_sts, lf_flag,ri_sub_type
+                            ) Values (V_CLMNO, V_PAYNO, R.ri_code ,R.ri_br_code ,R.ri_cont ,R.ri_type 
+                            ,v_riamt ,O_LETTNO
+                            ,R.lett_prt,R.lett_type,V_CRIPAID_SEQ,R.pay_sts ,R.lf_flag ,R.ri_sub_type
+                            );
+                                           
+                            dbms_output.put_line('Tot_Paid='||v_tot_paid||' Ri_code:'||R.ri_code||' %shar='||R.ri_share||' Amt='||v_riamt);
+                        end loop; --Loop R     
+                    end if; --RI 100                                
+                end if; --    v_has_ripaid     
                 
                 FOR Cmas IN (
                 select CLM_NO ,POL_NO,  p_ph_clm.get_SUM_RES(clm_no ,null) TOT_RES,p_ph_clm.get_SUM_Paid(clm_no ,null) TOT_PAID
@@ -1824,6 +1907,7 @@ FUNCTION CONV_PH_RES_REV(v_clmno in varchar2,v_payno in varchar2  ,v_sts in varc
     o_dead   varchar2(2); 
     v_max_amt   number;
     v_agr_amt   number;    
+    v_settle  varchar2(2); 
 BEGIN
     begin -- check mis_clm_mas
         select clm_no into v_dummy_clm
@@ -1891,7 +1975,29 @@ BEGIN
         when others then
             v_gmpaid_seq := 0;
     end;  -- max v_gmpaid_seq    
-          
+
+    begin -- max v_misclm_seq
+        select nvl(max(corr_seq)+1,0) into v_misclm_seq
+        from mis_clmgm_paid 
+        where clm_no = v_clmno and pay_no = v_payno;
+    exception
+        when no_data_found then 
+            v_misclm_seq := 0;
+        when others then
+            v_misclm_seq := 0;
+    end;  -- max v_misclm_seq    
+
+    begin -- max v_payee_seq
+        select nvl(max(corr_seq)+1,0) into v_payee_seq
+        from clm_gm_payee 
+        where clm_no = v_clmno and pay_no = v_payno;
+    exception
+        when no_data_found then 
+            v_payee_seq := 0;
+        when others then
+            v_payee_seq := 0;
+    end;  -- max v_payee_seq    
+              
     dbms_output.put_line ('v_dummy_clm:'||v_dummy_clm);
 
     for Cmas in (
@@ -1912,7 +2018,6 @@ BEGIN
                         
         update mis_clm_mas
         set loss_date = cmas.loss_date
---        ,fax_clm_date =cmas.fax_clm_date 
         ,clm_men = cmas.clm_men ,clm_staff =  cmas.amd_user ,remark = cmas.remark 
         ,risk_descr = cmas.loss_detail 
         ,fax_clm = o_inc ,invoice =o_inv ,receipt =o_recpt ,walkin =o_ost ,deathclm = o_dead ,clm_type = Cmas.CLM_TYPE
@@ -1926,7 +2031,7 @@ BEGIN
                  Cmas.channel , Cmas.Prod_grp, Cmas.Prod_type,Cmas.clm_date,
                  Cmas.tot_res, Cmas.tot_paid ,Cmas.clm_sts, Cmas.Close_date); 
                                           
-        if 1=1then     
+        if 1=1 then     
                 
             if v_state_no is null then        
                 v_state_no := p_ph_convert.GEN_STATENO('');
@@ -1972,8 +2077,38 @@ BEGIN
             END LOOP; --res
         end if;
 
+        begin -- max v_max_criseq
+            select nvl(max(corr_seq)+1,0) into v_max_criseq
+            from mis_cri_res 
+            where clm_no = v_clmno;
+        exception
+            when no_data_found then 
+                v_max_criseq := 0;
+            when others then
+                v_max_criseq := 0;
+        end;  -- max v_max_criseq    
+
+        begin -- max v_cripaid_seq
+            select nvl(max(corr_seq)+1,0) into v_cripaid_seq
+            from mis_cri_paid 
+            where clm_no = v_clmno and pay_no = v_payno;
+        exception
+            when no_data_found then 
+                v_cripaid_seq := 0;
+            when others then
+                v_cripaid_seq := 0;
+        end;  -- max v_cripaid_seq    
+                
+        Insert into MISC.MIS_CRI_RES
+           (CLM_NO, RI_CODE, RI_BR_CODE, RI_TYPE, RI_RES_DATE, RI_RES_AMT, RI_SHR, LETT_NO, LETT_PRT, LETT_TYPE, RES_STS, CORR_SEQ, LF_FLAG, RI_SUB_TYPE)
+        (select CLM_NO, RI_CODE, RI_BR_CODE, RI_TYPE,trunc(RI_STS_DATE) RI_RES_DATE, RI_RES_AMT,RI_SHARE RI_SHR, LETT_NO, LETT_PRT, LETT_TYPE,'0' RES_STS,v_max_criseq ,RI_LF_FLAG LF_FLAG, RI_SUB_TYPE
+        from nc_ri_reserved a   
+        where clm_no = v_clmno
+        and trn_seq in (select max(aa.trn_seq) from nc_ri_reserved aa where aa.clm_no = a.clm_no)
+        );    
+                
         delete CLM_MEDICAL_PAID where clm_no = v_clmno; -- Clear Record
-        
+        cnt_paid := 0;
         FOR paid IN (
            select clm_no ,pay_no , trn_seq corr_seq ,pay_amt ,sts_date ,amd_date ,prem_code bene_code ,prem_seq ,remark ,recov_amt ,days ,day_add
            from nc_payment a
@@ -2031,8 +2166,59 @@ BEGIN
                ,paid.remark ,paid.recov_amt , v_days ,F.dept_bki ,F.id_no);            
                                                  
             end loop;    
-        END LOOP;
+
+            if cnt_paid =1 then                
+                delete CLM_GM_PAYEE where clm_no = v_clmno  and pay_no = v_payno; -- Clear Record
                 
+                FOR payee in (
+                   select clm_no ,pay_no ,trn_seq corr_seq ,payee_amt ,sts_date ,amd_date , payee_code ,payee_name ,payee_type ,payee_seq 
+                   ,settle ,acc_no ,acc_name ,bank_code ,bank_br_code ,br_name ,send_title ,send_addr1 ,send_addr2 
+                   ,sms ,email ,agent_sms ,agent_email ,special_flag ,special_remark ,urgent_flag 
+                   ,invalid_payee ,invalid_payee_remark ,p_ph_convert.CONV_PAYEETYPE(paid_to) paid_to
+                   from nc_payee a
+                   where clm_no = v_clmno
+                   and pay_no = v_payno
+                   and trn_seq in (select max(aa.trn_seq) from nc_payee aa where aa.pay_no = a.pay_no)                  
+                )LOOP
+                    Insert into MISC.CLM_GM_PAYEE
+                       (CLM_NO, PAY_NO, CORR_SEQ , PAY_SEQ, PAYEE_TYPE, PAYEE_CODE, PAYEE_AMT, PAY_TYPE, PAYEE_NAME, SEND_TITLE, SEND_ADDR1, SEND_ADDR2
+                       ,SPECIAL_FLAG ,SPECIAL_REMARK , AGENT_MAIL, AGENT_MAIL_FLAG ,AGENT_MOBILE_NUMBER ,AGENT_SMS_FLAG
+                       ,CUST_MAIL ,CUST_MAIL_FLAG ,MOBILE_NUMBER ,SMS_FLAG
+                       ,SETTLE, ACC_NO, ACC_NAME, BANK_CODE, BANK_BR_CODE, BR_NAME, URGENT_FLAG
+                       , INVALID_PAYEE ,INVALID_PAYEE_REMARK )
+                    Values                
+                        (
+                         v_clmno ,v_payno ,v_payee_seq ,payee.payee_seq ,PAYEE.PAID_TO ,payee.payee_code ,payee.payee_amt ,'1' ,payee.payee_name ,payee.send_title, payee.send_addr1, payee.send_addr2
+                         ,payee.special_flag ,payee.special_remark ,payee.agent_email ,decode(payee.agent_email,null ,null,'Y') ,payee.agent_sms ,decode(payee.agent_sms,null ,null,'Y')
+                         ,payee.email ,decode(payee.email,null ,null,'Y') , payee.sms ,decode(payee.sms,null ,null,'Y') 
+                         ,payee.settle ,payee.acc_no  ,payee.acc_name ,payee.bank_code ,payee.bank_br_code ,payee.br_name ,payee.urgent_flag
+                          ,payee.invalid_payee ,payee.invalid_payee_remark
+                        );
+                     v_settle :=payee.settle;    
+                END LOOP;
+
+                Insert into MISC.MIS_CLMGM_PAID
+                (   CLM_NO, PAY_NO, CORR_SEQ, PAY_DATE, PAY_TOTAL, REC_TOTAL, DISC_TOTAL, SETTLE, REC_PAY_DATE, PRINT_TYPE
+                ,REMARK )         
+                values
+                (
+                    v_clmno ,v_payno ,v_misclm_seq ,null , p_ph_clm.get_sum_paid(v_clmno ,v_payno) ,0 , 0 ,v_settle ,paid.sts_date ,null ,paid.remark
+                );   
+                
+                Insert into MISC.MIS_CRI_PAID
+                (CLM_NO, PAY_NO, PAY_STS, RI_CODE, RI_BR_CODE, RI_TYPE, PAY_AMT, LETT_PRT, LETT_TYPE, CORR_SEQ, LF_FLAG, RI_SUB_TYPE ,LETT_NO )
+                (
+                select clm_no, pay_no,'0' pay_sts, ri_code, ri_br_code, ri_type, ri_pay_amt, lett_prt, lett_type,v_cripaid_seq, ri_lf_flag, ri_sub_type ,lett_no 
+                from nc_ri_paid a
+                where clm_no = v_clmno
+                and pay_no = v_payno
+                and trn_seq in (select max(aa.trn_seq) from nc_ri_paid aa where aa.pay_no = a.pay_no)
+                );                               
+                                     
+            end if; -- cnt =1
+                              
+        END LOOP;
+                                
     end loop; --Cmas           
 
     COMMIT;
@@ -2044,7 +2230,6 @@ EXCEPTION
         rollback;
         return false;
 END CONV_PH_RES_REV;
-
 
 PROCEDURE CONV_TABLE(v_clmno in varchar2,v_payno in varchar2 ,v_prodtype in varchar2
     , v_err_message out varchar2) IS
@@ -2220,11 +2405,11 @@ PROCEDURE CONV_CLMTYPE(v_code in varchar2, o_inc out varchar2 ,o_recpt out varch
     v_ret varchar2(250);
 BEGIN
 /*
-PHCLMTYPE01    ‡∏õ‡∏£‡∏∞‡πÄ‡∏†‡∏ó‡πÄ‡∏Ñ‡∏•‡∏°‡∏á‡∏≤‡∏ô‡∏£‡∏∞‡∏ö‡∏ö PH    Reimburse
-PHCLMTYPE02    ‡∏õ‡∏£‡∏∞‡πÄ‡∏†‡∏ó‡πÄ‡∏Ñ‡∏•‡∏°‡∏á‡∏≤‡∏ô‡∏£‡∏∞‡∏ö‡∏ö PH    Credit
-PHCLMTYPE03    ‡∏õ‡∏£‡∏∞‡πÄ‡∏†‡∏ó‡πÄ‡∏Ñ‡∏•‡∏°‡∏á‡∏≤‡∏ô‡∏£‡∏∞‡∏ö‡∏ö PH    Outsource
-PHCLMTYPE04    ‡∏õ‡∏£‡∏∞‡πÄ‡∏†‡∏ó‡πÄ‡∏Ñ‡∏•‡∏°‡∏á‡∏≤‡∏ô‡∏£‡∏∞‡∏ö‡∏ö PH    Cancer
-PHCLMTYPE05    ‡∏õ‡∏£‡∏∞‡πÄ‡∏†‡∏ó‡πÄ‡∏Ñ‡∏•‡∏°‡∏á‡∏≤‡∏ô‡∏£‡∏∞‡∏ö‡∏ö PH    Death
+PHCLMTYPE01    ª√–‡¿∑‡§≈¡ß“π√–∫∫ PH    Reimburse
+PHCLMTYPE02    ª√–‡¿∑‡§≈¡ß“π√–∫∫ PH    Credit
+PHCLMTYPE03    ª√–‡¿∑‡§≈¡ß“π√–∫∫ PH    Outsource
+PHCLMTYPE04    ª√–‡¿∑‡§≈¡ß“π√–∫∫ PH    Cancer
+PHCLMTYPE05    ª√–‡¿∑‡§≈¡ß“π√–∫∫ PH    Death
 */
     IF v_code is null THEN 
         o_inc :=null ; o_recpt :=null ; o_inv :=null ; o_ost :=null ; o_dead :=null ;
@@ -2385,7 +2570,7 @@ BEGIN
 --    END; 
 --    
 --    if v_key > 0 then
---         P_RST := vClmNo||': ‡πÄ‡∏Ñ‡∏¢ Convert ‡πÄ‡∏Ç‡πâ‡∏≤ CLNMC924 ‡πÅ‡∏•‡πâ‡∏ß ‡∏™‡∏≤‡∏°‡∏≤‡∏£‡∏ñ‡∏ï‡∏£‡∏ß‡∏à‡∏™‡∏≠‡∏ö‡∏ó‡∏µ‡πà CLNMC924 ‡πÑ‡∏î‡πâ‡πÄ‡∏•‡∏¢' ; 
+--         P_RST := vClmNo||': ‡§¬ Convert ‡¢È“ CLNMC924 ·≈È«  “¡“√∂µ√«® Õ∫∑’Ë CLNMC924 ‰¥È‡≈¬' ; 
 --        v_chk := 'N';
 --        return v_chk;     
 --    end if;       
@@ -2405,11 +2590,11 @@ BEGIN
     END; 
 
     if v_apprvsts in ('NCPAYSTS02' ,'NCPAYSTS07' ) then
-         P_RST := vClmNo||': ‡∏≠‡∏¢‡∏π‡πà‡∏£‡∏∞‡∏´‡∏ß‡πà‡∏≤‡∏á‡∏£‡∏≠‡∏≠‡∏ô‡∏∏‡∏°‡∏±‡∏ï‡∏¥‡πÅ‡∏•‡πâ‡∏ß ‡πÑ‡∏°‡πà‡∏™‡∏≤‡∏°‡∏≤‡∏£‡∏ñ Convert ‡πÑ‡∏î‡πâ' ; 
+         P_RST := vClmNo||': Õ¬ŸË√–À«Ë“ß√ÕÕπÿ¡—µ‘·≈È« ‰¡Ë “¡“√∂ Convert ‰¥È' ; 
         v_chk := 'N';
         return v_chk;     
     elsif v_apprvsts in ('NCPAYSTS03' ,'NCPAYSTS11' ,'NCPAYSTS12' ) then
-         P_RST := vClmNo||': ‡∏≠‡∏ô‡∏∏‡∏°‡∏±‡∏ï‡∏¥‡πÅ‡∏•‡πâ‡∏ß ‡πÑ‡∏°‡πà‡∏™‡∏≤‡∏°‡∏≤‡∏£‡∏ñ Convert ‡πÑ‡∏î‡πâ' ; 
+         P_RST := vClmNo||': Õπÿ¡—µ‘·≈È« ‰¡Ë “¡“√∂ Convert ‰¥È' ; 
         v_chk := 'N';
         return v_chk;        
     end if;       
@@ -3051,6 +3236,7 @@ BEGIN
 --        and b.corr_date <= i_asdate
         and a.clm_no like nvl(v_CLMNO,'%')
         and a.channel <> '9'
+        and p_pa_clm.is_new_paph(a.clm_no) = '0'
         order by a.clm_no   
     )LOOP
         cnt := cnt+1;   v_DummClm := M1.CLM_NO;
@@ -3065,7 +3251,7 @@ BEGIN
             v_CLMTYPE := 'PHCLMTYPE02';
         elsif M1.walkin is not null then    --ost
             v_CLMTYPE := 'PHCLMTYPE03';
-        elsif M1.fax_clm is not null then   --‡∏ä‡∏î‡πÄ‡∏ä‡∏¢‡∏£‡∏≤‡∏¢‡πÑ‡∏î‡πâ
+        elsif M1.fax_clm is not null then   --™¥‡™¬√“¬‰¥È
             v_CLMTYPE := 'PHCLMTYPE06';
         elsif M1.deathclm is not null then
             v_CLMTYPE := 'PHCLMTYPE05';
@@ -3498,7 +3684,9 @@ BEGIN
 --        and trunc(b.corr_date) <=  v_Date
         and a.clm_no like nvl(v_CLMNO,'%')
         and a.clm_no not in (select nc.clm_no from nc_mas nc where convert_flag is null and nc.clm_no = a.clm_no)
+        and a.out_clm_no is null 
         and a.channel <> '9'    
+        and p_pa_clm.is_new_paph(a.clm_no) = '0'
         and pol_yr > 2011    
         order by a.clm_no        
     )LOOP
@@ -3514,7 +3702,7 @@ BEGIN
             v_CLMTYPE := 'PHCLMTYPE02';
         elsif M1.walkin is not null then    --ost
             v_CLMTYPE := 'PHCLMTYPE03';
-        elsif M1.fax_clm is not null then   --‡∏ä‡∏î‡πÄ‡∏ä‡∏¢‡∏£‡∏≤‡∏¢‡πÑ‡∏î‡πâ
+        elsif M1.fax_clm is not null then   --™¥‡™¬√“¬‰¥È
             v_CLMTYPE := 'PHCLMTYPE06';
         elsif M1.deathclm is not null then
             v_CLMTYPE := 'PHCLMTYPE05';
@@ -3743,7 +3931,7 @@ BEGIN
                 END LOOP;  --p1_rst    
                 
                 FOR R1 in (
-                    select clm_no, pay_no, payee_code, payee_name, payee_type, pay_seq payee_seq, payee_amt
+                    select clm_no, pay_no,trunc(payee_code) payee_code, payee_name, payee_type, pay_seq payee_seq, payee_amt
                     , settle, acc_no, acc_name, bank_code, bank_br_code, br_name, send_title, send_addr1, send_addr2
                     , mobile_number sms, cust_mail email, agent_mobile_number agent_sms,agent_mail agent_email, special_flag, special_remark
                     , urgent_flag, invalid_payee, invalid_payee_remark
@@ -3916,6 +4104,509 @@ EXCEPTION
     return false;   
 END IS_FOUND_CPAPAID;
 
+FUNCTION GEN_KPI_REPORT(v_fr in VARCHAR2 ,v_to in VARCHAR2)   RETURN NUMBER IS -- Sid
+    v_sid   NUMBER;
+    v_get_fr_date date;
+    v_get_to_date date;    
+BEGIN
+    --v_get_fr_date := '1-jan-17'; v_get_to_date := '1-nov-17';
+    IF v_fr is null or v_to is null THEN return 0; END IF;
+    IF v_fr > v_to THEN return 0; END IF;
+    
+    v_get_fr_date := to_date(v_fr , 'dd/mm/yyyy');
+    v_get_to_date := to_date(v_to , 'dd/mm/yyyy');
+    
+    v_sid :=  p_ph_convert.GET_KPI_DETAIL(v_get_fr_date ,v_get_to_date);
+    IF v_sid <> 0 THEN
+        IF p_ph_convert.GET_KPI_SUM(v_get_fr_date ,v_get_to_date ,v_sid) <> 0 THEN
+            return v_sid;
+        ELSE
+            return 0;
+        END IF;        
+    ELSE
+        return 0;
+    END IF;
+END GEN_KPI_REPORT ;
+
+FUNCTION GET_KPI_DETAIL(v_fr in Date ,v_to in Date)   RETURN NUMBER IS -- Sid
+    cnt number:=0;
+    v_sid number ;
+    v_clm_no  varchar2(20) ;
+    v_pay_no  varchar2(20) ;
+    v_rpt_mode    varchar2(10) ;
+    v_clm_men  varchar2(10) ;
+    v_apprv_id     varchar2(10) ;
+    v_clm_staff    varchar2(10) ;
+    v_ost_clm  varchar2(10) ;
+    v_clm_sts  varchar2(10) ;
+    v_clm_date    date;
+    v_doc_date    date ;
+    v_close_date  date;
+    v_payee_code  varchar2(20) ;
+    v_payee_type  varchar2(10) ;
+    v_payee_name    varchar2(250);
+    v_payee_amt   number;
+    v_clm_type  varchar2(20) ;
+    v_curr_year varchar2(10);
+    v_clm_year varchar2(10);
+    v_get_fr_date date := v_fr;
+    v_get_to_date date := v_to;
+    v_chkSid    number(10):=0;
+begin
+    v_sid := nc_health_package.GEN_SID;
+    dbms_output.put_line('SID: '||v_sid||' fr: '||v_get_fr_date||' to: '||v_get_to_date);
+    
+    --=== validate Exist Report Data
+    begin 
+        select count(*) into v_chkSid
+        from clm_tmp a
+        where a.sid = v_sid ;
+    exception
+        when no_data_found then
+            v_chkSid := 0;
+        when others then
+            v_chkSid := 0;
+    end;  
+    if v_chkSid >0 then
+        dbms_output.put_line('**Existing Data**');
+        delete clm_tmp a where a.sid = v_sid; commit;
+    end if;
+    --=== End  validate Exist Report Data
+    
+    for x in (
+        select clm_no ,clm_men ,out_clm_no ,clm_date ,fax_clm_date ,close_date ,clm_sts 
+        ,receipt ,invoice ,walkin ,deathclm ,fax_clm ,clm_yr ,tot_res ,tot_paid ,to_char(sysdate,'YYYY') curr_year ,nc_health_paid.GET_PRODUCT(clm_no) prod
+        from mis_clm_mas a
+        where prod_grp = '0' 
+        and clm_date between v_get_fr_date and v_get_to_date
+--        and clm_sts= '2'
+        --and rownum<=1000
+    )loop
+        cnt := cnt+1;        
+        v_clm_no := x.clm_no;
+        v_rpt_mode  := 'D';
+        v_clm_men  :=x.clm_men;
+        v_apprv_id   :='';
+        v_clm_staff  :='';
+        if x.out_clm_no is not null then 
+            begin 
+                select outs_id into v_ost_clm
+                from clm_outservice_mas a
+                where not_no = x.out_clm_no and rownum=1;
+            exception
+                when no_data_found then
+                    v_ost_clm := null;
+                when others then
+                    v_ost_clm := null;
+            end;                     
+        else 
+            v_ost_clm := null;         
+        end if;
+        v_clm_sts := x.clm_sts;
+        v_clm_date := x.clm_date;
+        v_doc_date  := x.fax_clm_date ;
+        v_close_date := x.close_date ;
+        v_payee_code := '';
+        v_payee_amt := 0;
+        v_clm_type :='';  
+        
+        v_curr_year := x.curr_year;
+        v_clm_year := x.clm_yr;
+--        v_get_fr_date :=null ;
+--        v_get_to_date := null;
+--        p_ph_clm.get_clmtype_descr(v_code => :v_code);
+
+        if x.receipt is not null then
+            v_clm_type := 'PHCLMTYPE01';
+        elsif x.invoice is not null then
+            v_clm_type := 'PHCLMTYPE02';
+        elsif x.walkin is not null then    --ost
+            v_clm_type := 'PHCLMTYPE03';
+        elsif x.fax_clm is not null then   --™¥‡™¬√“¬‰¥È
+            v_clm_type := 'PHCLMTYPE06';
+        elsif x.deathclm is not null then
+            v_clm_type := 'PHCLMTYPE05';
+        else
+            null;
+        end if;
+                
+        if x.clm_sts = '2' then
+            begin 
+                select max(pay_no) into v_pay_no
+                from mis_cri_paid a
+                where a.clm_no = x.clm_no and rownum=1;
+            exception
+                when no_data_found then
+                    v_pay_no := null;
+                when others then
+                    v_pay_no := null;
+            end;
+            begin 
+                select approve_id into v_apprv_id
+                from nc_payment a
+                where a.clm_no = x.clm_no and pay_no = v_pay_no 
+                and type='01' 
+                and pay_sts in ('NCPAYSTS03') ;
+            exception
+                when no_data_found then
+                    v_apprv_id := null;
+                when others then
+                    v_apprv_id := null;
+            end;                        
+        end if; 
+        
+        if v_clm_type = 'PHCLMTYPE02' and substr(v_clm_men ,1,1) not in ('0','1','2','3','4','5','6','7','8','9') then -- Invoice
+            v_clm_staff := v_apprv_id;
+        else
+            v_clm_staff := v_clm_men;     
+        end if;
+        
+        if x.prod = 'GM' then
+            for payee in (
+                select trim(payee_code) payee_code ,payee_amt ,payee_name
+                from clm_gm_payee a
+                where clm_no = x.clm_no and pay_no =  v_pay_no
+            )loop
+                v_payee_code := payee.payee_code;
+                v_payee_amt := payee.payee_amt;
+                v_payee_name := payee.payee_name;
+            end loop;
+        else -- PA
+            for payee in (
+                select  trim(payee_code) payee_code ,payee_amt ,payee_name
+                from mis_clm_payee a
+                where clm_no = x.clm_no and pay_no =  v_pay_no
+            )loop
+                v_payee_code := payee.payee_code;
+                v_payee_amt := payee.payee_amt;
+                v_payee_name := payee.payee_name;
+            end loop;        
+        end if; 
+        if v_payee_code is not null then
+            begin 
+                select payee_type into v_payee_type
+                from acc_payee a
+                where a.payee_code = v_payee_code;
+            exception
+                when no_data_found then
+                    v_payee_type := null;
+                when others then
+                    v_payee_type := null;
+            end;                
+        end if;
+        
+        --dbms_output.put_line('no. '||cnt||' clm: '||x.clm_no||' Prod: '||x.prod ||' clm_sys: '||x.clm_sts||' pay_no: '||v_pay_no||' close: '||x.close_date||' payee: '||v_payee_name||' amt: '||v_payee_amt);
+        
+        insert into CLM_TMP 
+        (CLM_NO, PAY_NO, SID, RPT_MODE, PROD, CLM_MEN, APPRV_ID, CLM_STAFF, OST_CLM, CLM_STS, CLM_DATE, DOC_DATE, CLOSE_DATE, PAYEE_CODE, PAYEE_AMT, CLM_TYPE
+        , CLM_YEAR, CURR_YEAR, GET_FR_DATE, GET_TO_DATE ,PAYEE_TYPE ,PAYEE_NAME)
+        values  
+        (v_clm_no, v_pay_no, v_sid, v_rpt_mode, x.prod, v_clm_men, v_apprv_id, v_clm_staff, v_ost_clm, v_clm_sts, v_clm_date, v_doc_date, v_close_date, v_payee_code, v_payee_amt, v_clm_type
+        , v_clm_year, v_curr_year, v_get_fr_date, v_get_to_date ,v_payee_type ,v_payee_name);
+    end loop;
+    
+    commit;
+    dbms_output.put_line('--Complete--');
+    
+    return v_sid;
+exception
+    when others then
+        rollback;
+        dbms_output.put_line('error: '||sqlerrm);
+        return 0;
+END GET_KPI_DETAIL;
+
+
+FUNCTION GET_KPI_SUM(v_fr in Date ,v_to in Date ,v_sid in NUMBER) RETURN NUMBER IS -- Sid
+    cnt number:=0;  
+--    v_sid number:=2983;  
+    v_get_fr_date date := v_fr;
+    v_get_to_date date := v_to;
+        
+    v_clm_no  varchar2(20) ;
+    v_pay_no  varchar2(20) ;
+    v_rpt_mode    varchar2(10) ;
+    v_clm_men  varchar2(10) ;
+    v_apprv_id     varchar2(10) ;
+    v_clm_staff    varchar2(10) ;
+    v_ost_clm  varchar2(10) ;
+    v_clm_sts  varchar2(10) ;
+    v_clm_date    date;
+    v_doc_date    date ;
+    v_close_date  date;
+    v_payee_code  varchar2(20) ;
+    v_payee_name    varchar2(250);
+    v_payee_amt   number;
+    v_clm_type  varchar2(20) ;
+    v_curr_year varchar2(10);
+    v_clm_year varchar2(10);
+    v_checkdata number;
+    
+    s_staff_id varchar2(10);
+    s_staff_name varchar2(250);
+    s_hpt_clm   number(10);
+    s_ins_clm   number(10);
+    s_hpt_age   number(10);
+    s_hpt_age_tpa   number(10);
+    s_hpt_age_hbc   number(10);
+    s_ins_age   number(10);
+    s_ins_age_tpa   number(10);
+    s_ins_age_hbc   number(10);
+    
+    s_hpt_avg   number(10,2);
+    s_hpt_avg_tpa   number(10,2);
+    s_hpt_avg_hbc   number(10,2);
+    s_ins_avg   number(10,2);
+    s_ins_avg_tpa   number(10,2);
+    s_ins_avg_hbc   number(10,2);
+
+    s_hpt_cnt   number(10);
+    s_hpt_cnt_tpa   number(10);
+    s_hpt_cnt_hbc   number(10);
+    s_ins_cnt   number(10);
+    s_ins_cnt_tpa   number(10);
+    s_ins_cnt_hbc   number(10);
+    
+    s_ins_cnt_3day  number(10);    
+    s_ins_3day  number(10,2);
+    s_sc_hpt  number(10);
+    s_sc_ins  number(10);
+    s_sc_canc  number(10);
+    s_sc_ost  number(10);
+    s_score number(10);
+    
+    s_close    number(10,2);
+    s_open    number(10,2);
+    s_newclm    number(10,2);
+    --s_cntall    number(10);
+begin
+    dbms_output.put_line('Summary SID: '||v_sid||' fr: '||v_get_fr_date||' to: '||v_get_to_date);
+    
+    begin
+        select count(*) into v_checkdata
+        from clm_tmp a
+        where a.sid = v_sid 
+        and get_fr_date = v_get_fr_date and get_to_date = v_get_to_date 
+        and rpt_mode = 'D';
+    exception
+        when no_data_found then
+            v_checkdata := 0;
+        when others then
+            v_checkdata := 0;
+    end;
+    
+    if v_checkdata = 0 then
+        dbms_output.put_line('--No Data--');
+        return 0;
+    end if;
+    
+    for staff in (
+        select clm_staff ,count(*) cnt_clm
+        from clm_tmp a
+        where a.sid = v_sid
+        and get_fr_date = v_get_fr_date and get_to_date = v_get_to_date 
+        and rpt_mode = 'D'
+        and clm_sts in ('0','2','6')
+        group by clm_staff         
+    )loop
+        --dbms_output.put_line('------- Staff:'||staff.clm_staff||' has:'||staff.cnt_clm);
+        cnt := 0;
+        s_staff_id := staff.clm_staff;
+        s_staff_name := nc_health_paid.get_user_name(s_staff_id) ;
+        s_hpt_clm   :=0;
+        s_ins_clm   :=0;
+        s_hpt_age   :=0; s_hpt_age_tpa   :=0; s_hpt_age_hbc   :=0;                
+        s_ins_age   :=0; s_ins_age_tpa   :=0; s_ins_age_hbc   :=0;
+        s_hpt_avg   :=0; s_hpt_avg_tpa   :=0; s_hpt_avg_hbc   :=0;                
+        s_ins_avg   :=0; s_ins_avg_tpa   :=0; s_ins_avg_hbc   :=0;       
+        s_hpt_cnt   :=0; s_hpt_cnt_tpa   :=0; s_hpt_cnt_hbc   :=0;                
+        s_ins_cnt   :=0; s_ins_cnt_tpa   :=0; s_ins_cnt_hbc   :=0;               
+        s_ins_cnt_3day :=0; s_ins_3day   :=0;
+        s_sc_hpt  :=0;  s_sc_ins  :=0;  s_sc_canc :=0;  s_sc_ost :=0;
+        s_score   :=0;
+        s_newclm   :=0; s_close :=0 ;  s_open :=0;
+            
+        for x in (
+            select CLM_NO, PAY_NO, SID, RPT_MODE, PROD, CLM_MEN, APPRV_ID, CLM_STAFF, OST_CLM, CLM_STS, CLM_DATE, DOC_DATE, CLOSE_DATE, PAYEE_CODE, PAYEE_AMT, CLM_TYPE
+            , CLM_YEAR, CURR_YEAR, GET_FR_DATE, GET_TO_DATE ,PAYEE_TYPE ,PAYEE_NAME
+            from CLM_TMP a
+            where a.sid = v_sid 
+            and get_fr_date = v_get_fr_date and get_to_date = v_get_to_date 
+            and clm_staff = staff.clm_staff
+            and rpt_mode = 'D'
+            and clm_sts in ('0','2','6')
+        )loop
+            cnt := cnt+1;         
+            
+            IF X.CLM_STS ='2' THEN -- cal only ClmSts=2        
+/*                
+                if x.OST_CLM = '001' then -- HBC
+                    if x.PAYEE_TYPE = '06' then -- Hospital 
+                        s_hpt_cnt_hbc := s_hpt_cnt_hbc + 1;
+                        s_hpt_age_hbc := s_hpt_age_hbc + nvl((x.close_date - x.doc_date),0);
+                    else
+                        s_ins_cnt_hbc := s_ins_cnt_hbc + 1;
+                        s_ins_age_hbc := s_ins_age_hbc + nvl((x.close_date - x.doc_date),0);
+                    end if;
+                elsif x.OST_CLM = '002' then -- TPA    
+                    if x.PAYEE_TYPE = '06' then -- Hospital 
+                        s_hpt_cnt_tpa := s_hpt_cnt_tpa + 1;
+                        s_hpt_age_tpa := s_hpt_age_tpa + nvl((x.close_date - x.doc_date),0);
+                    else
+                        s_ins_cnt_tpa := s_ins_cnt_tpa + 1;
+                        s_ins_age_tpa := s_ins_age_tpa + nvl((x.close_date - x.doc_date),0);
+                    end if;                
+                else    -- BKI
+                    if x.PAYEE_TYPE = '06' then -- Hospital 
+                        s_hpt_cnt := s_hpt_cnt + 1;
+                        s_hpt_age := s_hpt_age + nvl((x.close_date - x.clm_date),0);
+                    else
+                        s_ins_cnt := s_ins_cnt + 1;
+                        s_ins_age := s_ins_age + nvl((x.close_date - x.clm_date),0);
+                        if x.payee_amt >=10000 and nvl((x.close_date - x.clm_date),0) <=3 then
+                            s_ins_cnt_3day := s_ins_cnt_3day+1;
+                        end if;
+                    end if; 
+                end if;
+*/                
+                if x.OST_CLM = '001' then -- HBC
+                    if x.PAYEE_TYPE = '06' then -- Hospital 
+                        s_hpt_cnt_hbc := s_hpt_cnt_hbc + 1;
+                        s_hpt_age_hbc := s_hpt_age_hbc + nvl((x.close_date - x.doc_date),0);
+                    else
+                        s_ins_cnt_hbc := s_ins_cnt_hbc + 1;
+                        s_ins_age_hbc := s_ins_age_hbc + nvl((x.close_date - x.doc_date),0);
+                    end if;
+                elsif x.OST_CLM = '002' then -- TPA    
+                    if x.PAYEE_TYPE = '06' then -- Hospital 
+                        s_hpt_cnt_tpa := s_hpt_cnt_tpa + 1;
+                        s_hpt_age_tpa := s_hpt_age_tpa + nvl((x.close_date - x.doc_date),0);
+                    else
+                        s_ins_cnt_tpa := s_ins_cnt_tpa + 1;
+                        s_ins_age_tpa := s_ins_age_tpa + nvl((x.close_date - x.doc_date),0);
+                    end if;                
+                else    -- BKI
+                    if x.clm_type = 'PHCLMTYPE02' then --Invoice
+                        s_hpt_cnt := s_hpt_cnt + 1;
+                        s_hpt_age := s_hpt_age + nvl((x.close_date - x.clm_date),0);
+                    else
+                        s_ins_cnt := s_ins_cnt + 1;
+                        s_ins_age := s_ins_age + nvl((x.close_date - x.clm_date),0);
+                        if x.payee_amt >=10000 and nvl((x.close_date - x.clm_date),0) <=3 then
+                            s_ins_cnt_3day := s_ins_cnt_3day+1;
+                        end if;        
+                    end if;                        
+                end if;
+                if x.clm_type = 'PHCLMTYPE01' then -- Recpt
+                    s_sc_ins := s_sc_ins+1;
+                elsif x.clm_type = 'PHCLMTYPE03' then -- Ost
+                    s_sc_ost := s_sc_ost+1;
+                elsif x.clm_type in ('PHCLMTYPE04' ,'PHCLMTYPE05' ) then -- Cancer Death 
+                    s_sc_canc := s_sc_canc+1;
+                elsif x.clm_type = 'PHCLMTYPE02' then -- Invoice
+                    s_sc_hpt := s_sc_hpt+1;
+                end if;
+                               
+            END IF; -- cal only ClmSts=2
+
+            if x.curr_year = x.clm_year then
+                s_open := s_open+1;
+            end if;
+            
+            if x.clm_sts in ('2','3') then
+                if x.curr_year = x.clm_year then
+                    s_close := s_close+1;
+                end if;            
+            end if;
+                     
+            --dbms_output.put_line('no. '||cnt||' clm: '||x.clm_no||' Prod: '||x.prod ||' clm_sts: '||x.clm_sts||' pay_no: '||v_pay_no||' close: '||x.close_date||' payee: '||x.PAYEE_CODE||' amt: '||x.payee_amt);
+            
+        end loop;   -- Detail      
+        
+
+        -- == Cal Open Close ==
+        if s_open >0 then
+        s_newclm := round(s_close/s_open,2)*100;
+        end if;
+        --== End Cal Open Close ==
+        
+        -- +++ Cal Avg Aging +++
+        if s_hpt_cnt_hbc > 0 then 
+            s_hpt_avg_hbc := round(s_hpt_age_hbc/s_hpt_cnt_hbc);
+        end if;
+        if s_hpt_cnt_tpa > 0 then 
+            s_hpt_avg_tpa := round(s_hpt_age_tpa/s_hpt_cnt_tpa);
+        end if;
+        if s_hpt_cnt > 0 then 
+            s_hpt_avg := round(s_hpt_age/s_hpt_cnt);
+        end if;          
+
+        if s_ins_cnt_hbc > 0 then 
+            s_ins_avg_hbc := round(s_ins_age_hbc/s_ins_cnt_hbc);
+        end if;
+        if s_ins_cnt_tpa > 0 then 
+            s_ins_avg_tpa := round(s_ins_age_tpa/s_ins_cnt_tpa);
+        end if;         
+        if s_ins_cnt > 0 then 
+            s_ins_avg := round(s_ins_age/s_ins_cnt);
+        end if;               
+        s_hpt_clm := s_hpt_cnt + s_hpt_cnt_hbc + s_hpt_cnt_tpa;
+        s_ins_clm :=  s_ins_cnt + s_ins_cnt_hbc + s_ins_cnt_tpa;
+        -- +++ End Cal Avg Aging +++ 
+        
+        --+++ Cal Ins Claim by BKI not excess 10K and age less 3d 
+        if s_ins_cnt >0 then
+            s_ins_3day := round(s_ins_cnt_3day/s_ins_cnt,2)*100;
+        end if;
+        --+++ Cal Ins Claim by BKI not excess 10K and age less 3d 
+        
+        -- ++ Cal Score
+        s_score := (s_sc_hpt*3) + (s_sc_ins*15) + (s_sc_canc*140) + (s_sc_ost*3);
+        --++ Cal Score
+        
+/*        dbms_output.put_line('+s_hpt_clm='||s_hpt_clm||' +s_ins_clm='||s_ins_clm);
+        dbms_output.put_line('s_ins_3day='||s_ins_3day||'% s_ins_cnt_3day='||s_ins_cnt_3day);
+        dbms_output.put_line('s_hpt_cnt='||s_hpt_cnt||' s_ins_cnt='||s_ins_cnt||' s_hpt_age='||s_hpt_age||' s_ins_age='||s_ins_age||' s_hpt_avg='||s_hpt_avg||' s_ins_avg='||s_ins_avg);
+        dbms_output.put_line('s_hpt_cnt_tpa='||s_hpt_cnt_tpa||' s_ins_cnt_tpa='||s_ins_cnt_tpa||' s_hpt_age_tpa='||s_hpt_age_tpa||' s_ins_age_tpa='||s_ins_age_tpa||' s_hpt_avg_tpa='||s_hpt_avg_tpa
+        ||' s_ins_avg_tpa='||s_ins_avg_tpa);
+        dbms_output.put_line('s_hpt_cnt_hbc='||s_hpt_cnt_hbc||' s_ins_cnt_hbc='||s_ins_cnt_hbc||' s_hpt_age_hbc='||s_hpt_age_hbc||' s_ins_age_hbc='||s_ins_age_hbc||' s_hpt_avg_hbc='||s_hpt_avg_hbc
+        ||' s_ins_avg_hbc='||s_ins_avg_hbc);
+        dbms_output.put_line('s_score='||s_score||' ::s_sc_hpt='||s_sc_hpt||' s_sc_ins='||s_sc_ins||' s_sc_canc='||s_sc_canc||' s_sc_ost='||s_sc_ost);
+        dbms_output.put_line('s_newcloseclm='||s_newclm||'% s_close='||s_close||' s_open='||s_open);*/
+                     
+        insert into CLM_TMP (s_staff_id ,s_staff_name ,hpt_clm ,ins_clm ,age_hpt_avg ,age_hpt_avg_tpa ,age_hpt_avg_hbc ,age_ins_avg ,age_ins_avg_tpa ,age_ins_avg_hbc 
+        ,ins_3day ,score ,s_close ,s_open ,s_newclose
+        ,sid ,get_fr_date ,get_to_date ,rpt_mode) 
+        values (s_staff_id ,s_staff_name ,s_hpt_clm ,s_ins_clm ,s_hpt_avg ,s_hpt_avg_tpa ,s_hpt_avg_hbc ,s_ins_avg ,s_ins_avg_tpa ,s_ins_avg_hbc 
+        ,s_ins_3day ,s_score ,s_close ,s_open ,s_newclm        
+        ,v_sid ,v_get_fr_date ,v_get_to_date ,'S'
+        ); 
+    end loop; --staff
+    
+    dbms_output.put_line('--Complete--');
+    commit;
+    
+    return v_sid;
+exception
+    when others then
+        rollback;
+        dbms_output.put_line('error: '||sqlerrm);        
+        return 0;
+END GET_KPI_SUM;
+
+FUNCTION CLEAR_KPI_REPORT(v_sid in NUMBER)   RETURN NUMBER IS -- 1 Success ,0 Fail
+
+BEGIN
+    delete clm_tmp
+    where sid = v_sid;
+    commit;
+    return 1;
+exception
+    when others then
+        rollback;
+        dbms_output.put_line('error: '||sqlerrm);        
+        return 0;
+END CLEAR_KPI_REPORT;
+
 END P_PH_CONVERT;
 /
-

@@ -5484,7 +5484,7 @@ BEGIN
     x_message := x_message||' start@'||to_char(V_RECORD_DATE ,'DD-MON-YYYY HH24:MI:SS') ;
     
     FOR M1 in (
-        select a.clm_no ,'' pay_no ,fleet_seq ,recpt_seq ,a.pol_no ,a.pol_run ,reg_date ,nvl(c.close_date ,trunc(c.corr_date)) corr_date ,a.loss_date ,c.clm_sts , dis_code ,risk_code ,c.tot_res
+        select a.clm_no ,'' pay_no ,fleet_seq ,a.end_seq ,recpt_seq ,a.pol_no ,a.pol_run ,reg_date ,nvl(c.close_date ,trunc(c.corr_date)) corr_date ,a.loss_date ,c.clm_sts , dis_code ,risk_code ,c.tot_res
         ,decode(ipd_flag,'O','OPD','I','IPD','OPD') CLM_TYPE ,a.clm_date ,a.prod_type ,a.close_date ,c.tot_paid
         from mis_clm_mas a ,mis_cpa_res b ,mis_clm_mas_seq c
         where a.clm_no = b.clm_no and a.clm_no = c.clm_no and a.prod_grp = '0' 
@@ -5496,14 +5496,15 @@ BEGIN
             and nvl(cc.close_date ,trunc(cc.corr_date))  <= i_asdate)            
 --        and b.corr_date <= i_asdate
         and a.channel <> '9'
-        and pol_yr > 2011 
+        and pol_yr > 2012 
 --        and a.clm_no = i_clmno
 --        and a.clm_no not in (select claimnumber from OIC_PAPH_CLAIM_HIST WHERE CLAIMGROUP = 'EC')
 --        and rownum < 50
         order by a.clm_no
     )LOOP
         v_cnt := v_cnt+1;
-
+        v_runclmseq := p_oic_paph_clm.get_MAX_CLMSEQ(M1.clm_no);  
+            
         V_CLAIMNUMBER := m1.clm_no;
         V_CLAIMSEQ := 0;
 --        V_CLAIMGROUP := 'EC'; 
@@ -5531,7 +5532,8 @@ BEGIN
 --        V_CLAIMSEQ := 1;
         V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('PA',m1.CLM_TYPE ,v_premcode);
         V_INSUREDSEQ := nvl(M1.fleet_seq,0);
-        V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
+--        V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
+        V_POLICYNUMBER := oic_pa_util.get_policynumber( m1.pol_no,m1.pol_run,m1.end_seq);
         V_NOTIFYDATE := m1.clm_date; --to_date(m1.reg_date,'yyyymmdd');
         V_LOSSDATE :=  m1.loss_date; --to_date(m1.loss_date,'yyyymmdd');
 --        V_CLAIMSTATUS := '1';  --  open claim
@@ -5560,6 +5562,9 @@ BEGIN
                 V_CLAIMAMT := 0;
                 V_CLAIMSTATUS := '2';  --  close claim
             ELSE
+                --== Check Have EC before this period? if yes Skip Adjust EC until Status is Paid --=== 
+                v_skip := P_OIC_PAPH_CLM.check_have_EC(V_CLAIMNUMBER);
+                --==== *********************************************************************************
                 V_CLAIMGROUP := 'EC';
                 V_CLAIMAMT := -1;
                 V_CLAIMSTATUS := '1';  --  open claim
@@ -5592,7 +5597,8 @@ BEGIN
                     where sid = v_sid )
                     LOOP    
                         v_runclmseq := v_runclmseq+1;
-                        V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                        --V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                        V_CLAIMSEQ := v_runclmseq;
                         v_premcode := p1.prem_code;    
                         V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
                         ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
@@ -5770,7 +5776,8 @@ BEGIN
                         where sid = v_sid )
                         LOOP    
                             v_runclmseq := v_runclmseq+1;
-                            V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                            --V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                            V_CLAIMSEQ := v_runclmseq;
                             v_premcode := p1.prem_code;    
                             V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M1.PAY_NO 
                             ,'PA',m1.CLM_TYPE ,v_premcode ,m1.risk_code);
@@ -5869,7 +5876,8 @@ BEGIN
                     )
                     LOOP    
                         v_runclmseq := v_runclmseq+1;
-                        V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                        --V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                        V_CLAIMSEQ := v_runclmseq;
                         v_premcode := p1.prem_code;  
                         
                         V_COVERAGECODE1 := p_oic_paph_clm.get_coverage1(m1.pol_no ,m1.pol_run ,m1.fleet_seq, M1.CLM_NO ,M_PAYNO 
@@ -6069,12 +6077,13 @@ BEGIN
         and trunc(b.corr_date) <=  i_asdate
 --        and a.clm_no = i_clmno
         and a.channel <> '9'    
-        and pol_yr > 2011    
+        and pol_yr > 2012    
         order by a.clm_no
     )LOOP
         v_cnt := v_cnt+1;
 
         V_CLAIMNUMBER := m1.clm_no;
+        v_runclmseq := p_oic_paph_clm.get_MAX_CLMSEQ(M1.clm_no);  
 --        V_CLAIMSEQ :=1;
         V_CLAIMSEQ := 0;
 --        V_CLAIMGROUP := 'EC';
@@ -6104,6 +6113,9 @@ BEGIN
                 V_CLAIMAMT := 0;
                 V_CLAIMSTATUS := '2';  --  close claim
             ELSE
+                --== Check Have EC before this period? if yes Skip Adjust EC until Status is Paid --=== 
+                v_skip := P_OIC_PAPH_CLM.check_have_EC(V_CLAIMNUMBER);
+                --==== *********************************************************************************               
                 V_CLAIMGROUP := 'EC';
                 V_CLAIMAMT := -1;
                 V_CLAIMSTATUS := '1';  --  open claim
@@ -6137,7 +6149,8 @@ BEGIN
                     v_premcode := c_paid.bene_code;
                     -- ===== End Path get prem code ====
                     v_runclmseq := v_runclmseq+1;         
-                    V_CLAIMSEQ := V_CLAIMSEQ+1;
+                    --V_CLAIMSEQ := V_CLAIMSEQ+1;
+                    V_CLAIMSEQ := v_runclmseq;
                     V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('GM',c_paid.CLM_TYPE ,v_premcode);
                     V_INSUREDSEQ := c_paid.fleet_seq;
                     V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
@@ -6238,7 +6251,8 @@ BEGIN
                         v_premcode := c_paid.bene_code;
                         -- ===== End Path get prem code ====
                         v_runclmseq := v_runclmseq+1;         
-                        V_CLAIMSEQ := V_CLAIMSEQ+1;
+                        --V_CLAIMSEQ := V_CLAIMSEQ+1;
+                        V_CLAIMSEQ := v_runclmseq;
                         V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('GM',c_paid.CLM_TYPE ,v_premcode);
                         V_INSUREDSEQ := c_paid.fleet_seq;
                         V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
@@ -6397,7 +6411,8 @@ BEGIN
                             
                     v_runclmseq := v_runclmseq+1;
                     v_tmppayno := c_paid.pay_no;
-                    V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                    --V_CLAIMSEQ := V_CLAIMSEQ+1 ;
+                    V_CLAIMSEQ := v_runclmseq;
                     V_CLAIMTYPE := P_OIC_PAPH_CLM.GET_CLMTYPE('GM',c_paid.CLM_TYPE ,v_premcode);
                     V_INSUREDSEQ := c_paid.fleet_seq;
                     V_POLICYNUMBER := m1.pol_no ||m1.pol_run;
@@ -6625,6 +6640,21 @@ EXCEPTION
     WHEN others THEN
         return false;
 END check_have_EC;
+
+FUNCTION get_MAX_CLMSEQ(P_CLMNO IN VARCHAR2) RETURN NUMBER IS
+  v_ret  NUMBER(3);
+BEGIN
+    select  nvl(max(claimseq),0) into v_ret
+    from OIC_PAPH_CLAIM 
+    where claimnumber = P_CLMNO;  
+    
+    return v_ret;
+EXCEPTION
+    WHEN no_data_found THEN
+        return 0;
+    WHEN others THEN
+        return 0;
+END get_MAX_CLMSEQ;
 
 PROCEDURE get_PA_TORBOR3(i_datefr IN DATE ,i_dateto IN DATE ,i_user IN VARCHAR2 ,o_rst OUT VARCHAR2) IS
 

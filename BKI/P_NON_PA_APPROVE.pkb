@@ -797,6 +797,10 @@ FUNCTION APPROVE_NCPAYMENT(v_key IN number ,v_clmno IN varchar2 ,v_payno IN varc
  v_to VARCHAR2(250) ;
  v_dbins VARCHAR2(20);
  v_payeeamt number:=0;
+ v_clmmen   VARCHAR2(10);
+ v_clmmen_tel       VARCHAR2(50);
+ v_payeename VARCHAR2(250) ;
+ o_msg VARCHAR2(250) ;
 BEGIN
 
  BEGIN
@@ -940,6 +944,40 @@ BEGIN
          END IF; 
          dbms_output.put_line('End after POST');
          EMAIL_NOTICE_APPRV(v_clmno ,v_payno ,v_sts);
+         if  P_NON_PA_APPROVE.IS_SWITCH_ON('NONPASWITCH03') then -- Check 3M Approve
+            dbms_output.put_line('in 3M Payee='||v_payeeamt);
+            if v_payeeamt >= 3000000 then
+    
+               begin
+                  select payee_name into v_payeename
+                  from nc_payee a
+                  where pay_no = v_payno
+                  and trn_seq in (select max(aa.trn_seq) from nc_payee aa where aa.pay_no = a.pay_no ) ;  
+                  select clm_user ,(select tel from bkiuser a where a.user_id = clm_user)  
+                  into v_clmmen ,v_clmmen_tel 
+                  from nc_mas x
+                  where clm_no = v_clmno
+                  ;                   
+               exception
+               when no_data_found then
+                  v_payeename := '';
+               when others then
+                  v_payeename :='';
+               end;                            
+               p_claim_send_mail.send_email_acr_vpup(v_prod_type,
+                                        v_clmno,
+                                        v_payno,
+                                        to_char(v_apprv_date ,'dd/mm/yyyy'),
+                                        v_payeename,
+                                        TO_CHAR(v_payeeamt, '9,999,999,990.99'),
+                                        substr(nc_health_paid.get_user_name(v_apprv_user),5),
+                                        substr(nc_health_paid.get_user_name(v_clmmen),5),
+                                        v_clmmen_tel ,
+                                        o_msg);
+                dbms_output.put_line('o_msg='||o_msg);                        
+            end if;   
+         end if; --End 3M email
+                  
      elsif v_sts in ('NONPASTSAPPRV03') AND IS_ACTIVATE_AUTOPOST then -- case Recov/Salvage/Deduct Receive
          IF not AFTER_POST(v_clmno, v_payno , v_apprv_user,v_rst) THEN --POST ACR
              delete nc_payment_apprv a
@@ -950,7 +988,7 @@ BEGIN
              return false;
          END IF; 
          dbms_output.put_line('End after POST');
-         EMAIL_NOTICE_APPRV(v_clmno ,v_payno ,v_sts); 
+         EMAIL_NOTICE_APPRV(v_clmno ,v_payno ,v_sts);         
      else
      EMAIL_NOTICE_APPRV(v_clmno ,v_payno ,v_sts);
      end if;
@@ -1528,15 +1566,30 @@ PROCEDURE EMAIL_NOTICE_APPRV(i_clm IN VARCHAR2 ,i_pay IN VARCHAR2 ,i_sts IN VARC
  v_rst varchar2(1000);
  
  v_cnt1 number:=0;
+ v_remark4 varchar2(20);
 BEGIN
 
 --=== Adjust Send Email only Send /Disapprove
     if P_NON_PA_APPROVE.IS_SWITCH_ON('NONPASWITCH01') then
-        if i_sts in  ('NONPASTSAPPRV03' ,'NONPASTSAPPRV06' ) then -- สถานะงานถูกอนุมัติ ไม่ต้อง send Email
+--        if i_sts in  ('NONPASTSAPPRV03' ,'NONPASTSAPPRV06' ) then -- สถานะงานถูกอนุมัติ ไม่ต้อง send Email
+--            return;
+--        end if;
+        begin  -- สถานะงานที่ไม่ต้อง send Email
+            select remark4
+            into v_remark4
+            from clm_constant a
+            where key = i_sts
+            and remark4 = 'N';         
+            
             return;
-        end if;
+        exception 
+        when no_data_found then 
+            null;
+        when others then 
+            null; 
+        end;         
     end if;
---=== .Adjust Send Email only Send /Disapprove
+--=== .Adjust Send Email only Disapprove
  
  FOR X in (
  select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail 
@@ -1606,9 +1659,9 @@ BEGIN
  if i_sts = 'NONPASTSAPPRV05' then
  x_subject := 'เรื่องขออนุมัติการจ่ายค่าสินไหม '||'(อนุมัติผ่าน)'||v_whatsys; 
  elsif i_sts = 'NONPASTSAPPRV22' then
- x_subject := 'เรื่องขออนุมัติการจ่ายค่าสินไหม '||'(อนุมัติ Draft)'||v_whatsys; 
+ x_subject := 'เรื่องขออนุมัติ Email to Customer '||''||v_whatsys; 
  elsif i_sts = 'NONPASTSAPPRV25' then
- x_subject := 'เรื่องขออนุมัติการจ่ายค่าสินไหม '||'(อนุมัติผ่าน Draft)'||v_whatsys; 
+ x_subject := 'เรื่องขออนุมัติ Email to Customer '||'(อนุมัติผ่าน)'||v_whatsys; 
  else
  x_subject := 'เรื่องขออนุมัติการจ่ายค่าสินไหม '||v_whatsys; 
  end if;
@@ -1647,11 +1700,11 @@ BEGIN
  elsif i_sts = 'NONPASTSAPPRV04' then
  v_pay_descr := 'ไม่อนุมัติการจ่ายค่าสินไหม'; 
  elsif i_sts = 'NONPASTSAPPRV23' then
- v_pay_descr := 'อนุมัติการจ่ายค่าสินไหม (Draft)'; 
+ v_pay_descr := 'อนุมัติ Email to customer'; 
  elsif i_sts = 'NONPASTSAPPRV24' then
- v_pay_descr := 'ไม่อนุมัติการจ่ายค่าสินไหม (Draft)'; 
+ v_pay_descr := 'ไม่อนุมัติ Email to customer'; 
  elsif i_sts = 'NONPASTSAPPRV26' then
- v_pay_descr := 'อนุมัติการจ่ายค่าสินไหม (อนุมัติผ่าน Draft)';    
+ v_pay_descr := 'อนุมัติ Email to customer (อนุมัติผ่าน)';    
  end if;
  
  x_subject := 'เรื่องผลการอนุมัติการจ่ายค่าสินไหม '||v_whatsys; 
@@ -6333,4 +6386,3 @@ END SAVE_CLM_LIMIT_HISTORY;
 
 END P_NON_PA_APPROVE;
 /
-

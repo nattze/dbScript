@@ -131,9 +131,9 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         return v_ret;
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
-            return null;
+            return v_code;
         WHEN OTHERS THEN
-            return null;
+            return v_code;
     END GET_ADMISS_DESCR;
 
     FUNCTION GET_BENE_DESCR(v_benecode IN VARCHAR2 ,v_lang IN VARCHAR2) RETURN VARCHAR2 IS
@@ -146,7 +146,8 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         return v_ret;
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
-            return null;
+            v_ret := nc_health_package.get_premcode_descr(v_benecode ,'T');
+            return v_ret;
         WHEN OTHERS THEN
             return null;
     END GET_BENE_DESCR;
@@ -156,8 +157,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
     BEGIN
         select descr into v_ret
         from clm_constant a
-        where key like 'PHSTSAPPRV%'
-        and key = v_code
+        where  (key like 'PHSTSAPPRV%' and key = v_code) or (key like 'NCPAYSTS%'  and key = v_code)     
         and rownum=1;
 
         return v_ret;
@@ -1464,6 +1464,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         save_Detail_Status VARCHAR2(25);
         save_NC_Status VARCHAR2(25);
         v_err_message   VARCHAR2(250);
+        vprodtype       VARCHAR2(10);
     BEGIN
         if v_action is null or v_clmno is null then
             v_ret := 'กรุณาระบุข้อมูลให้ครบ';
@@ -1471,7 +1472,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         end if;
 
         begin
-            select sts_key into vsts_key
+            select sts_key ,prod_type into vsts_key ,vprodtype
             from nc_mas
             where clm_no = v_clmno;
         exception
@@ -1530,16 +1531,28 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         dbms_output.put_line('save_NC_Status='||save_NC_Status||' save_Detail_Status='||save_Detail_Status);
         UPDATE NC_MAS
         SET clm_sts = save_NC_Status ,claim_status = save_Detail_Status
+        ,new_paph_clm = 'Y'
         WHERE CLM_NO = v_clmno;
 
         COMMIT;
-
+              
         if v_action in ( 'claim_info_paid' ) then -- check for Update claim_info_paid on Payment
-            if not p_ph_convert.CONV_PH_RES_REV(v_clmno ,v_payno  ,save_Detail_Status, v_err_message ) then
-                null;
-            end if;   
+           if nc_clnmc908.get_productid2(vprodtype) = 'GM' then 
+              if not p_ph_convert.CONV_PH_RES_REV(v_clmno ,v_payno  ,save_Detail_Status, v_err_message ) then
+                 null;
+              end if;            
+           else
+              if not p_pa_convert.CONV_PA_RES_REV(v_clmno ,v_payno  ,save_Detail_Status, v_err_message ) then
+                 null;
+              end if;               
+           end if;   
+  
         else
-            p_ph_convert.CONV_TABLE(v_clmno ,v_payno ,null, v_ret) ;        
+            if nc_clnmc908.get_productid2(vprodtype) = 'GM' then  
+               p_ph_convert.CONV_TABLE(v_clmno ,v_payno ,null, v_ret) ;   
+            else
+               p_pa_convert.CONV_TABLE(v_clmno ,v_payno ,null, v_ret) ;
+            end if;     
         end if;
 
 --        p_ph_convert.CONV_TABLE(v_clmno ,v_payno ,null, v_ret) ;
@@ -2240,7 +2253,27 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
              v_return := 'N';
      end;
 
-     if v_f1 is null then
+     IF v_return = 'Y' THEN 
+         BEGIN
+             select clm_user into v_f1
+             from nc_mas a
+             where clm_no = v_clmno
+             ;
+         EXCEPTION
+             WHEN NO_DATA_FOUND THEN
+                v_f1 := null;
+             WHEN OTHERS THEN
+                v_f1 := null;
+         END;
+
+         IF upper(v_f1) = 'ADMIN' THEN
+             o_rst := 'กรุณาระบุเจ้าของเรื่อง(CLM_USER) ก่อนอนุมัติ !';
+             v_return := 'N';
+         END IF;
+     END IF;
+         
+     --if v_f1 is null then
+     if v_return = 'Y' then
          begin
              select pay_sts into v_f1
              from nc_payment_apprv xxx
@@ -2274,6 +2307,9 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         v_sts varchar2(20);
         v_found varchar2(20);
         v_apprv_amt    NUMBER;
+        v_adv_flag  varchar2(1);
+        v_sum_paid    NUMBER;
+        v_sum_payee    NUMBER;
 
         c1   NMTR_PACKAGE.v_ref_cursor2;
         TYPE t_data1 IS RECORD
@@ -2309,15 +2345,17 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         
          IF v_return = 'Y' THEN 
              BEGIN
-                 select clm_user into v_found
+                 select clm_user ,advance_flag into v_found ,v_adv_flag
                  from nc_mas a
                  where clm_no = i_clmno
                  ;
              EXCEPTION
                  WHEN NO_DATA_FOUND THEN
                     v_found := null;
+                    v_adv_flag := null;
                  WHEN OTHERS THEN
                     v_found := null;
+                    v_adv_flag := null;
              END;
 
              IF upper(v_found) = 'ADMIN' THEN
@@ -2384,6 +2422,30 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
             end loop;
          END IF;
 
+         IF v_return = 'Y' THEN 
+            v_sum_paid := p_ph_clm.get_sum_paid(i_clmno ,i_payno) ;
+            v_sum_payee := p_ph_clm.get_sum_payee(i_clmno ,i_payno) ;
+            IF v_sum_paid <> p_ph_clm.get_sum_ripaid(i_clmno ,i_payno) THEN
+                 o_rst := 'ยอด Paid กับ RI Paid ไม่เท่ากัน กรุณาตรวจสอบ!';
+                 v_return := 'N';                
+            END IF;
+           
+         END IF;
+         
+         IF v_return = 'Y' THEN --v_adv_flag
+               
+            IF v_sum_payee < v_sum_paid THEN
+                 o_rst := 'ยอด Payee < Paid กรุณาตรวจสอบ!';
+                 v_return := 'N';                
+            END IF;
+            
+           IF v_return = 'Y' THEN
+                IF v_sum_payee > v_sum_paid and v_adv_flag is null THEN
+                     o_rst := 'เคลมนี้ไม่เข้าเงื่อนไขการทำ Advance กรุณาตรวจสอบ!';
+                     v_return := 'N';                
+                END IF;           
+           END IF;
+         END IF;         
     -- o_rst := null;
         return v_return;
     END CAN_GO_APPROVE;
@@ -2487,6 +2549,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
      v_sum_payee number:=0;
      v_return varchar2(10):='Y';
      v_ostclm varchar2(20):=null;
+     v_adv  varchar2(2);
     BEGIN
         begin
             select max(pay_no) into v_maxpayno
@@ -2501,6 +2564,20 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         when others then
             v_maxpayno := null;
         end;
+
+        begin
+            select advance_flag into v_adv
+            from nc_mas a
+            where prod_grp = '0'
+            and a.clm_no = v_clmno
+            ;
+
+        exception
+         when no_data_found then
+             v_adv := null;
+        when others then
+            v_adv := null;
+        end;        
 
         begin
             select nvl(max(payee_amt),0) into v_sum_payee
@@ -2535,6 +2612,9 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
             elsif    v_sum_payee > 0 then
                 o_rst := 'payee > 0';
                 v_return := 'N';
+            elsif  v_maxpayno is not null and v_adv is not null and v_sum_payment = 0 then
+                o_rst := 'advance claim';
+                v_return := 'N';            
             else
                 begin
                     select out_clm_no into v_ostclm
@@ -2550,7 +2630,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                     v_ostclm := null;
                 end;
                 
-                if v_ostclm is not null and v_sum_payee = 0 then     
+                if v_ostclm is not null and v_sum_payee = 0 and v_maxpayno is not null then     
                     o_rst := 'case Ost. Clm update';
                     v_return := 'N';                
                 else
@@ -2938,8 +3018,16 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                 return v_return; 
         end if;
         
-        v_return := P_PH_CLM.CAN_SEND_APPROVE(v_clmno ,v_maxpayno ,o_rst) ;
-
+        --v_return := P_PH_CLM.CAN_SEND_APPROVE(v_clmno ,v_maxpayno ,o_rst) ;
+        v_clmsts :=  P_PH_CLM.GET_CLAIM_STATUS(v_clmno ,'' ,'A');
+        if v_clmsts  in ('PHSTSAPPRV02','PHSTSAPPRV05') then
+            o_rst := 'งานอยู่ระหว่างรอการอนุมัติ' ;
+            v_return := 'N';        
+        elsif v_clmsts in ('PHSTSAPPRV03','PHSTSAPPRV11','PHSTSAPPRV12') then
+            o_rst := 'งานอนุมัติไปแล้ว' ;
+            v_return := 'N';        
+        end if; 
+                 
         if v_return = 'Y' then -- เช็ค Claim Status เพิ่ม
             begin
                 select sum(res_amt) into v_sumres
@@ -2998,7 +3086,77 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
 
         return v_return;
     END GET_CLAIM_STATUS;
+    
+    FUNCTION GET_ADMISSION_TYPE(v_clmno IN VARCHAR2) RETURN VARCHAR2 IS
+        v_return varchar2(20);
+    BEGIN
+        begin
+            select admission_type into v_return
+            from nc_mas a
+            where a.clm_no =v_clmno
+            and a.prod_grp = '0'   ;
 
+        exception
+         when no_data_found then
+             v_return := null;
+        when others then
+            v_return := null;
+        end;
+        
+        return v_return;
+    END GET_ADMISSION_TYPE;
+    
+    FUNCTION GET_CLM_USER(v_clmno IN VARCHAR2) RETURN VARCHAR2 IS
+        v_return varchar2(20);
+    BEGIN
+        begin
+            select clm_user into v_return
+            from nc_mas a
+            where a.clm_no =v_clmno
+            and a.prod_grp = '0';
+
+        exception
+         when no_data_found then
+             v_return := null;
+        when others then
+            v_return := null;
+        end;
+        
+        return v_return;
+    END GET_CLM_USER;
+    
+    FUNCTION GET_APPRV_USER(v_clmno IN VARCHAR2 ,v_payno  IN VARCHAR2) RETURN VARCHAR2 IS
+        v_return varchar2(20);
+        --v_apprv_sts varchar2(20); 
+        v_found varchar2(20);   
+        o_apprv_id varchar2(20);
+        o_apprv_sts varchar2(20);                 
+    BEGIN
+        P_PH_CLM.GET_APPROVE_USER(v_clmno ,v_payno ,o_apprv_id ,o_apprv_sts);
+        
+        if o_apprv_sts is not null then
+         BEGIN
+             select key into v_found
+             from clm_constant a
+             where key like 'PHSTSAPPRV%'
+             and key = o_apprv_sts
+             and (remark2 = 'APPRV')
+             ;
+         EXCEPTION
+             WHEN NO_DATA_FOUND THEN
+                v_found := null;
+             WHEN OTHERS THEN
+                v_found := null;
+         END;
+
+         IF v_found is not null THEN
+            v_return := o_apprv_id;
+         END IF;          
+        end if;
+        
+        return v_return;
+    END GET_APPRV_USER;        
+    
     FUNCTION GET_USER_LIST (v_user IN VARCHAR2 ,O_USER Out P_PH_CLM.v_curr ) RETURN VARCHAR2 IS
         v_ret varchar2(250);
         cnt_rec number(10);
@@ -3240,9 +3398,10 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                 and np.pay_no = (select max(npp.pay_no) from nc_payment npp where npp.clm_no = np.clm_no)
                 and np.trn_seq in (select max(npp.trn_seq) from nc_payment npp where npp.clm_no = np.clm_no and npp.pay_no = np.pay_no and npp.type = 'NCNATTYPECLM101')
                 and np.type = 'NCNATTYPECLM101'
+                and a.claim_status in ('PHCLMSTS03','PHCLMSTS06')
                 and nr.prem_code = np.prem_code
                 and nr.clm_no like nvl(v_clmno,'%')
-                order by a.clm_no ,nr.prem_code
+                --order by a.clm_no ,nr.prem_code
             )loop
                 cnt_r1 := cnt_r1+1;
                 INSERT into TMP_PH_HISTORY(
@@ -3278,7 +3437,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                 and cr.bene_code = a.bene_code
                 AND cr.clm_no like nvl(v_clmno,'%')
                 and c.clm_no not in (select d.clm_no from nc_mas d where d.clm_no = c.clm_no)
-                order by cr.clm_no ,state_seq ,cr.bene_code
+                --order by cr.clm_no ,state_seq ,cr.bene_code
             )loop
                 cnt_r2 := cnt_r2+1;
                 INSERT into TMP_PH_HISTORY(
@@ -3310,7 +3469,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                 and a.claim_status not in ('PHCLMSTS03','PHCLMSTS06')
                 and nr.trn_seq in (select max(nrr.trn_seq) from nc_reserved nrr where nrr.clm_no = nr.clm_no)
                 and nr.clm_no like nvl(v_clmno,'%')
-                order by a.clm_no ,nr.prem_code
+                --order by a.clm_no ,nr.prem_code
             )loop
                 cnt_r1 := cnt_r1+1;
                 INSERT into TMP_PH_HISTORY(
@@ -3344,7 +3503,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                 AND state_seq = (SELECT MAX (state_seq) FROM clm_medical_res b WHERE b.clm_no = cr.clm_no AND b.state_no = cr.state_no)
                 AND cr.clm_no like nvl(v_clmno,'%')
                 and c.clm_no not in (select d.clm_no from nc_mas d where d.clm_no = c.clm_no)
-                order by cr.clm_no ,state_seq ,cr.bene_code
+                --order by cr.clm_no ,state_seq ,cr.bene_code
             )loop
                 cnt_r2 := cnt_r2+1;
                 INSERT into TMP_PH_HISTORY(
@@ -3376,7 +3535,9 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                 ,res_amt ,pay_amt ,rec_amt
                 FROM TMP_PH_HISTORY
                 WHERE SID = mySID
-                order by p_std_clmno.split_clm_num(clm_no) ,p_std_clmno.split_clm_run(clm_no);
+                Order by tr_date_fr ,loss_date 
+                --order by p_std_clmno.split_clm_num(clm_no) ,p_std_clmno.split_clm_run(clm_no)
+                ;
 
             delete     TMP_PH_HISTORY where SID = mySID;
             commit;
@@ -3394,12 +3555,12 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
     EXCEPTION
         WHEN OTHERS THEN
             rollback;
-                OPEN O_History  FOR
-                SELECT '' clm_no ,'' pay_no ,'' pol_no ,'' pol_run ,'' fleet_seq ,'' mas_cus_name ,'' cus_name ,'' plan
-                ,'' hpt_code ,'' hpt_descr ,'' clm_pd_flag ,'' clm_sts ,'' clm_sts_descr
-                ,'' bene_code ,'' bene_descr,'' dis_code ,'' dis_code_descr
-                ,'' loss_date ,'' tr_date_fr ,'' tr_date_to ,'' ipd_day ,'' add_day ,'' remark
-                ,'' res_amt ,'' pay_amt ,'' rec_amt  FROM DUAL;
+            OPEN O_History  FOR
+            SELECT '' clm_no ,'' pay_no ,'' pol_no ,'' pol_run ,'' fleet_seq ,'' mas_cus_name ,'' cus_name ,'' plan
+            ,'' hpt_code ,'' hpt_descr ,'' clm_pd_flag ,'' clm_sts ,'' clm_sts_descr
+            ,'' bene_code ,'' bene_descr,'' dis_code ,'' dis_code_descr
+            ,'' loss_date ,'' tr_date_fr ,'' tr_date_to ,'' ipd_day ,'' add_day ,'' remark
+            ,'' res_amt ,'' pay_amt ,'' rec_amt  FROM DUAL;
             dbms_output.put_line('error :'||sqlerrm);
             Return 'error: '||sqlerrm;
     END GET_PH_HISTORY;
@@ -3584,7 +3745,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
 
         update nc_mas
         set cwp_code = v_code ,cwp_remark =v_remark ,cwp_user = v_user
-        ,close_date = trunc(v_sysdate)
+        ,close_date = trunc(v_sysdate) ,approve_status = 'PHSTSAPPRV31'
         where clm_no = v_clmno;
 
         commit;
@@ -3709,11 +3870,12 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         return false;
     END IS_NEW_PHCLM;
     
-    FUNCTION CANCEL_APPROVE(vClmNo in varchar2 ,vPayNo in varchar2 ,vClmUser in varchar2 ,P_RST OUT VARCHAR2) RETURN NUMBER IS
+    FUNCTION CANCEL_APPROVE(vClmNo in varchar2 ,vPayNo in varchar2 ,vClmUser in varchar2 ,vRemark in varchar2 ,P_RST OUT VARCHAR2) RETURN NUMBER IS
         v_acr   varchar2(20);
         v_sts   varchar2(20);
         v_prod_grp  varchar2(2);
         v_prod_type varchar2(5);
+        v_adv  varchar2(2);
         is_err boolean:=false;
     BEGIN
     --    P_RST := 'ยังอยู่ระหว่างทดสอบ';
@@ -3758,7 +3920,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         
         
         begin
-            select prod_grp into v_prod_grp
+            select prod_grp ,advance_flag into v_prod_grp ,v_adv
             from nc_mas
             where clm_no = vClmNo;
             
@@ -3788,11 +3950,11 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
               VALUES
                (c1.clm_no ,c1.pay_no ,c1.CLM_SEQ ,c1.trn_seq+1 ,'PHSTSAPPRV31' , c1.PAY_AMT, c1.TRN_AMT, c1.CURR_CODE, c1.CURR_RATE, 
                c1.STS_DATE, sysdate, c1.CLM_MEN, vClmUser , null ,null , c1.PROD_GRP, c1.PROD_TYPE, 
-               c1.SUBSYSID, c1.STS_KEY, c1.TYPE, c1.SUB_TYPE, null ,null ,'Cancel Approved ');           
+               c1.SUBSYSID, c1.STS_KEY, c1.TYPE, c1.SUB_TYPE, null ,null ,vRemark );           
             END LOOP;           
 
-            IF v_prod_grp  in ('0') THEN -- Misc Product
-                --- ===  MISC ===
+            IF v_prod_grp  in ('0') THEN -- PAPH Product
+                --- ===  PAPH ===
                 dbms_output.put_line('rollback in Misc');
                 update mis_clm_mas
                 set close_date = null  ,clm_sts = '6'
@@ -3813,7 +3975,14 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
                 where a.pay_no = vPayNo
                 and a.corr_seq in (select max(aa.corr_seq) from mis_clmgm_paid aa where aa.pay_no = a.pay_no) ;
                 
-                                
+                update nc_mas
+                set close_date = null  ,approve_status = 'PHSTSAPPRV31'
+                where clm_no =vClmNo;        
+                
+                if v_adv = 'Y' then
+                    delete clm_gm_recov
+                    where clm_no = vClmNo and pay_no = vPayNo ;
+                end if;                        
             --- === END  MISC ===
             END IF;  
                 
@@ -3834,6 +4003,111 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
         
         
     END CANCEL_APPROVE;
+
+    PROCEDURE email_alert_advance(i_clmno IN VARCHAR2 , i_payno IN VARCHAR2) IS
+        v_to varchar2(1000);
+        v_cc varchar2(1000);
+        v_bcc varchar2(1000);
+        v_from varchar2(50):= 'AdminClm@bangkokinsurance.com' ; 
+        v_dbins varchar2(10);
+        x_body varchar2(1000);
+        x_subject varchar2(1000);
+        x_sys varchar2(100);
+        
+        v_logrst varchar2(200);
+        v_clmmen_name varchar2(200);
+        v_apprv_name  varchar2(200);
+        v_approve_id    varchar2(10);
+        v_approve_sts   varchar2(20);
+        v_approve_date  varchar2(200);
+        v_url   varchar2(200);
+        v_link  varchar2(200);
+    BEGIN
+    --ALLCLM.NC_HEALTH_PACKAGE.WRITE_LOG('EMAIL' ,'DB Package mail Bancas' ,'Start: '||v_body ,v_logrst);
+        FOR X in (
+        select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail ,(select UPPER(substr(instance_name,1,8)) instance_name from v$instance) ins_name
+        from nc_med_email a
+        where module = 'ALERTADVPH' 
+        and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)
+        and direction = 'TO' and CANCEL is null 
+        ) LOOP
+        v_to := v_to || x.ldap_mail ||';' ;
+        v_dbins := x.ins_name ; -- get DB Instant 
+        END LOOP;
+     
+        FOR X2 in (
+        select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail 
+        from nc_med_email a
+        where module = 'ALERTADVPH' 
+        and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)
+        and direction = 'CC' and CANCEL is null 
+        ) LOOP
+        v_cc := v_cc || x2.ldap_mail ||';' ;
+        END LOOP; 
+
+        FOR X3 in (
+        select decode(user_id ,null ,email,core_ldap.GET_EMAIL_FUNC(user_id)) ldap_mail ,(select UPPER(substr(instance_name,1,8)) instance_name from v$instance) ins_name
+        from nc_med_email a
+        where module = 'ALERTADVPH' 
+        and sub_module = (select UPPER(substr(instance_name,1,8)) instance_name from v$instance)
+        and direction = 'BCC' and CANCEL is null 
+        ) LOOP
+        v_bcc := v_bcc || x3.ldap_mail ||';' ;
+        v_dbins := x3.ins_name ; -- get DB Instant 
+        END LOOP; 
+
+        begin           
+--          select  P_claim_send_mail.get_bkiuser_name(a.clm_men) ,P_claim_send_mail.get_bkiuser_name(a.approve_id) ,to_char(approve_date, 'DD-MON-YYYY HH24:MI:SS') 
+--            into   v_clmmen_name ,v_apprv_name ,v_approve_date
+          select P_claim_send_mail.get_bkiuser_name(a.clm_user) into v_clmmen_name
+          from nc_mas a     
+          where a.clm_no = i_clmno  ;   
+                                                                           
+        exception     
+          when no_data_found then 
+            v_clmmen_name := 'N/A';
+          when others then     
+            v_clmmen_name := 'N/A';
+        end;    
+        P_PH_CLM.GET_APPROVE_USER(i_clmno ,i_payno ,v_approve_id ,v_approve_sts) ;
+        v_approve_date := to_char(sysdate, 'DD-MON-YYYY HH24:MI:SS') ;
+        v_apprv_name := P_claim_send_mail.get_bkiuser_name(v_approve_id ) ;
+        v_to := core_ldap.GET_EMAIL_FUNC(v_approve_id) ;
+    --    x_body := '<h2>'||v_subject||'</h2></br>'; 
+    --    x_body := x_body||v_body; 
+    --    x_subject := v_subject||' ['||v_dbins||'] ' ; 
+        if v_dbins <> 'DBBKIINS' then
+            x_sys := ' [ระบบทดสอบ]';
+            v_to := v_bcc;
+            v_link := 'http://bkinetdv/Non_pa_claim/Call_Crystal_Report.aspx?'; 
+            v_url := v_link||'user_id='||v_approve_id||'&report_name=PH001'||'&IN_CLM_NO='||i_clmno||'&IN_PAY_NO='||i_payno;            
+        else
+            v_link := 'http://bkiintra.bki.co.th/Non_pa_claim/Call_Crystal_Report.aspx?'; 
+            v_url := v_link||'user_id='||v_approve_id||'&report_name=PH001'||'&IN_CLM_NO='||i_clmno||'&IN_PAY_NO='||i_payno;
+        end if;
+     
+        x_subject := 'เตือน! มีอนุมัติจ่ายเคลมเรียกเก็บส่วนเกิน(Advance) claim no: '||i_clmno||x_sys ; 
+        x_body := '<h2>'||x_subject||'</h2></br>'; 
+        x_body := x_body||'เลขเคลม : '||i_clmno||'  เลขจ่าย : '||i_payno||'</br>'||
+        'มีการอนุมัติจ่ายเคลมเรียกเก็บส่วนเกิน(Advance)  ซึ่งอนุมัติโดย '||'คุณ '||v_apprv_name||'</br>'||
+        'เมื่อวันที่ '||v_approve_date||'</br>'|| 
+        'กรุณาตรวจสอบ ก่อนข้อมูลถูกส่งไปการเงินช่วงกลางคืน'||'</br>'|| 
+        'รายละเอียด Claim Statement -> <a href="'||v_url||' " >click to view claim statement </a>'||'<br/>'
+        ; 
+        
+         
+        if v_to is not null then
+        ALLCLM.nc_health_package.generate_email(v_from, v_to ,
+        x_subject, 
+        x_body 
+        ,v_cc
+        ,v_bcc); 
+        end if;
+    --NC_HEALTH_PACKAGE.WRITE_LOG('EMAIL' ,'DB Package mail Bancas' ,'END' ,v_logrst);
+    EXCEPTION
+    WHEN OTHERS THEN
+        NC_HEALTH_PACKAGE.WRITE_LOG('EMAIL' ,'DB Package mail alert advance' ,'Error: '||sqlerrm ,v_logrst);
+    END email_alert_advance; 
 
     PROCEDURE CHECK_LIMIT(v_polno IN VARCHAR2 ,v_polrun IN NUMBER ,v_plan IN VARCHAR2 ,v_benecode IN VARCHAR2
     ,v_pdflag IN VARCHAR2 ,v_days IN NUMBER ,v_amount IN NUMBER ,v_clmno IN VARCHAR2 ,v_fleet IN VARCHAR2 ,o_remain_day OUT NUMBER ,o_remain_amt OUT NUMBER ,o_err OUT VARCHAR2) IS
@@ -3960,4 +4234,3 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_CLM AS
             
 END P_PH_CLM;
 /
-

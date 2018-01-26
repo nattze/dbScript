@@ -85,6 +85,13 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_PH_CONVERT AS
     
     FUNCTION IS_FOUND_CPAPAID(v_CLMNO in VARCHAR2 ,v_PAYNO in VARCHAR2 ) RETURN BOOLEAN;
     
+    FUNCTION GEN_KPI_REPORT(v_fr in VARCHAR2 ,v_to in VARCHAR2)   RETURN NUMBER; -- Sid 0 = Fail 
+    
+    FUNCTION GET_KPI_DETAIL(v_fr in Date ,v_to in Date)   RETURN NUMBER; -- Sid
+    
+    FUNCTION GET_KPI_SUM(v_fr in Date ,v_to in Date ,v_sid in NUMBER)   RETURN NUMBER; -- Sid
+    
+    FUNCTION CLEAR_KPI_REPORT(v_sid in NUMBER)   RETURN NUMBER; -- 1 Success ,0 Fail
+    
 END P_PH_CONVERT;
 /
-

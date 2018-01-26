@@ -2190,7 +2190,9 @@ BEGIN
             UPDATE NC_MAS
             set 
             claim_status = 'PHCLMSTS06' ,
-            approve_status = P_STATUS2
+            approve_status = P_STATUS2 ,
+            clm_sts = 'NCCLMSTS02' ,
+            close_date = trunc(sysdate)
             where STS_KEY =v_stskey ;  
                         
         exception

@@ -24,6 +24,27 @@ CREATE OR REPLACE PACKAGE ALLCLM.P_GET_IDMDATA AS
   -- output O_RST -> if complete value = null ,if error value is error message 
   
   PROCEDURE EMAIL_NOTIFY(i_date IN DATE );
+  
+  FUNCTION GET_SYSOWNER(i_roleid IN VARCHAR2) RETURN VARCHAR2; --สำหรับดึงระบบที่เป็นเจ้าจอง ROLE
+  
+  --    สำหรับ mapping ข้อมูล user ว่าตรงกับ role ใดบ้าง จาก table IDM_MAPPING_ROLE |O_MSG = null คือสำเร็จ ,Not null คือมี Error Message 
+  PROCEDURE MAPPING_STDROLE(I_USERID IN VARCHAR2 
+    ,ROLE_UNDERWRITING OUT VARCHAR2 ,ROLE_CLAIM OUT VARCHAR2 ,ROLE_ACCOUNTING OUT VARCHAR2 
+    ,ROLE_CRM_TSEC OUT VARCHAR2 ,ROLE_CRM_FSEC OUT VARCHAR2 ,ROLE_CRM_RSEC OUT VARCHAR2 
+    ,ROLE_BPM OUT VARCHAR2 ,ROLE_PPS OUT VARCHAR2 
+    ,ROLE_EFORM_S OUT VARCHAR2 ,ROLE_EFORM_P OUT VARCHAR2
+    ,O_MSG OUT VARCHAR2);  
+    
+  PROCEDURE BACKUP_HR_EMP(I_USERID IN VARCHAR2 ,O_MSG OUT VARCHAR2 ); -- O_MSG = null คือสำเร็จ ,Not null คือมี Error Message     
+    
+  PROCEDURE BACKUP_BKIUSER(I_USERID IN VARCHAR2 ,O_MSG OUT VARCHAR2 ); -- O_MSG = null คือสำเร็จ ,Not null คือมี Error Message  
+  
+  FUNCTION GET_ROLELEVEL(I_ROLE IN VARCHAR2) RETURN VARCHAR2; -- for Support CRM ,EFORM  
+       
+  --    สำหรับ assign menu จาก standard role to BKIAPP BKIService Menu  
+  -- I_DATE คือวันที่ต้องการกวาดข้อมูลมา assign menu ,I_USERID คือระบุเฉพาะ user ที่ต้องการ assign |O_MSG = null คือสำเร็จ ,Not null คือมี Error Message  
+  PROCEDURE NoIDM_ASSIGN_MENU(I_DATE IN DATE  ,I_USERID IN VARCHAR2
+    ,O_MSG OUT VARCHAR2); -- O_MSG = null คือสำเร็จ ,Not null คือมี Error Message  
+          
 END P_GET_IDMDATA;
 /
-

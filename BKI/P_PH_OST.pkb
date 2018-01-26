@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
+CREATE OR REPLACE PACKAGE BODY ALLCLM.P_PH_OST AS
 /******************************************************************************
    NAME:       P_PH_OST
    PURPOSE:     For Manage Ost Claim Data
@@ -101,6 +101,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
         v_GenRI varchar2(200);
         v_SaveStatus    varchar2(200);
         v_oth_hosp  varchar2(250);
+        v_adv_flag  varchar2(1);
         
         v_max_resseq    number(5):=0;
     BEGIN
@@ -137,6 +138,12 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                 
                 dbms_output.put_line('CLMNO: '||v_CLMNO||' STSKEY: '||v_STSKEY);
                 
+                if p_ph_clm.IS_ADVANCE_POLICY(v_POLNO ,v_POLRUN) = '1' then
+                    v_adv_flag := 'Y';
+                else
+                    v_adv_flag := null;
+                end if;
+                                
                 v_Remark := mas.Remark ;
                 
                 --  mas.INDICATION||' :'||mas.TREATMENT
@@ -200,13 +207,13 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                    , REG_DATE, CLM_DATE, LOSS_DATE, FR_DATE, TO_DATE, TR_DATE_FR, TR_DATE_TO, ADD_TR_DAY, TOT_TR_DAY, REOPEN_DATE, ALC_RE, LOSS_DETAIL, CLM_USER, HPT_CODE, MAS_CUS_CODE, MAS_CUS_SEQ
                    , MAS_CUS_NAME, CUS_CODE, CUS_SEQ, CUS_NAME, FAX_CLM_DATE, CLM_STS, REMARK, CHANNEL, CLAIM_NUMBER, CLAIM_RUN
                    , COMPLETE_CODE, COMPLETE_USER, ICD10_2, ICD10_3, ICD10_4, ADMISSION_TYPE, CLM_TYPE, CLAIM_STATUS, APPROVE_STATUS, AMD_USER
-                   , CWP_USER, OTHER_HPT, OUT_CLM_NO, OUT_OPEN_STS, OUT_PAID_STS, OUT_APPROVE_STS, BATCH_NO)
+                   , CWP_USER, OTHER_HPT, OUT_CLM_NO, OUT_OPEN_STS, OUT_PAID_STS, OUT_APPROVE_STS, BATCH_NO ,ADVANCE_FLAG)
                 VALUES
                    ( v_STSKEY, v_CLMNO, pol.POL_NO, pol.POL_RUN, pol.END_SEQ, pol.RECPT_SEQ, to_char(sysdate,'YYYY'), pol.POL_YR, pol.PROD_GRP, pol.PROD_TYPE, pol.FLEET_SEQ, pol.SUB_SEQ, pol.FAM_STS,pol.FAM_SEQ, pol.PATRONIZE, pol.ID_NO, pol.PLAN, mas.ICD_10
                    , v_RegDate, v_ClmDate, mas.ADMIT, pol.FR_DATE, pol.TO_DATE, mas.ADMIT, mas.DISC, null, mas.DISC - mas.ADMIT+1, null, pol.ALC_RE, v_Detail,v_User, mas.HOSP_CODE, pol.MAS_CUS_CODE, pol.MAS_CUS_SEQ
                    , pol.MAS_CUS_NAME, pol.mas_cus_code, pol.mas_cus_seq, pol.TITLE||' '||pol.NAME, v_DocDate, 'NCCLMSTS01', v_Remark, pol.CHANNEL, null, null
                    , null, null, mas.ICD10_2, mas.ICD10_3, null, v_ADMIT, 'PHCLMTYPE03', 'PHCLMSTS01', null, v_user
-                   , null, v_oth_hosp, mas.NOT_NO, 'Y', null, null ,mas.batch_no
+                   , null, v_oth_hosp, mas.NOT_NO, 'Y', null, null ,mas.batch_no ,v_adv_flag
                     );        
                 
                 Update clm_outservice_mas
@@ -264,7 +271,6 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
             o_Rst := 'error OPEN_CLM: '||sqlerrm;    
     END OPEN_CLM;
     
-
 
     PROCEDURE REVISE_CLM(v_date IN DATE ,v_notno IN VARCHAR2 ,v_user IN VARCHAR2 ,o_RST OUT VARCHAR2) IS
         v_POLNO varchar2(20);
@@ -334,7 +340,8 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
         ); 
         j_rec1 t_data1;   
         
-        v_stampClose   varchar2(250);             
+        v_stampClose   varchar2(250);   
+        v_setcwp  VARCHAR2(250);          
     BEGIN
         FOR mas IN (
             select not_no ,revision ,batch_no ,bki_clm_no ,pol_no ,fleet_seq ,reg_date ,not_date ,doc_date ,ret_date ,not_sts
@@ -373,7 +380,23 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                 end if;
                 return;
             end if;
-            
+
+            if mas.claim_status = '40' then
+                begin
+                    select clm_no into v_CLMNO 
+                    from nc_mas
+                    where out_clm_no = mas.not_no and rownum=1;
+                exception
+                    when no_data_found then
+                        v_CLMNO := null;
+                    when others then
+                        v_CLMNO := null; 
+                end;            
+                v_setcwp := P_PH_CLM.SET_CWP_CLM(v_clmno ,'4'  ,'Cancel by Outsource' ,v_user );
+                o_RST := 'go Cancel';
+                return;
+            end if;
+                        
             begin 
                 select clm_no into chk_close
                 from mis_clm_mas a
@@ -438,10 +461,28 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                     end if;
                 end if;
                 
-                if mas.DOC_DATE is null then    v_DocDate := mas.ret_date ;
-                else    v_DocDate := mas.DOC_DATE;  end if;
-                v_RegDate := mas.not_date ;
-                v_ClmDate := v_SYSDATE;
+--                if mas.DOC_DATE is null then    v_DocDate := mas.ret_date ;
+--                else    v_DocDate := mas.DOC_DATE;  end if;
+--                v_RegDate := mas.not_date ;
+--                v_ClmDate := v_SYSDATE;
+
+                if mas.reg_date is not null then
+                    v_DocDate := mas.reg_date ;
+                else
+                    if  mas.DOC_DATE is not null then
+                        v_DocDate := mas.DOC_DATE ;
+                    else
+                        v_DocDate := v_SYSDATE ;
+                    end if;
+                end if;    
+                
+                if mas.not_date is not null then
+                    v_RegDate := mas.not_date ;
+                else
+                    v_RegDate :=v_SYSDATE ;
+                end if;                    
+                v_ClmDate := v_RegDate;
+                
                 
                 if mas.CLM_TYPE = 'IPD' then v_ADMIT := 'PHADMTYPE02'; 
                 elsif  mas.CLM_TYPE = 'OPD' then v_ADMIT := 'PHADMTYPE01'; 
@@ -643,7 +684,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                          Values
                            (v_clmno, v_payno, pol.PROD_GRP, pol.PROD_TYPE, v_max_payeeseq, v_stsdate, v_SYSDATE 
                            , o_payee_code, o_payee_name, o_payee_type, 
-                            1, mas.benf_paid, o_deposit, o_acc_no, o_acc_name_th, o_bank_code, o_bank_br_code, null, o_contact_name, o_addr1, o_addr1
+                            1, mas.benf_paid, o_deposit, o_acc_no, o_acc_name_th, o_bank_code, o_bank_br_code, p_ph_clm.GET_BANK_BRNAME(o_bank_code ,o_bank_br_code), o_contact_name, o_addr1, o_addr1
                             , o_mobile, o_email, 'BHT', 1, o_agent_mobile, o_agent_email
                             , null, null, null, v_user, v_user, null, null, o_paidto);         
                         v_PaidSts := 'Y';                
@@ -1274,6 +1315,12 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
         where batch_no = v_batch and claim_status not in ('PHCLMSTS06','PHCLMSTS30')
         and a.clm_no not in (select c.clm_no from acc_clm_tmp c where c.clm_no = a.clm_no);
         
+        update mis_clm_mas a
+        set clm_men = v_user ,clm_staff = v_user 
+        where batch_no = v_batch
+        and a.clm_no not in (select c.clm_no from acc_clm_tmp c where c.clm_no = a.clm_no);
+
+                
         update nc_payment a
         set clm_men = v_user
         where clm_no in (select x.clm_no from nc_mas x where x.batch_no = v_batch)
@@ -1482,6 +1529,8 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
          v_sysdate_T date:=trunc(sysdate);
          v_SaveStatus   varchar2(200);
          m_rst   varchar2(200);
+         v_maxseq   number:=0;
+         v_stsdate  date;
     BEGIN
         if v_batch is null then
             o_rst := 'กรุณาระบุ Batch no.';
@@ -1523,7 +1572,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                     dumm_clm := null;
                 when others then
                     dumm_clm := null;
-            end;
+            end; 
             begin
                 select max(pay_no) into v_pay
                 from nc_payment
@@ -1566,6 +1615,58 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                             Return 0;                                 
                     end;                                
                 end if;  
+            else
+                begin
+                    select nvl(max(TRN_SEQ)+1,1)  into v_maxseq
+                    from nc_payee
+                    where clm_no =  mas.clm_no
+                    and pay_no = v_pay;
+                exception
+                    when no_data_found then
+                        v_maxseq := 1;
+                    when others then
+                        v_maxseq := 1;
+                end;       
+                if v_maxseq >1 then
+                    BEGIN
+                        select sts_date into v_stsdate
+                        from NC_PAYEE a
+                        where pay_no = v_pay
+                        and trn_seq in (select max(aa.trn_seq) from NC_PAYEE aa where aa.pay_no = a.pay_no );
+                    exception
+                        when no_data_found then
+                            v_stsdate := sysdate;
+                        when others then
+                            v_stsdate := sysdate;
+                    END;        
+                end if;                
+                begin
+                    select sum(pay_amt) into pay_amt
+                    from nc_payment a
+                    where clm_no =  mas.clm_no
+                    and pay_no = v_pay
+                    and trn_seq in (select max(aa.trn_seq) from nc_payment aa where aa.pay_no = a.pay_no)   ;                     
+                exception
+                    when no_data_found then
+                        pay_amt := 0;
+                    when others then
+                        pay_amt := 0;
+                end;                  
+                begin
+                    Insert into ALLCLM.NC_PAYEE
+                       (CLM_NO, PAY_NO, PROD_GRP, PROD_TYPE, TRN_SEQ, STS_DATE, AMD_DATE, PAYEE_CODE, PAYEE_TYPE, PAYEE_SEQ, PAYEE_AMT, SETTLE, CURR_CODE, CURR_RATE, CREATE_USER, AMD_USER)
+                     Values
+                       (mas.clm_no, v_pay, mas.prod_grp, mas.prod_type, v_maxseq, 
+                       v_stsdate, v_sysdate, '0000', '01' ,
+                        1, pay_amt, '2', mas.curr_code, mas.curr_rate, v_user, v_user
+                       );                        
+                exception
+                    when others then
+                        rollback;
+                        dbms_output.put_line('error '||sqlerrm);
+                        o_rst := 'error :'||sqlerrm ;
+                        Return 0;                                 
+                end;                        
             end if;    -- dumm_no is null    
             
             --=== Section Update Payee Detail
@@ -1573,6 +1674,7 @@ CREATE OR REPLACE PACKAGE BODY P_PH_OST AS
                 update nc_payee a
                 set payee_code = v_payee_code , payee_name = v_payee_name ,payee_type = v_payee_type
                 ,settle = v_settle ,acc_no = v_acc_no ,acc_name = v_acc_name_th ,bank_code = v_bank_code, bank_br_code = v_bank_br_code ,paid_to = v_paidto
+                ,br_name = p_ph_clm.GET_BANK_BRNAME(v_bank_code ,v_bank_br_code)
                 ,send_title =v_contact_name , send_addr1 = v_addr1 , send_addr2 = v_addr2 , email = v_email ,sms = v_mobile 
                 ,agent_sms = v_agent_mobile ,agent_email = v_agent_email
                 ,special_flag = v_special_flag ,special_remark = v_special_remark

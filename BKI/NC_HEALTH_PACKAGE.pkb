@@ -555,7 +555,7 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
         ELSIF tmp_status in ('20') THEN
             send_status := 'MEDSTS11';  -- อนุมัติจ่าย Fax Claim            
         ELSIF tmp_status in ('90') THEN  -- TPA send Final Claim
-            send_status := 'MEDSTS14';  -- ตรวจสอบเอกสารวางบิล                     
+            send_status := 'MEDSTS11';  -- ตรวจสอบเอกสารวางบิล                     
         END IF;
         
          dbms_output.put_line('b4 start SAVE_UPDATE_CLAIM');
@@ -3564,12 +3564,12 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                       SELECT POL_NO, pol_run, RI_CODE, RI_BR_CODE, RI_TYPE, LF_FLAG, RI_SUB_TYPE,
                              --SUM(RI_SUM_INS) RI_SUM ,
                               SUM(RI_SHARE) RI_SUM_SHR
-                      FROM MIS_RI_MAS
+                      FROM MIS_RI_MAS a
                       WHERE POL_NO     = P_POL_NO   AND
                             nvl(pol_run,0) = nvl(P_POL_RUN,0) and  
                             RECPT_SEQ  = P_RECPT_SEQ AND
                             LOC_SEQ    = P_LOC_SEQ   AND
-                            --END_SEQ = 0 AND 
+                            END_SEQ in (select min(aa.end_seq) from MIS_RI_MAS aa where aa.pol_no = a.pol_no and aa.pol_run = a.pol_run and aa.recpt_seq = a.recpt_seq ) AND 
                             --END_SEQ = P_END_SEQ AND 
                             P_LOSS_DATE BETWEEN FR_DATE AND TO_DATE
                       GROUP BY POL_NO, pol_run, RI_CODE, RI_BR_CODE, RI_TYPE, LF_FLAG, RI_SUB_TYPE
@@ -3719,7 +3719,44 @@ CREATE OR REPLACE PACKAGE BODY ALLCLM.NC_HEALTH_PACKAGE IS
                                     v_count := 0;         
                                   WHEN  OTHERS THEN
                                     v_count := 0;        
-                                END;                               
+                                END;        
+                                  if v_count = 0 then
+                                        BEGIN
+                                              SELECT nvl(SUM(COUNT(*)),0) into v_count
+                                              FROM MIS_RI_MAS
+                                              WHERE POL_NO     = P_POL_NO   AND
+                                                    nvl(pol_run,0) = nvl(P_POL_RUN,0) and  
+                                                    RECPT_SEQ  = P_RECPT_SEQ AND
+                                                    LOC_SEQ    = P_LOC_SEQ   
+--                                                    END_SEQ = P_END_SEQ AND 
+--                                                    P_LOSS_DATE BETWEEN FR_DATE AND TO_DATE
+                                              GROUP BY POL_NO, pol_run, RI_CODE, RI_BR_CODE, RI_TYPE, LF_FLAG, RI_SUB_TYPE
+                                              ORDER BY RI_CODE, RI_BR_CODE, RI_TYPE;            
+                                                --dbms_output.put_line(' step count 1.2 cnt:'||v_count);
+                                              OPEN P_CRI_RES  FOR 
+                                              SELECT POL_NO, pol_run, RI_CODE, RI_BR_CODE, RI_TYPE, LF_FLAG, RI_SUB_TYPE,
+                                                     --SUM(RI_SUM_INS) RI_SUM ,
+                                                      SUM(RI_SHARE) RI_SUM_SHR         
+                                              FROM MIS_RI_MAS      
+                                              WHERE POL_NO     = P_POL_NO   AND
+                                                    nvl(pol_run,0) = nvl(P_POL_RUN,0) and  
+                                                    RECPT_SEQ  = P_RECPT_SEQ AND
+                                                    LOC_SEQ    = P_LOC_SEQ   
+--                                                    END_SEQ = P_END_SEQ AND 
+--                                                    P_LOSS_DATE BETWEEN FR_DATE AND TO_DATE
+                                              GROUP BY POL_NO, pol_run, RI_CODE, RI_BR_CODE, RI_TYPE, LF_FLAG, RI_SUB_TYPE
+                                              ORDER BY RI_CODE, RI_BR_CODE, RI_TYPE;    
+                                               NC_HEALTH_PACKAGE.WRITE_LOG  ('Package' ,'GET_RI_RES' ,'debug' ,'P_POL_NO='||P_POL_NO||' P_POL_RUN==>'||
+                                                     P_POL_RUN||' P_RECPT_SEQ==>'||P_RECPT_SEQ||' P_END_SEQ==>'||P_END_SEQ||' P_LOSS_DATE==>'||to_char(P_LOSS_DATE,'dd/mm/rr')||
+                                                     ' step7==>',v_rstlog );                                                                                                                
+                                        EXCEPTION
+                                          WHEN  NO_DATA_FOUND THEN
+                                            v_count := 0;         
+                                          WHEN  OTHERS THEN
+                                            v_count := 0;        
+                                        END;        
+                                                               
+                                  end if;                                                       
                           end if;
                     EXCEPTION
                       WHEN  NO_DATA_FOUND THEN
@@ -11082,7 +11119,7 @@ PROCEDURE GET_HISTORY_CLM2(P_POL_NO IN VARCHAR2,
                 ADMISSION_TYPE ,CLM_TYPE ,ICD10_2 ,ICD10_3 ,ICD10_4 ,
                 CLAIM_STATUS ,APPROVE_STATUS ,AMD_USER ,OTHER_HPT  ,
                 CWP_CODE ,CWP_REMARK ,CWP_USER , COMPLETE_CODE, COMPLETE_USER, CONVERT_FLAG 
-                ,OUT_CLM_NO, OUT_OPEN_STS, OUT_PAID_STS, OUT_APPROVE_STS
+                ,OUT_CLM_NO, OUT_OPEN_STS, OUT_PAID_STS, OUT_APPROVE_STS ,NEW_PAPH_CLM ,ADVANCE_FLAG ,BATCH_NO
             ) 
             (
                 SELECT A.STS_KEY, A.CLM_NO, A.REG_NO, A.POL_NO, A.POL_RUN, A.END_NO, A.END_SEQ, A.RECPT_SEQ, 
@@ -11102,7 +11139,7 @@ PROCEDURE GET_HISTORY_CLM2(P_POL_NO IN VARCHAR2,
                  A.ADMISSION_TYPE , A.CLM_TYPE , A.ICD10_2 , A.ICD10_3 , A.ICD10_4 ,
                  A.CLAIM_STATUS ,A.APPROVE_STATUS  ,A.AMD_USER ,A.OTHER_HPT ,
                  A.CWP_CODE ,A.CWP_REMARK ,A.CWP_USER, A.COMPLETE_CODE, A.COMPLETE_USER, A.CONVERT_FLAG 
-                 ,A.OUT_CLM_NO, A.OUT_OPEN_STS, A.OUT_PAID_STS, A.OUT_APPROVE_STS
+                 ,A.OUT_CLM_NO, A.OUT_OPEN_STS, A.OUT_PAID_STS, A.OUT_APPROVE_STS ,A.NEW_PAPH_CLM  ,A.ADVANCE_FLAG ,A.BATCH_NO
                 FROM NC_MAS A
                 WHERE A.STS_KEY = vSTS_KEY 
             );
@@ -12940,4 +12977,3 @@ PROCEDURE GET_HISTORY_CLM2(P_POL_NO IN VARCHAR2,
     END GET_MED_REMARK;    
 END;
 /
-
